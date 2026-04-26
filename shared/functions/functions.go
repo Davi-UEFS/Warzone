@@ -2,6 +2,9 @@ package functions
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
@@ -21,4 +24,12 @@ func MakeClient(brokerIP, clientID string) mqtt.Client {
 		panic(token.Error())
 	}
 	return client
+}
+
+func WaitForShutdown(client mqtt.Client) {
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+	<-sig
+	fmt.Println("\nDesconectando do broker...")
+	client.Disconnect(250)
 }

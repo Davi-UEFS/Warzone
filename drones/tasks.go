@@ -21,10 +21,11 @@ func carryWater() {
 
 func drainOil() {
 
-	fmt.Println("Drenando óleo. Vazamento contido!")
+	fmt.Println("Drenando óleo...")
 	bar := progressbar.Default(100)
 	for i := 0; i < 100; i++ {
 		bar.Add(1)
 		time.Sleep(100 * time.Millisecond) // Simula o tempo de drenagem
 	}
+	fmt.Println("Vazamento contido!")
 }
