@@ -13,7 +13,7 @@ import (
 
 const (
 	BROKER_IP = "tcp://localhost:1883"
-	TOPIC     = "test/topic"
+	TOPIC     = "setor/A/sensors/+"
 	CLIENT_ID = "mqtt_test_subscriber"
 )
 
