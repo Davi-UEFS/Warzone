@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -32,4 +33,9 @@ func WaitForShutdown(client mqtt.Client) {
 	<-sig
 	fmt.Println("\nDesconectando do broker...")
 	client.Disconnect(250)
+}
+
+func ExtractSensorID(ocurrenceID string) string {
+	parts := strings.Split(ocurrenceID, "-")
+	return parts[0]
 }

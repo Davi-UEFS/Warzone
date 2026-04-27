@@ -5,6 +5,7 @@ import (
 )
 
 func sendCommand(client mqtt.Client, payload []byte) {
-	topic := "drones/drone01/commands"
+	//TODO: HARDCODED
+	topic := "drones/drone01/missions"
 	client.Publish(topic, 2, false, payload)
 }

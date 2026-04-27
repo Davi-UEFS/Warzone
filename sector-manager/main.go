@@ -15,8 +15,9 @@ import (
 func showMenu() {
 	fmt.Println("\n=== Sector Manager ===")
 	fmt.Println("1 - Enviar comando de água")
-	fmt.Println("2 - Enviar comando de óleo")
-	fmt.Println("3 - Sair")
+	fmt.Println("2 - Enviar comando para drone")
+	fmt.Println("3 - Marcar ocorrência como resolvida")
+	fmt.Println("4 - Sair")
 	fmt.Print("Escolha: ")
 }
 
@@ -31,42 +32,51 @@ func mainMenu(client mqtt.Client) {
 
 		switch option {
 		case "1":
-			cmd := types.DroneCommand{
-				AtomicID:  i,
-				Action:    "water",
-				Timestamp: time.Now(),
-			}
-
-			payload, _ := json.Marshal(cmd)
-
-			sendCommand(client, payload)
+			fmt.Println("EM BREVE...")
 
 		case "2":
 			cmd := types.DroneCommand{
-				AtomicID:  i,
-				Action:    "oil",
-				Timestamp: time.Now(),
+				OccurrenceID: fmt.Sprintf("cmd-%d", i),
+				Action:       "oil",
+				Timestamp:    time.Now(),
+			}
+			payload, _ := json.Marshal(cmd)
+			sendCommand(client, payload)
+
+		case "3":
+			fmt.Print("ID do sensor: ")
+			scanner.Scan()
+			sensorID := scanner.Text()
+
+			payload, _ := json.Marshal("DONE")
+
+			topic := fmt.Sprintf("sensors/%s/solved", sensorID)
+			token := client.Publish(topic, 2, false, payload)
+			token.Wait()
+			if token.Error() != nil {
+				fmt.Println("Erro ao publicar:", token.Error())
+			} else {
+				fmt.Printf("→ Ocorrência marcada como resolvida no sensor %s\n", sensorID)
 			}
 
-			payload, _ := json.Marshal(cmd)
-
-			sendCommand(client, payload)
-		case "3":
+		case "4":
 			fmt.Println("Saindo...")
 			client.Disconnect(250)
 			return
+
 		default:
 			fmt.Println("Opção inválida")
 		}
+
 		i++
 	}
 }
 
 func main() {
-
 	client := functions.MakeClient(
 		os.Getenv("BROKER_IP"), os.Getenv("CLIENT_ID"))
 
+	client.Subscribe("drones/+/missions/done", 1, onMissionDoneHandler)
+	client.Subscribe("sensors/+/incidents", 1, onIncidentHandler)
 	mainMenu(client)
-
 }

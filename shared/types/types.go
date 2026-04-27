@@ -5,7 +5,19 @@ import (
 )
 
 type DroneCommand struct {
-	AtomicID  int
-	Action    string
-	Timestamp time.Time
+	OccurrenceID string
+	Action       string
+	Timestamp    time.Time
+}
+
+type MissionResult struct {
+	OccurrenceID string
+	Action       string
+	Status       string
+}
+
+type Incident struct {
+	OccurrenceID string
+	Message      string
+	Timestamp    time.Time
 }

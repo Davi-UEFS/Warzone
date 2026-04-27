@@ -3,20 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"os"
 
 	"github.com/Davi-UEFS/Warzone/shared/types"
-	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
-
-var MISSION_TOPIC = fmt.Sprintf("drones/%s/commands", os.Getenv("CLIENT_ID"))
-var payloadChannel = make(chan []byte)
-
-var commandHandler = func(client mqtt.Client, msg mqtt.Message) {
-	payloadChannel <- msg.Payload()
-
-}
 
 func handleAction(ctx context.Context) {
 
@@ -36,12 +25,25 @@ func handleAction(ctx context.Context) {
 
 			switch command.Action {
 			case "water":
-				carryWater()
+				carryWater(command)
 
 			case "oil":
-				drainOil()
+				drainOil(command)
 			}
 
 		}
 	}
+}
+
+func makeResult(command types.DroneCommand) ([]byte, error) {
+	result := types.MissionResult{
+		OccurrenceID: command.OccurrenceID,
+		Action:       command.Action,
+		Status:       "DONE",
+	}
+	return json.Marshal(result)
+}
+
+func notifyDone(payload []byte) {
+	client.Publish(MISSION_DONE_TOPIC, 1, false, payload)
 }
