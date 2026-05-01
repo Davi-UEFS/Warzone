@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	"github.com/Davi-UEFS/Warzone/shared/functions"
+	"github.com/Davi-UEFS/Warzone/shared"
 )
 
 func main() {
@@ -13,6 +13,6 @@ func main() {
 	ctx := context.Background()
 	go handleAction(ctx)
 
-	functions.WaitForShutdown(client)
+	shared.WaitForShutdown(client)
 
 }

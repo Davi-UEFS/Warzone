@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Davi-UEFS/Warzone/shared/types"
+	"github.com/Davi-UEFS/Warzone/shared"
 	"github.com/schollz/progressbar/v3"
 )
 
-func carryWater(command types.DroneCommand) {
+func carryWater(command shared.DroneCommand) {
 
 	fmt.Println("Carregando água para o local do incidente...")
 	bar := progressbar.Default(100)
@@ -22,7 +22,7 @@ func carryWater(command types.DroneCommand) {
 
 }
 
-func drainOil(command types.DroneCommand) {
+func drainOil(command shared.DroneCommand) {
 
 	fmt.Println("Drenando óleo...")
 	bar := progressbar.Default(100)

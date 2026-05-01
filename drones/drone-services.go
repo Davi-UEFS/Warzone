@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/Davi-UEFS/Warzone/shared/types"
+	"github.com/Davi-UEFS/Warzone/shared"
 )
 
 func handleAction(ctx context.Context) {
@@ -16,7 +16,7 @@ func handleAction(ctx context.Context) {
 
 		case payload := <-payloadChannel:
 
-			var command types.DroneCommand
+			var command shared.DroneCommand
 
 			if err := json.Unmarshal(payload, &command); err != nil {
 				//TODO: POSSO AVISAR NUM PRINT AQUI
@@ -35,8 +35,8 @@ func handleAction(ctx context.Context) {
 	}
 }
 
-func makeResult(command types.DroneCommand) ([]byte, error) {
-	result := types.MissionResult{
+func makeResult(command shared.DroneCommand) ([]byte, error) {
+	result := shared.MissionResult{
 		OccurrenceID: command.OccurrenceID,
 		Action:       command.Action,
 		Status:       "DONE",

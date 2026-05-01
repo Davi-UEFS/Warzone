@@ -7,8 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/Davi-UEFS/Warzone/shared/functions"
-	"github.com/Davi-UEFS/Warzone/shared/types"
+	"github.com/Davi-UEFS/Warzone/shared"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
@@ -19,7 +18,7 @@ func getEnviromentVariables() (string, string, string) {
 var solvedSignal = make(chan struct{}, 1)
 
 var onSolvedHandler = func(client mqtt.Client, msg mqtt.Message) {
-	fmt.Printf("Incidente resolvido: %s\n", string(msg.Payload()))
+	fmt.Println("Incidente resolvido")
 	solvedSignal <- struct{}{}
 
 }
@@ -42,7 +41,7 @@ func createIncidentID(CLIENT_ID string) string {
 
 func createIncidentPayload(SENSOR_TYPE string, incidentID string) ([]byte, error) {
 
-	incident := types.Incident{
+	incident := shared.Incident{
 		OccurrenceID: incidentID,
 		Message:      INCIDENT_MESSAGES[SENSOR_TYPE],
 		Timestamp:    time.Now(),
@@ -57,7 +56,7 @@ func main() {
 	BROKER_IP, CLIENT_ID, SENSOR_TYPE := getEnviromentVariables()
 	TOPIC := fmt.Sprintf("sensors/%s/incidents", CLIENT_ID)
 
-	client := functions.MakeClient(BROKER_IP, CLIENT_ID)
+	client := shared.MakeClient(BROKER_IP, CLIENT_ID)
 	client.Subscribe(fmt.Sprintf("sensors/%s/solved", CLIENT_ID), 1, onSolvedHandler)
 
 	var trigger bool

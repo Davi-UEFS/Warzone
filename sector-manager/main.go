@@ -7,8 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/Davi-UEFS/Warzone/shared/functions"
-	"github.com/Davi-UEFS/Warzone/shared/types"
+	"github.com/Davi-UEFS/Warzone/shared"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
@@ -35,7 +34,7 @@ func mainMenu(client mqtt.Client) {
 			fmt.Println("EM BREVE...")
 
 		case "2":
-			cmd := types.DroneCommand{
+			cmd := shared.DroneCommand{
 				OccurrenceID: fmt.Sprintf("cmd-%d", i),
 				Action:       "oil",
 				Timestamp:    time.Now(),
@@ -73,7 +72,7 @@ func mainMenu(client mqtt.Client) {
 }
 
 func main() {
-	client := functions.MakeClient(
+	client := shared.MakeClient(
 		os.Getenv("BROKER_IP"), os.Getenv("CLIENT_ID"))
 
 	client.Subscribe("drones/+/missions/done", 1, onMissionDoneHandler)

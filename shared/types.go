@@ -1,4 +1,5 @@
-package types
+package shared
+package shared
 
 import (
 	"sync"
@@ -19,11 +20,5 @@ type MissionResult struct {
 
 type Incident struct {
 	OccurrenceID string
-	Message      string
-	Timestamp    time.Time
-}
 
-type LamportClock struct {
-	Time int
-	Mu   sync.Mutex
 }

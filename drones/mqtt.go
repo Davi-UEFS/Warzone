@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Davi-UEFS/Warzone/shared/functions"
+	"github.com/Davi-UEFS/Warzone/shared"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
-var client = functions.MakeClient(
+var client = shared.MakeClient(
 	os.Getenv("BROKER_IP"), os.Getenv("CLIENT_ID"))
 
 var MISSION_TOPIC = fmt.Sprintf("drones/%s/missions", os.Getenv("CLIENT_ID"))

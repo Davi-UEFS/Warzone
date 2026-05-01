@@ -4,21 +4,20 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/Davi-UEFS/Warzone/shared/functions"
-	"github.com/Davi-UEFS/Warzone/shared/types"
+	"github.com/Davi-UEFS/Warzone/shared"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
 var onMissionDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 	fmt.Printf("Missão concluída: %s\n", string(msg.Payload()))
-	result := types.MissionResult{}
+	result := shared.MissionResult{}
 
 	if err := json.Unmarshal(msg.Payload(), &result); err != nil {
 		fmt.Printf("Erro ao unmarshal payload: %v\n", err)
 		return
 	}
 
-	sensorID := functions.ExtractSensorID(result.OccurrenceID)
+	sensorID := shared.ExtractSensorID(result.OccurrenceID)
 
 	token := client.Publish(fmt.Sprintf("sensors/%s/solved", sensorID), 1, false, []byte("DONE"))
 	token.Wait()
@@ -28,13 +27,13 @@ var onMissionDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 var onIncidentHandler = func(client mqtt.Client, msg mqtt.Message) {
 	fmt.Printf("Nova ocorrência: %s\n", string(msg.Payload()))
 
-	incident := types.Incident{}
+	incident := shared.Incident{}
 	if err := json.Unmarshal(msg.Payload(), &incident); err != nil {
 		fmt.Printf("Erro ao unmarshal payload: %v\n", err)
 		return
 	}
 
-	cmd := types.DroneCommand{
+	cmd := shared.DroneCommand{
 		OccurrenceID: incident.OccurrenceID,
 		Action:       "oil",
 		Timestamp:    incident.Timestamp,
