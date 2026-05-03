@@ -1,5 +1,4 @@
 package shared
-package shared
 
 import (
 	"fmt"
@@ -11,7 +10,7 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
-func MakeClient(brokerIP, clientID string) mqtt.Client {
+func MakeClient(brokerIP, clientID string) (mqtt.Client, error) {
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(brokerIP)
 	opts.SetClientID(clientID)
@@ -23,9 +22,9 @@ func MakeClient(brokerIP, clientID string) mqtt.Client {
 	}
 	client := mqtt.NewClient(opts)
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
-		panic(token.Error())
+		return nil, token.Error()
 	}
-	return client
+	return client, nil
 }
 
 func WaitForShutdown(client mqtt.Client) {

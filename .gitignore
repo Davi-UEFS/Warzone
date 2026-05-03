@@ -1,0 +1,12 @@
+# Go
+bin/
+*.exe
+*.out
+
+# Docker / runtime data
+sector-manager/data/
+broker/data/
+
+# Local editor files
+.vscode/
+.DS_Store

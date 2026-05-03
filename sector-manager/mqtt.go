@@ -1,16 +1,9 @@
 package main
 
-import (
-	"encoding/json"
-	"fmt"
-
-	"github.com/Davi-UEFS/Warzone/shared"
-	mqtt "github.com/eclipse/paho.mqtt.golang"
-)
-
+/*
 var onMissionDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 	fmt.Printf("Missão concluída: %s\n", string(msg.Payload()))
-	result := shared.MissionResult{}
+	result := shared.Requisition{}
 
 	if err := json.Unmarshal(msg.Payload(), &result); err != nil {
 		fmt.Printf("Erro ao unmarshal payload: %v\n", err)
@@ -34,7 +27,7 @@ var onIncidentHandler = func(client mqtt.Client, msg mqtt.Message) {
 	}
 
 	cmd := shared.DroneCommand{
-		OccurrenceID: incident.OccurrenceID,
+		OccurrenceID: incident.ID,
 		Action:       "oil",
 		Timestamp:    incident.Timestamp,
 	}
@@ -48,3 +41,4 @@ var onIncidentHandler = func(client mqtt.Client, msg mqtt.Message) {
 	sendCommand(client, payload)
 
 }
+*/

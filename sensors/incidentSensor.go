@@ -42,9 +42,9 @@ func createIncidentID(CLIENT_ID string) string {
 func createIncidentPayload(SENSOR_TYPE string, incidentID string) ([]byte, error) {
 
 	incident := shared.Incident{
-		OccurrenceID: incidentID,
-		Message:      INCIDENT_MESSAGES[SENSOR_TYPE],
-		Timestamp:    time.Now(),
+		ID:        incidentID,
+		Message:   INCIDENT_MESSAGES[SENSOR_TYPE],
+		Timestamp: time.Now(),
 	}
 
 	return json.Marshal(incident)
