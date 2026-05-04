@@ -1,43 +1,43 @@
+SHELL := /bin/bash
+
 IMAGE_NAME = sector-broker
-NETWORK = warzone-net
+BROKER_NAME ?= broker1
+BROKER_PORT ?= 1883
+# Variável para alternar entre rede Bridge (padrão) e Host (real)
+NETWORK_MODE ?= bridge 
 
-# Cores para o terminal
-CYAN = \033[0;36m
-RESET = \033[0m
+.PHONY: build run-broker run-broker-prompt clean help
 
-.PHONY: build setup-net run-broker1 run-broker2 run-broker3 clean
+help:
+	@echo "Available targets:"
+	@echo "  build              - Builda a imagem docker"
+	@echo "  run-broker         - Roda o broker (use NETWORK_MODE=host para rede real)"
+	@echo "  run-broker-prompt  - Sobe um nó com configuração interativa"
+	@echo "  clean              - Para e remove o broker"
 
 build:
-	@echo "$(CYAN)Compilando imagem Docker...$(RESET)"
+	@echo "Compilando imagem Docker..."
 	docker build -t $(IMAGE_NAME) -f dockerfile ..
 
-setup-net:
-	@echo "$(CYAN)Criando rede isolada...$(RESET)"
-	@docker network inspect $(NETWORK) >/dev/null 2>&1 || docker network create $(NETWORK)
+run-broker:
+	@echo "Iniciando broker $(BROKER_NAME) em modo $(NETWORK_MODE)..."
+	@if [ "$(NETWORK_MODE)" = "host" ]; then \
+		docker run -it --rm --name $(BROKER_NAME) --network host $(IMAGE_NAME); \
+	else \
+		docker run -it --rm --name $(BROKER_NAME) -p $(BROKER_PORT):1883 $(IMAGE_NAME); \
+	fi
 
-run-broker1: setup-net
-	@echo "$(CYAN)Iniciando Broker do Setor 1...$(RESET)"
-	docker run -it --rm \
-		--name broker1 \
-		--network $(NETWORK) \
-		$(IMAGE_NAME)
-
-run-broker2: setup-net
-	@echo "$(CYAN)Iniciando Broker do Setor 2...$(RESET)"
-	docker run -it --rm \
-		--name broker2 \
-		--network $(NETWORK) \
-		$(IMAGE_NAME)
-
-run-broker3: setup-net
-	@echo "$(CYAN)Iniciando Broker do Setor 3...$(RESET)"
-	docker run -it --rm \
-		--name broker3 \
-		--network $(NETWORK) \
-		$(IMAGE_NAME)
+run-broker-prompt:
+	@echo "Configuracao interativa do broker"
+	@read -p "BROKER_NAME [$(BROKER_NAME)]: " _name; \
+	_name=$${_name:-$(BROKER_NAME)}; \
+	read -p "BROKER_PORT [$(BROKER_PORT)]: " _port; \
+	_port=$${_port:-$(BROKER_PORT)}; \
+	read -p "NETWORK_MODE (bridge/host) [$(NETWORK_MODE)]: " _net; \
+	_net=$${_net:-$(NETWORK_MODE)}; \
+	$(MAKE) run-broker BROKER_NAME=$$_name BROKER_PORT=$$_port NETWORK_MODE=$$_net
 
 clean:
-	@echo "$(CYAN)Limpando containers e rede...$(RESET)"
-	-docker stop broker1 broker2 broker3
-	-docker rm broker1 broker2 broker3
-	-docker network rm $(NETWORK)
+	@echo "Limpando container..."
+	-docker stop $(BROKER_NAME)
+	-docker rm $(BROKER_NAME)

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -250,7 +251,11 @@ func (fsm *RaftFSM) Restore(rc io.ReadCloser) error {
 func searchForLeaderIP(peers []string) string {
 
 	for _, peer := range peers {
-		conn, err := net.DialTimeout("tcp", peer+":9123", 2*time.Second)
+		addr := normalizePeerAddr(peer)
+		if addr == "" {
+			continue
+		}
+		conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
 		if err != nil {
 			continue
 		}
@@ -277,7 +282,11 @@ type LeaderInfo struct {
 
 func searchForLeaderInfo(peers []string) LeaderInfo {
 	for _, peer := range peers {
-		conn, err := net.DialTimeout("tcp", peer+":9123", 2*time.Second)
+		addr := normalizePeerAddr(peer)
+		if addr == "" {
+			continue
+		}
+		conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
 		if err != nil {
 			continue
 		}
@@ -308,4 +317,17 @@ func startSignalingServer(raftNode *raft.Raft, sigAddr, brokerAddr string) {
 			json.NewEncoder(c).Encode(leaderInfo)
 		}(conn)
 	}
+}
+
+func normalizePeerAddr(peer string) string {
+	trimmed := strings.TrimSpace(peer)
+	if trimmed == "" {
+		return ""
+	}
+
+	if _, _, err := net.SplitHostPort(trimmed); err == nil {
+		return trimmed
+	}
+
+	return net.JoinHostPort(trimmed, "9123")
 }

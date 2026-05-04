@@ -126,9 +126,9 @@ func main() {
 	raftAddrFlag := flag.String("raft", "127.0.0.1:10001", "Endereço Raft")
 	dataDirFlag := flag.String("dir", "data/node1", "Diretório de dados")
 	bootstrapFlag := flag.Bool("bootstrap", false, "Iniciar como líder")
-	peersFlag := flag.String("peers", "", "Endereços IP dos outros nós (separados por vírgula)")
-	sigAddrFlag := flag.String("sig", "localhost:9123", "Endereço do servidor de sinalização")
-	brokerAddrFlag := flag.String("broker", "tcp://broker:1883", "Endereço do broker MQTT")
+	peersFlag := flag.String("peers", "", "Endereços dos outros nós (host:porta ou host, separados por vírgula)")
+	sigAddrFlag := flag.String("sig", "127.0.0.1:9123", "Endereço do servidor de sinalização")
+	brokerAddrFlag := flag.String("broker", "tcp://127.0.0.1:1883", "Endereço do broker MQTT")
 	flag.Parse()
 
 	var peers []string

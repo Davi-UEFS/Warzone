@@ -1,56 +1,112 @@
+SHELL := /bin/bash
+
 IMAGE_NAME = sector-manager
-NETWORK = warzone-net
-BROKER1_ADDR = tcp://broker1:1883
-BROKER2_ADDR = tcp://broker2:1883
-BROKER3_ADDR = tcp://broker3:1883
 
-# Cores para o terminal
-CYAN = \033[0;36m
-RESET = \033[0m
+NODE_ID ?= node1
+BOOTSTRAP ?= false
+PEERS ?=
 
-.PHONY: build setup-net run-node1 run-node2 run-node3 clean
+# Configurações de rede
+NETWORK_MODE ?= bridge
+RAFT_HOST ?= 127.0.0.1
+RAFT_PORT ?= 10001
+SIG_HOST ?= 127.0.0.1
+SIG_PORT ?= 9123
+BROKER_HOST ?= 127.0.0.1
+BROKER_PORT ?= 1883
+
+DATA_DIR ?= $(shell pwd)/data/$(NODE_ID)
+RUN_ARGS ?=
+
+# Captura UID e GID para evitar problemas de permissão na pasta data
+USER_ID = $(shell id -u)
+GROUP_ID = $(shell id -g)
+
+.PHONY: build run-node run-node-prompt clean help prepare
+
+help:
+	@echo "Available targets:"
+	@echo "  build              - Builda a imagem docker"
+	@echo "  run-node           - Sobe um node (NETWORK_MODE=bridge ou host)"
+	@echo "  run-node-prompt    - Sobe um nó com configuração interativa"
+	@echo "  clean              - Remove contêineres e apaga pasta de data"
 
 build:
-	@echo "$(CYAN)Compilando imagem Docker...$(RESET)"
+	@echo "Compilando imagem Docker..."
 	docker build -t $(IMAGE_NAME) -f dockerfile ..
 
-setup-net:
-	@echo "$(CYAN)Criando rede isolada...$(RESET)"
-	@docker network inspect $(NETWORK) >/dev/null 2>&1 || docker network create $(NETWORK)
+# Garante que a pasta de dados existe antes do Docker rodar para manter o dono correto
+prepare:
+	mkdir -p $(DATA_DIR)
 
-# Nó 1: Liderança/Bootstrap
-run-node1: setup-net
-	@echo "$(CYAN)Iniciando Nó 1 (Bootstrap)...$(RESET)"
-	docker run -it --rm \
-		--name node1 \
-		--network $(NETWORK) \
-		-v $(shell pwd)/data/node1:/data/node1 \
-		$(IMAGE_NAME) \
-		-id=node1 -raft=node1:10001 -dir=/data/node1 -bootstrap=true -sig=node1:9123 -broker=$(BROKER1_ADDR)
+run-node: prepare
+	@echo "Iniciando nó $(NODE_ID) em modo $(NETWORK_MODE)..."
+	@if [ "$(NETWORK_MODE)" = "host" ]; then \
+		docker run -it --rm \
+			--name $(NODE_ID) \
+			--network host \
+			--user $(USER_ID):$(GROUP_ID) \
+			-v $(DATA_DIR):/data \
+			$(RUN_ARGS) \
+			$(IMAGE_NAME) \
+			-id=$(NODE_ID) \
+			-raft=$(RAFT_HOST):$(RAFT_PORT) \
+			-dir=/data \
+			-sig=$(SIG_HOST):$(SIG_PORT) \
+			-broker=tcp://$(BROKER_HOST):$(BROKER_PORT) \
+			$(if $(PEERS),-peers=$(PEERS),) \
+			$(if $(filter true,$(BOOTSTRAP)),-bootstrap=true,); \
+	else \
+		docker run -it --rm \
+			--name $(NODE_ID) \
+			-p $(RAFT_PORT):$(RAFT_PORT) \
+			-p $(SIG_PORT):$(SIG_PORT) \
+			--user $(USER_ID):$(GROUP_ID) \
+			-v $(DATA_DIR):/data \
+			$(RUN_ARGS) \
+			$(IMAGE_NAME) \
+			-id=$(NODE_ID) \
+			-raft=$(RAFT_HOST):$(RAFT_PORT) \
+			-dir=/data \
+			-sig=$(SIG_HOST):$(SIG_PORT) \
+			-broker=tcp://$(BROKER_HOST):$(BROKER_PORT) \
+			$(if $(PEERS),-peers=$(PEERS),) \
+			$(if $(filter true,$(BOOTSTRAP)),-bootstrap=true,); \
+	fi
 
-# Nó 2: Seguidor (Aponta para o node1)
-run-node2: setup-net
-	@echo "$(CYAN)Iniciando Nó 2...$(RESET)"
-	docker run -it --rm \
-		--name node2 \
-		--network $(NETWORK) \
-		-v $(shell pwd)/data/node2:/data/node2 \
-		$(IMAGE_NAME) \
-		-id=node2 -raft=node2:10001 -dir=/data/node2 -peers=node1 -sig=node2:9123 -broker=$(BROKER2_ADDR)
-
-# Nó 3: Seguidor (Aponta para node1 e node2)
-run-node3: setup-net
-	@echo "$(CYAN)Iniciando Nó 3...$(RESET)"
-	docker run -it --rm \
-		--name node3 \
-		--network $(NETWORK) \
-		-v $(shell pwd)/data/node3:/data/node3 \
-		$(IMAGE_NAME) \
-		-id=node3 -raft=node3:10001 -dir=/data/node3 -peers=node1,node2 -sig=node3:9123 -broker=$(BROKER3_ADDR)
+run-node-prompt:
+	@echo "Configuracao interativa do sector-manager"
+	@read -p "NODE_ID [$(NODE_ID)]: " _NODE_ID; \
+	_NODE_ID=$${_NODE_ID:-$(NODE_ID)}; \
+	read -p "NETWORK_MODE (bridge/host) [$(NETWORK_MODE)]: " _NET; \
+	_NET=$${_NET:-$(NETWORK_MODE)}; \
+	read -p "BOOTSTRAP (true/false) [$(BOOTSTRAP)]: " _BOOT; \
+	_BOOT=$${_BOOT:-$(BOOTSTRAP)}; \
+	read -p "PEERS (ip1:port,ip2:port) [$(PEERS)]: " _PEERS; \
+	_PEERS=$${_PEERS:-$(PEERS)}; \
+	read -p "RAFT_HOST [$(RAFT_HOST)] (somente IP): " _R_HOST; \
+	_R_HOST=$${_R_HOST:-$(RAFT_HOST)}; \
+	read -p "RAFT_PORT [$(RAFT_PORT)] (somente PORTA): " _R_PORT; \
+	_R_PORT=$${_R_PORT:-$(RAFT_PORT)}; \
+	read -p "SIG_HOST [$(SIG_HOST)] (somente IP): " _S_HOST; \
+	_S_HOST=$${_S_HOST:-$(SIG_HOST)}; \
+	read -p "SIG_PORT [$(SIG_PORT)] (somente PORTA): " _S_PORT; \
+	_S_PORT=$${_S_PORT:-$(SIG_PORT)}; \
+	read -p "BROKER_HOST [$(BROKER_HOST)] (somente IP): " _B_HOST; \
+	_B_HOST=$${_B_HOST:-$(BROKER_HOST)}; \
+	read -p "BROKER_PORT [$(BROKER_PORT)] (somente PORTA): " _B_PORT; \
+	_B_PORT=$${_B_PORT:-$(BROKER_PORT)}; \
+	read -p "DATA_DIR [$(DATA_DIR)]: " _DIR; \
+	_DIR=$${_DIR:-$(DATA_DIR)}; \
+	$(MAKE) run-node \
+		NODE_ID=$$_NODE_ID NETWORK_MODE=$$_NET BOOTSTRAP=$$_BOOT PEERS="$$_PEERS" \
+		RAFT_HOST=$$_R_HOST RAFT_PORT=$$_R_PORT \
+		SIG_HOST=$$_S_HOST SIG_PORT=$$_S_PORT \
+		BROKER_HOST=$$_B_HOST BROKER_PORT=$$_B_PORT \
+		DATA_DIR=$$_DIR
 
 clean:
-	@echo "$(CYAN)Limpando containers e dados...$(RESET)"
-	-docker stop node1 node2 node3
-	-docker rm node1 node2 node3
-	-docker network rm $(NETWORK)
+	@echo "Limpando containers e dados..."
+	-docker stop $(NODE_ID)
+	-docker rm $(NODE_ID)
 	rm -rf data/
