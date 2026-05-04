@@ -5,6 +5,7 @@ bin/
 
 # Docker / runtime data
 sector-manager/data/
+sector-manager/dataRaft/
 broker/data/
 
 # Local editor files
