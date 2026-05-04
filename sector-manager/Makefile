@@ -15,7 +15,7 @@ SIG_PORT ?= 9123
 BROKER_HOST ?= 127.0.0.1
 BROKER_PORT ?= 1883
 
-DATA_DIR ?= $(shell pwd)/data/$(NODE_ID)
+DATA_DIR ?= $(shell pwd)/dataRaft/$(NODE_ID)
 RUN_ARGS ?=
 
 # Captura UID e GID para evitar problemas de permissão na pasta data
@@ -109,4 +109,4 @@ clean:
 	@echo "Limpando containers e dados..."
 	-docker stop $(NODE_ID)
 	-docker rm $(NODE_ID)
-	rm -rf data/
+	rm -rf dataRaft/
