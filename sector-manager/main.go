@@ -161,7 +161,7 @@ func main() {
 	}
 
 	if !*bootstrapFlag {
-		fmt.Println("Prcurando líder na lista de peers...")
+		fmt.Println("Procurando líder na lista de peers...")
 		leaderInfo := searchForLeaderInfo(peers)
 
 		if leaderInfo.RaftAddr == "" {
