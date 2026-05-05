@@ -2,23 +2,27 @@ SHELL := /bin/bash
 
 IMAGE_NAME = sector-manager
 
+# Detecta o IP da rede local automaticamente
+# Tenta primeiro via hostname -I, se falhar usa ip route
+DETECTED_IP := $(shell hostname -I | awk '{print $$1}')
+ifeq ($(DETECTED_IP),)
+    DETECTED_IP := $(shell ip route get 1 | awk '{print $$7;exit}')
+endif
+
 NODE_ID ?= node1
 BOOTSTRAP ?= false
 PEERS ?=
 
 # Configurações de rede
-NETWORK_MODE ?= bridge
-RAFT_HOST ?= 127.0.0.1
+NETWORK_MODE ?= host
+LOCAL_HOST ?= $(DETECTED_IP)
 RAFT_PORT ?= 10001
-SIG_HOST ?= 127.0.0.1
 SIG_PORT ?= 9123
-BROKER_HOST ?= 127.0.0.1
 BROKER_PORT ?= 1883
 
 DATA_DIR ?= $(shell pwd)/dataRaft/$(NODE_ID)
 RUN_ARGS ?=
 
-# Captura UID e GID para evitar problemas de permissão na pasta data
 USER_ID = $(shell id -u)
 GROUP_ID = $(shell id -g)
 
@@ -35,7 +39,6 @@ build:
 	@echo "Compilando imagem Docker..."
 	docker build -t $(IMAGE_NAME) -f dockerfile ..
 
-# Garante que a pasta de dados existe antes do Docker rodar para manter o dono correto
 prepare:
 	mkdir -p $(DATA_DIR)
 
@@ -50,10 +53,10 @@ run-node: prepare
 			$(RUN_ARGS) \
 			$(IMAGE_NAME) \
 			-id=$(NODE_ID) \
-			-raft=$(RAFT_HOST):$(RAFT_PORT) \
+			-raft=$(LOCAL_HOST):$(RAFT_PORT) \
 			-dir=/data \
-			-sig=$(SIG_HOST):$(SIG_PORT) \
-			-broker=tcp://$(BROKER_HOST):$(BROKER_PORT) \
+			-sig=$(LOCAL_HOST):$(SIG_PORT) \
+			-broker=tcp://$(LOCAL_HOST):$(BROKER_PORT) \
 			$(if $(PEERS),-peers=$(PEERS),) \
 			$(if $(filter true,$(BOOTSTRAP)),-bootstrap=true,); \
 	else \
@@ -66,47 +69,59 @@ run-node: prepare
 			$(RUN_ARGS) \
 			$(IMAGE_NAME) \
 			-id=$(NODE_ID) \
-			-raft=$(RAFT_HOST):$(RAFT_PORT) \
+			-raft=$(LOCAL_HOST):$(RAFT_PORT) \
 			-dir=/data \
-			-sig=$(SIG_HOST):$(SIG_PORT) \
-			-broker=tcp://$(BROKER_HOST):$(BROKER_PORT) \
+			-sig=$(LOCAL_HOST):$(SIG_PORT) \
+			-broker=tcp://$(LOCAL_HOST):$(BROKER_PORT) \
 			$(if $(PEERS),-peers=$(PEERS),) \
 			$(if $(filter true,$(BOOTSTRAP)),-bootstrap=true,); \
 	fi
 
 run-node-prompt:
-	@echo "Configuracao interativa do sector-manager"
-	@read -p "NODE_ID [$(NODE_ID)]: " _NODE_ID; \
+	@echo "Configuracao interativa do sector-manager"; \
+	echo "---"; \
+	echo "Identificador do nó (ex: node1, node2)"; \
+	read -p "NODE_ID [Padrão: $(NODE_ID)]: " _NODE_ID; \
 	_NODE_ID=$${_NODE_ID:-$(NODE_ID)}; \
-	read -p "NETWORK_MODE (bridge/host) [$(NETWORK_MODE)]: " _NET; \
+	echo "---"; \
+	echo "Modo de rede (host para rede física, bridge para isolada)"; \
+	read -p "NETWORK_MODE [Padrão: $(NETWORK_MODE)]: " _NET; \
 	_NET=$${_NET:-$(NETWORK_MODE)}; \
-	read -p "BOOTSTRAP (true/false) [$(BOOTSTRAP)]: " _BOOT; \
+	echo "---"; \
+	echo "Este nó será o líder inicial?"; \
+	read -p "BOOTSTRAP (true/false) [Padrão: $(BOOTSTRAP)]: " _BOOT; \
 	_BOOT=$${_BOOT:-$(BOOTSTRAP)}; \
-	read -p "PEERS (ip1:port,ip2:port) [$(PEERS)]: " _PEERS; \
+	echo "---"; \
+	echo "Lista de outros nós (ex: 192.168.1.10:9123,192.168.1.11:9123)"; \
+	read -p "PEERS [Padrão: nenhum]: " _PEERS; \
 	_PEERS=$${_PEERS:-$(PEERS)}; \
-	read -p "RAFT_HOST [$(RAFT_HOST)] (somente IP): " _R_HOST; \
-	_R_HOST=$${_R_HOST:-$(RAFT_HOST)}; \
-	read -p "RAFT_PORT [$(RAFT_PORT)] (somente PORTA): " _R_PORT; \
+	echo "---"; \
+	echo "IP da máquina local (insira apenas se não quiser usar o hostname detectado automaticamente)"; \
+	read -p "LOCAL_HOST [Padrão: $(LOCAL_HOST)]: " _L_HOST; \
+	_L_HOST=$${_L_HOST:-$(LOCAL_HOST)}; \
+	echo "---"; \
+	echo "Porta para o algoritmo Raft"; \
+	read -p "RAFT_PORT [Padrão: $(RAFT_PORT)]: " _R_PORT; \
 	_R_PORT=$${_R_PORT:-$(RAFT_PORT)}; \
-	read -p "SIG_HOST [$(SIG_HOST)] (somente IP): " _S_HOST; \
-	_S_HOST=$${_S_HOST:-$(SIG_HOST)}; \
-	read -p "SIG_PORT [$(SIG_PORT)] (somente PORTA): " _S_PORT; \
+	echo "---"; \
+	echo "Porta para escuta de outros nós (SIG)"; \
+	read -p "SIG_PORT [Padrão: $(SIG_PORT)]: " _S_PORT; \
 	_S_PORT=$${_S_PORT:-$(SIG_PORT)}; \
-	read -p "BROKER_HOST [$(BROKER_HOST)] (somente IP): " _B_HOST; \
-	_B_HOST=$${_B_HOST:-$(BROKER_HOST)}; \
-	read -p "BROKER_PORT [$(BROKER_PORT)] (somente PORTA): " _B_PORT; \
+	echo "---"; \
+	echo "Porta do broker MQTT"; \
+	read -p "BROKER_PORT [Padrão: $(BROKER_PORT)]: " _B_PORT; \
 	_B_PORT=$${_B_PORT:-$(BROKER_PORT)}; \
-	read -p "DATA_DIR [$(DATA_DIR)]: " _DIR; \
+	echo "---"; \
+	echo "Caminho da pasta de dados. Pode usar caminho relativo"; \
+	read -p "DATA_DIR [Padrão: $(DATA_DIR)]: " _DIR; \
 	_DIR=$${_DIR:-$(DATA_DIR)}; \
 	$(MAKE) run-node \
 		NODE_ID=$$_NODE_ID NETWORK_MODE=$$_NET BOOTSTRAP=$$_BOOT PEERS="$$_PEERS" \
-		RAFT_HOST=$$_R_HOST RAFT_PORT=$$_R_PORT \
-		SIG_HOST=$$_S_HOST SIG_PORT=$$_S_PORT \
-		BROKER_HOST=$$_B_HOST BROKER_PORT=$$_B_PORT \
+		LOCAL_HOST=$$_L_HOST RAFT_PORT=$$_R_PORT SIG_PORT=$$_S_PORT BROKER_PORT=$$_B_PORT \
 		DATA_DIR=$$_DIR
 
 clean:
 	@echo "Limpando containers e dados..."
-	-docker stop $(NODE_ID)
-	-docker rm $(NODE_ID)
+	-docker stop $(NODE_ID) 2>/dev/null
+	-docker rm $(NODE_ID) 2>/dev/null
 	rm -rf dataRaft/
