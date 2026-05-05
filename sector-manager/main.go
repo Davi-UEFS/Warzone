@@ -8,11 +8,13 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
 )
@@ -68,7 +70,23 @@ func mainMenu(client mqtt.Client) {
 	}
 }
 
-func setupRaft(dir, id, addr string, fsm *RaftFSM, bootstrap bool) (*raft.Raft, error) {
+// normalizePeerAddr assegura que o endereço dado está no formato IP + Porta
+// Se não possuir porta, adiciona a porta dada.
+
+func normalizePeerAddr(peer string, defaultPort int) string {
+	trimmed := strings.TrimSpace(peer)
+	if trimmed == "" {
+		return ""
+	}
+
+	if _, _, err := net.SplitHostPort(trimmed); err == nil {
+		return trimmed
+	}
+
+	return net.JoinHostPort(trimmed, strconv.Itoa(defaultPort))
+}
+
+func setupRaft(dir, id, raftAddr string, fsm *RaftFSM, bootstrap bool) (*raft.Raft, error) {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, err
 	}
@@ -76,12 +94,26 @@ func setupRaft(dir, id, addr string, fsm *RaftFSM, bootstrap bool) (*raft.Raft, 
 	config := raft.DefaultConfig()
 	config.LocalID = raft.ServerID(id)
 
-	tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
+	filtered := &shared.FilteredWriter{
+		Output: os.Stderr,
+		Filters: []string{
+			"dial tcp",
+			"failed to appendEntries to",
+		},
+	}
+
+	config.Logger = hclog.New(&hclog.LoggerOptions{
+		Name:   "raft",
+		Level:  hclog.Error,
+		Output: filtered,
+	})
+
+	tcpAddr, err := net.ResolveTCPAddr("tcp", raftAddr)
 	if err != nil {
 		return nil, err
 	}
 
-	transport, err := raft.NewTCPTransport(addr, tcpAddr, 3, 10*time.Second, os.Stderr)
+	transport, err := raft.NewTCPTransport(raftAddr, tcpAddr, 3, 10*time.Second, os.Stderr)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +142,7 @@ func setupRaft(dir, id, addr string, fsm *RaftFSM, bootstrap bool) (*raft.Raft, 
 		cfg := raft.Configuration{
 			Servers: []raft.Server{{
 				ID:      config.LocalID,
-				Address: transport.LocalAddr(),
+				Address: raft.ServerAddress(raftAddr),
 			}},
 		}
 		if err := raftNode.BootstrapCluster(cfg).Error(); err != nil && err != raft.ErrCantBootstrap {
@@ -123,19 +155,41 @@ func setupRaft(dir, id, addr string, fsm *RaftFSM, bootstrap bool) (*raft.Raft, 
 
 func main() {
 	nodeIDFlag := flag.String("id", "node1", "ID único deste nó")
-	raftAddrFlag := flag.String("raft", "127.0.0.1:10001", "Endereço Raft")
+	hostFlag := flag.String("host", "127.0.0.1", "Host base para Raft e SIG (modo host)")
+	raftPortFlag := flag.Int("raft-port", 10001, "Porta Raft")
+	sigPortFlag := flag.Int("sig-port", 9123, "Porta do servidor de sinalização")
+	brokerHostFlag := flag.String("broker-host", "127.0.0.1", "Host do broker MQTT")
+	brokerPortFlag := flag.Int("broker-port", 1883, "Porta do broker MQTT")
+
+	raftAddrFlag := flag.String("raft", "", "Endereço Raft (host:porta). Se vazio usa host+porta")
+	sigAddrFlag := flag.String("sig", "", "Endereço SIG (host:porta). Se vazio usa host+porta")
+	brokerAddrFlag := flag.String("broker", "", "Endereço do broker MQTT (tcp://host:porta). Se vazio usa broker-host+porta")
+
 	dataDirFlag := flag.String("dir", "data/node1", "Diretório de dados")
 	bootstrapFlag := flag.Bool("bootstrap", false, "Iniciar como líder")
-	peersFlag := flag.String("peers", "", "Endereços dos outros nós (host:porta ou host, separados por vírgula)")
-	sigAddrFlag := flag.String("sig", "127.0.0.1:9123", "Endereço do servidor de sinalização")
-	brokerAddrFlag := flag.String("broker", "tcp://127.0.0.1:1883", "Endereço do broker MQTT")
+	peersFlag := flag.String("peers", "", "Endereços dos peers (SIG do líder). Separe por vírgula")
 	flag.Parse()
 
 	var peers []string
-
 	if *peersFlag != "" {
 		peers = strings.Split(*peersFlag, ",")
 	}
+
+	raftAddr := *raftAddrFlag
+	if raftAddr == "" {
+		raftAddr = net.JoinHostPort(*hostFlag, strconv.Itoa(*raftPortFlag))
+	}
+
+	sigAddr := *sigAddrFlag
+	if sigAddr == "" {
+		sigAddr = net.JoinHostPort(*hostFlag, strconv.Itoa(*sigPortFlag))
+	}
+
+	brokerAddr := *brokerAddrFlag
+	if brokerAddr == "" {
+		brokerAddr = net.JoinHostPort(*brokerHostFlag, strconv.Itoa(*brokerPortFlag))
+	}
+	brokerAddr = shared.NormalizeBrokerAddr(brokerAddr)
 
 	// --- Inicialização do Raft ---
 	fsm := &RaftFSM{
@@ -143,16 +197,16 @@ func main() {
 		IncidentList: []shared.Incident{},
 	}
 
-	raftNode, err := setupRaft(*dataDirFlag, *nodeIDFlag, *raftAddrFlag, fsm, *bootstrapFlag)
+	raftNode, err := setupRaft(*dataDirFlag, *nodeIDFlag, raftAddr, fsm, *bootstrapFlag)
 	if err != nil {
 		fmt.Printf("Erro ao iniciar Raft: %v\n", err)
 		return
 	}
 
-	go startSignalingServer(raftNode, *sigAddrFlag, *brokerAddrFlag)
+	go startSignalingServer(raftNode, sigAddr, brokerAddr)
 
 	// --- Inicialização do MQTT ---
-	client, _ := shared.MakeClient(*brokerAddrFlag, *nodeIDFlag)
+	client, err := shared.MakeClient(brokerAddr, *nodeIDFlag)
 
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		fmt.Printf("Erro MQTT: %v\n", token.Error())
@@ -162,18 +216,17 @@ func main() {
 
 	if !*bootstrapFlag {
 		fmt.Println("Procurando líder na lista de peers...")
-		leaderInfo := searchForLeaderInfo(peers)
+		leaderInfo := searchForLeaderInfo(peers, *sigPortFlag)
 
 		if leaderInfo.RaftAddr == "" {
 			fmt.Println("Não foi possível encontrar o líder")
 			return
 		}
 
-		joinLeaderViaMQTT(leaderInfo.BrokerAddr, *nodeIDFlag, *raftAddrFlag)
+		joinLeaderViaMQTT(leaderInfo.BrokerAddr, *nodeIDFlag, raftAddr)
 	}
 
-	//mainMenu(client)
-
-	fmt.Printf("Nó %s (Raft: %s) em execução...\n", *nodeIDFlag, *raftAddrFlag)
+	fmt.Printf("Nó %s em execução\n", *nodeIDFlag)
+	fmt.Printf("Raft: %s | SIG: %s | Broker: %s\n", raftAddr, sigAddr, brokerAddr)
 	select {}
 }

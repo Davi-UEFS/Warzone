@@ -1,6 +1,8 @@
 package shared
 
 import (
+	"io"
+	"strings"
 	"sync"
 	"time"
 )
@@ -73,4 +75,19 @@ func (lc *LamportClock) CompareAndUpdate(received int) {
 	}
 	lc.Time++
 	lc.Mu.Unlock()
+}
+
+type FilteredWriter struct {
+	Output  io.Writer
+	Filters []string
+}
+
+func (f *FilteredWriter) Write(p []byte) (n int, err error) {
+	msg := string(p)
+	for _, filter := range f.Filters {
+		if strings.Contains(msg, filter) {
+			return len(p), nil // descarta silenciosamente
+		}
+	}
+	return f.Output.Write(p)
 }

@@ -10,6 +10,18 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
+// NormalizeBrokerAddr adiciona a URL TCP ao endereço:porta dado.
+func NormalizeBrokerAddr(addr string) string {
+	trimmed := strings.TrimSpace(addr)
+	if trimmed == "" {
+		return ""
+	}
+	if strings.Contains(trimmed, "://") {
+		return trimmed
+	}
+	return "tcp://" + trimmed
+}
+
 func MakeClient(brokerIP, clientID string) (mqtt.Client, error) {
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(brokerIP)
@@ -22,7 +34,7 @@ func MakeClient(brokerIP, clientID string) (mqtt.Client, error) {
 	}
 	client := mqtt.NewClient(opts)
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
-		return nil, token.Error()
+		return nil, fmt.Errorf("Erro MQTT: %v ", token.Error())
 	}
 	return client, nil
 }
