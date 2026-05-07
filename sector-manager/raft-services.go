@@ -12,20 +12,23 @@ import (
 	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/hashicorp/go-hclog"
 	raft "github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
 )
 
 type RaftFSM struct {
-	Mu           sync.Mutex
-	DroneMap     map[string]shared.Drone
-	IncidentList []shared.Incident //TODO: IMPLEMENTAR PRIORITY QUEUE DEPOIS
+	Mu               sync.Mutex
+	DroneMap         map[string]shared.Drone
+	RequisitionQueue []shared.Requisition //TODO: IMPLEMENTAR PRIORITY QUEUE DEPOIS
+	Sector           string
+	Client           mqtt.Client
 }
 
 type RaftSnapshot struct {
 	DroneMap     map[string]shared.Drone
-	IncidentList []shared.Incident
+	IncidentList []shared.Requisition
 }
 
 func (fsm *RaftFSM) Apply(log *raft.Log) interface{} {
@@ -38,11 +41,11 @@ func (fsm *RaftFSM) Apply(log *raft.Log) interface{} {
 	}
 
 	switch cmd.Operation {
-	case OP_ADDI:
-		return fsm.handleADDIncident(cmd.Payload)
+	case OP_ADDR:
+		return fsm.handleADDRequisition(cmd.Payload)
 
-	case OP_RMVI:
-		return fsm.handleRMVIncident(cmd.Payload)
+	case OP_RMVR:
+		return fsm.handleRMVRequisition(cmd.Payload)
 
 	case OP_ASSIGN:
 		return fsm.handleASSIGNDrone(cmd.Payload)
@@ -59,32 +62,32 @@ func (fsm *RaftFSM) Apply(log *raft.Log) interface{} {
 
 }
 
-func (fsm *RaftFSM) handleADDIncident(payload json.RawMessage) error {
-	var incident shared.Incident
+func (fsm *RaftFSM) handleADDRequisition(payload json.RawMessage) error {
+	var requisition shared.Requisition
 
-	if err := json.Unmarshal(payload, &incident); err != nil {
+	if err := json.Unmarshal(payload, &requisition); err != nil {
 		fmt.Printf("Erro ao desserializar pacote: %v.\n", err)
 		return err
 	}
 	fsm.Mu.Lock()
 
-	for _, v := range fsm.IncidentList {
-		if v.ID == incident.ID {
-			fmt.Printf("Incidente %s já existe.\n", v.ID)
+	for _, v := range fsm.RequisitionQueue {
+		if v.ID == requisition.ID {
+			fmt.Printf("Requisição %s já existe.\n", v.ID)
 			fsm.Mu.Unlock()
 			return nil
 		}
 	}
-	fsm.IncidentList = append(fsm.IncidentList, incident) //TODO: IMPLEMENTAR PRIORITY QUEUE DEPOIS
+	fsm.RequisitionQueue = append(fsm.RequisitionQueue, requisition) //TODO: IMPLEMENTAR PRIORITY QUEUE DEPOIS
 	fsm.Mu.Unlock()
 
 	return nil
 }
 
-func (fsm *RaftFSM) handleRMVIncident(payload json.RawMessage) error {
-	var incident shared.Incident
+func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
+	var requisition shared.Requisition
 
-	if err := json.Unmarshal(payload, &incident); err != nil {
+	if err := json.Unmarshal(payload, &requisition); err != nil {
 		fmt.Printf("Erro ao desserializar pacote: %v.\n", err)
 		return err
 	}
@@ -92,9 +95,27 @@ func (fsm *RaftFSM) handleRMVIncident(payload json.RawMessage) error {
 	fsm.Mu.Lock()
 	defer fsm.Mu.Unlock()
 
-	for i, v := range fsm.IncidentList { //TODO: IMPLEMENTAR PRIORITY QUEUE DEPOIS
-		if v.ID == incident.ID {
-			fsm.IncidentList = append(fsm.IncidentList[:i], fsm.IncidentList[i+1:]...)
+	LClock.CompareAndUpdate(requisition.LamportTime)
+
+	for i, v := range fsm.RequisitionQueue { //TODO: IMPLEMENTAR PRIORITY QUEUE DEPOIS
+		if v.ID == requisition.ID {
+			fsm.RequisitionQueue = append(fsm.RequisitionQueue[:i], fsm.RequisitionQueue[i+1:]...)
+			LClock.Tick()
+
+			if requisition.OriginSector == fsm.Sector {
+				topic := fmt.Sprintf("sensors/%s/solved", shared.ExtractSensorID(requisition.ID))
+
+				response := shared.SolvedInfo{
+					IncidentID: requisition.ID,
+					LCTime:     LClock.GetTime(),
+				}
+
+				payload, _ := json.Marshal(response)
+
+				token := fsm.Client.Publish(topic, 1, false, payload)
+				token.Wait()
+			}
+
 			break
 		}
 	}
@@ -103,7 +124,7 @@ func (fsm *RaftFSM) handleRMVIncident(payload json.RawMessage) error {
 }
 
 func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
-	var req shared.Requisition
+	var req shared.CommandTemporary
 	if err := json.Unmarshal(payload, &req); err != nil {
 		return fmt.Errorf("erro unmarshal: %w", err)
 	}
@@ -118,7 +139,7 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 	}
 
 	foundIndex := -1
-	for i, incident := range fsm.IncidentList {
+	for i, incident := range fsm.RequisitionQueue {
 		if incident.ID == req.OccurrenceID {
 			foundIndex = i
 			break
@@ -132,7 +153,7 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 
 	drone.SetBusy()
 	fsm.DroneMap[req.DroneID] = drone
-	fsm.IncidentList = slices.Delete(fsm.IncidentList, foundIndex, foundIndex+1)
+	fsm.RequisitionQueue = slices.Delete(fsm.RequisitionQueue, foundIndex, foundIndex+1)
 
 	fmt.Printf("Sucesso: Drone %s alocado para Incidente %s.\n", req.DroneID, req.OccurrenceID)
 	return nil
@@ -184,6 +205,12 @@ func (fsm *RaftFSM) handleUPDATEDRBroker(payload json.RawMessage) error {
 	return nil
 }
 
+func (fsm *RaftFSM) GetSector() string {
+	fsm.Mu.Lock()
+	defer fsm.Mu.Unlock()
+	return fsm.Sector
+}
+
 func (fsm *RaftFSM) Snapshot() (raft.FSMSnapshot, error) {
 	fsm.Mu.Lock()
 	defer fsm.Mu.Unlock()
@@ -193,7 +220,7 @@ func (fsm *RaftFSM) Snapshot() (raft.FSMSnapshot, error) {
 		clonedDrones[k] = v
 	}
 
-	clonedIncidents := slices.Clone(fsm.IncidentList)
+	clonedIncidents := slices.Clone(fsm.RequisitionQueue)
 
 	snapshot := &RaftSnapshot{
 		DroneMap:     clonedDrones,
@@ -228,11 +255,11 @@ func (fsm *RaftFSM) Restore(rc io.ReadCloser) error {
 
 	fsm.Mu.Lock()
 	fsm.DroneMap = restored.DroneMap
-	fsm.IncidentList = restored.IncidentList
+	fsm.RequisitionQueue = restored.IncidentList
 	fsm.Mu.Unlock()
 
 	fmt.Printf("FSM Restaurada: %d drones e %d incidentes carregados.\n",
-		len(fsm.DroneMap), len(fsm.IncidentList))
+		len(fsm.DroneMap), len(fsm.RequisitionQueue))
 
 	return nil
 }
