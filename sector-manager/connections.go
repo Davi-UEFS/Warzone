@@ -60,7 +60,7 @@ func handleConnection(conn net.Conn, raftNode *raft.Raft) {
 			return
 		}
 
-		err := handleForwardingIncident(raftNode, cmd.Payload)
+		err := handleForwardingAlert(raftNode, cmd.Payload)
 
 		if err == nil {
 			json.NewEncoder(conn).Encode(SUCCESS)
@@ -111,25 +111,12 @@ func handleJoinRequest(raftNode *raft.Raft, payload json.RawMessage) error {
 
 }
 
-func sendForwardingIncident(sigAddr string, cmd shared.HeaderCommand) error {
+func forwardAlert(sigAddr string, cmd shared.HeaderCommand) error {
 	conn, err := net.DialTimeout("tcp", sigAddr, 5*time.Second)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-
-	var incident shared.Incident
-	if err := json.Unmarshal(cmd.Payload, &incident); err != nil {
-		fmt.Printf("Erro ao desserializar incidente: %v\n", err)
-		return err
-	}
-
-	LClock.CompareAndUpdate(incident.LamportTime)
-	incident.LamportTime = LClock.GetTime()
-
-	newPayload, _ := json.Marshal(incident)
-
-	cmd.Payload = newPayload
 
 	json.NewEncoder(conn).Encode(cmd)
 
@@ -146,22 +133,32 @@ func sendForwardingIncident(sigAddr string, cmd shared.HeaderCommand) error {
 
 }
 
-func handleForwardingIncident(raftNode *raft.Raft, payload json.RawMessage) error {
+func handleForwardingAlert(raftNode *raft.Raft, payload json.RawMessage) error {
 
-	var incident shared.Incident
+	var alert shared.Alert
 
-	if err := json.Unmarshal(payload, &incident); err != nil {
-		fmt.Printf("Erro ao desserializar incidente: %v\n", err)
+	if err := json.Unmarshal(payload, &alert); err != nil {
+		fmt.Printf("Erro ao desserializar alerta: %v\n", err)
 		return err
 	}
 
-	LClock.CompareAndUpdate(incident.LamportTime)
-	incident.LamportTime = LClock.GetTime()
+	LClock.CompareAndUpdate(alert.LamportTime)
+	LClock.Tick()
 
-	newPayload, _ := json.Marshal(incident)
+	reqID := createIncidentID(alert.SensorID)
+
+	requisition := shared.Requisition{
+		ID:           reqID,
+		Priority:     1, //TODO: DEFINIR PRIORITY MELHOR DEPOIS
+		Coord:        alert.Coordinate,
+		OriginSector: sectorFSM.GetSector(), //TODO: DEFINIR SECTOR MELHOR DEPOIS
+		LamportTime:  LClock.GetTime(),
+	}
+
+	newPayload, _ := json.Marshal(requisition)
 
 	cmd := shared.HeaderCommand{
-		Operation: OP_ADDI,
+		Operation: OP_ADDR,
 		Payload:   newPayload,
 	}
 
@@ -170,7 +167,7 @@ func handleForwardingIncident(raftNode *raft.Raft, payload json.RawMessage) erro
 	future := raftNode.Apply(cmdData, 5*time.Second)
 
 	if err := future.Error(); err != nil {
-		fmt.Println("Falha ao adicionar incidente")
+		fmt.Println("Falha ao adicionar requisição ao consenso: ", err)
 		return err
 	}
 
