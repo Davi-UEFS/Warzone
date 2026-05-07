@@ -61,8 +61,9 @@ type SolvedInfo struct {
 }
 
 type HeaderCommand struct {
-	Operation string          `json:"op"`
-	Payload   json.RawMessage `json:"payload"`
+	Operation   string          `json:"op"`
+	Payload     json.RawMessage `json:"payload"`
+	LamportTime int             `json:"lamport_time"`
 }
 
 type Coordinate struct {

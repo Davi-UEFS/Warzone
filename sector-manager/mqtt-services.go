@@ -76,8 +76,9 @@ var onAlertHandler = func(client mqtt.Client, msg mqtt.Message, raftNode *raft.R
 	newPayload, _ := json.Marshal(requisition)
 
 	cmd := shared.HeaderCommand{
-		Operation: OP_ADDR,
-		Payload:   newPayload,
+		Operation:   OP_ADDR,
+		Payload:     newPayload,
+		LamportTime: LClock.GetTime(),
 	}
 
 	cmdBytes, _ := json.Marshal(cmd)

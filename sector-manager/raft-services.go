@@ -40,6 +40,8 @@ func (fsm *RaftFSM) Apply(log *raft.Log) interface{} {
 		return err
 	}
 
+	LClock.CompareAndUpdate(cmd.LamportTime)
+
 	switch cmd.Operation {
 	case OP_ADDR:
 		return fsm.handleADDRequisition(cmd.Payload)
@@ -94,8 +96,6 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 
 	fsm.Mu.Lock()
 	defer fsm.Mu.Unlock()
-
-	LClock.CompareAndUpdate(requisition.LamportTime)
 
 	for i, v := range fsm.RequisitionQueue { //TODO: IMPLEMENTAR PRIORITY QUEUE DEPOIS
 		if v.ID == requisition.ID {

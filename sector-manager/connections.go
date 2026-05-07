@@ -158,8 +158,9 @@ func handleForwardingAlert(raftNode *raft.Raft, payload json.RawMessage) error {
 	newPayload, _ := json.Marshal(requisition)
 
 	cmd := shared.HeaderCommand{
-		Operation: OP_ADDR,
-		Payload:   newPayload,
+		Operation:   OP_ADDR,
+		Payload:     newPayload,
+		LamportTime: LClock.GetTime(),
 	}
 
 	cmdData, _ := json.Marshal(cmd)
