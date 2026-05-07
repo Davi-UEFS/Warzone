@@ -1,31 +1,21 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net"
+	"os"
+	"path/filepath"
 	"slices"
 	"sync"
 	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
+	"github.com/hashicorp/go-hclog"
 	raft "github.com/hashicorp/raft"
+	raftboltdb "github.com/hashicorp/raft-boltdb"
 )
-
-const (
-	OP_ADDI      = "ADD_INCIDENT"
-	OP_RMVI      = "REMOVE_INCIDENT"
-	OP_ASSIGN    = "ASSIGN_DRONE"
-	OP_DEASSIGN  = "DEASSIGN_DRONE"
-	OP_UPDATEDRB = "UPDATE_DRONE_BROKER"
-)
-
-type RaftCommand struct {
-	Operation string
-	Payload   json.RawMessage
-}
 
 type RaftFSM struct {
 	Mu           sync.Mutex
@@ -40,7 +30,7 @@ type RaftSnapshot struct {
 
 func (fsm *RaftFSM) Apply(log *raft.Log) interface{} {
 
-	var cmd RaftCommand
+	var cmd shared.HeaderCommand
 
 	if err := json.Unmarshal(log.Data, &cmd); err != nil {
 		fmt.Printf("Erro ao desserializar comando: %v.\n", err)
@@ -247,46 +237,69 @@ func (fsm *RaftFSM) Restore(rc io.ReadCloser) error {
 	return nil
 }
 
-type LeaderInfo struct {
-	RaftAddr   string `json:"raft_addr"`
-	BrokerAddr string `json:"broker_addr"`
-}
+func setupRaft(dir, id, raftAddr string, fsm *RaftFSM, bootstrap bool) (*raft.Raft, error) {
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return nil, err
+	}
 
-func searchForLeaderInfo(peers []string, sigPort int) LeaderInfo {
-	for _, peer := range peers {
-		addr := normalizePeerAddr(peer, sigPort)
-		if addr == "" {
-			continue
+	config := raft.DefaultConfig()
+	config.LocalID = raft.ServerID(id)
+
+	filtered := &shared.FilteredWriter{
+		Output: os.Stderr,
+		Filters: []string{
+			"dial tcp",
+			"failed to appendEntries to",
+		},
+	}
+
+	config.Logger = hclog.New(&hclog.LoggerOptions{
+		Name:   "raft",
+		Level:  hclog.Error,
+		Output: filtered,
+	})
+
+	tcpAddr, err := net.ResolveTCPAddr("tcp", raftAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	transport, err := raft.NewTCPTransport(raftAddr, tcpAddr, 3, 10*time.Second, os.Stderr)
+	if err != nil {
+		return nil, err
+	}
+
+	logStore, err := raftboltdb.NewBoltStore(filepath.Join(dir, "log.db"))
+	if err != nil {
+		return nil, err
+	}
+
+	stableStore, err := raftboltdb.NewBoltStore(filepath.Join(dir, "stable.db"))
+	if err != nil {
+		return nil, err
+	}
+
+	snapshots, err := raft.NewFileSnapshotStore(dir, 3, os.Stderr)
+	if err != nil {
+		return nil, err
+	}
+
+	raftNode, err := raft.NewRaft(config, fsm, logStore, stableStore, snapshots, transport)
+	if err != nil {
+		return nil, err
+	}
+
+	if bootstrap {
+		cfg := raft.Configuration{
+			Servers: []raft.Server{{
+				ID:      config.LocalID,
+				Address: raft.ServerAddress(raftAddr),
+			}},
 		}
-		conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
-		if err != nil {
-			continue
-		}
-		defer conn.Close()
-
-		scanner := bufio.NewScanner(conn)
-		var leaderInfo LeaderInfo
-
-		if scanner.Scan() {
-			if err := json.Unmarshal(scanner.Bytes(), &leaderInfo); err == nil && leaderInfo.RaftAddr != "" {
-				return leaderInfo
-			}
+		if err := raftNode.BootstrapCluster(cfg).Error(); err != nil && err != raft.ErrCantBootstrap {
+			return nil, err
 		}
 	}
-	return LeaderInfo{}
-}
 
-func startSignalingServer(raftNode *raft.Raft, sigAddr, brokerAddr string) {
-	ln, _ := net.Listen("tcp", sigAddr)
-	for {
-		conn, _ := ln.Accept()
-		go func(c net.Conn) {
-			defer c.Close()
-			leaderInfo := LeaderInfo{
-				RaftAddr:   string(raftNode.Leader()),
-				BrokerAddr: brokerAddr,
-			}
-			json.NewEncoder(c).Encode(leaderInfo)
-		}(conn)
-	}
+	return raftNode, nil
 }
