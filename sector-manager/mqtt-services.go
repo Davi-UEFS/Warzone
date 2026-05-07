@@ -17,7 +17,7 @@ type joinReq struct {
 
 var onMissionDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 	fmt.Printf("Missão concluída: %s\n", string(msg.Payload())) //TODO: EDITAR DEPOIS
-	result := shared.Requisition{}
+	result := shared.CommandTemporary{}
 
 	if err := json.Unmarshal(msg.Payload(), &result); err != nil {
 		fmt.Printf("Erro ao unmarshal payload: %v\n", err)
@@ -31,22 +31,52 @@ var onMissionDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 }
 
-var onIncidentHandler = func(client mqtt.Client, msg mqtt.Message, raftNode *raft.Raft) {
-	// TODO: NAO ESTOU VERIFICANDO SE E LIDER RAFT. OBSERVAR MELHOR DEPOIS
+func createIncidentID(SENSOR_ID string) string {
+	return fmt.Sprintf("inc-%s-%d", SENSOR_ID, time.Now().Unix())
+}
+
+var onAlertHandler = func(client mqtt.Client, msg mqtt.Message, raftNode *raft.Raft) {
+
 	fmt.Printf("Nova ocorrência: %s\n", string(msg.Payload()))
-	incident := shared.Incident{}
-	if err := json.Unmarshal(msg.Payload(), &incident); err != nil {
+	alert := shared.Alert{}
+	if err := json.Unmarshal(msg.Payload(), &alert); err != nil {
 		fmt.Printf("Erro ao unmarshal payload: %v\n", err)
 		return
 	}
 
-	LClock.CompareAndUpdate(incident.LamportTime)
-	incident.LamportTime = LClock.GetTime()
+	LClock.CompareAndUpdate(alert.LamportTime)
 
-	newPayload, _ := json.Marshal(incident)
+	if raftNode.State() != raft.Leader {
+		fmt.Println("Sou seguidor, encaminhando alerta para o líder via TCP...")
+
+		leaderInfo := searchForLeaderInfo(peers, sigPort)
+
+		if err := forwardAlert(leaderInfo.SigAddr, shared.HeaderCommand{
+			Operation: FORWARD,
+			Payload:   msg.Payload(),
+		}); err != nil {
+			fmt.Printf("Erro ao encaminhar alerta: %v\n", err)
+		}
+
+		return
+	}
+
+	LClock.Tick()
+
+	reqID := createIncidentID(alert.SensorID)
+
+	requisition := shared.Requisition{
+		ID:           reqID,
+		Priority:     1, //TODO: DEFINIR PRIORITY MELHOR DEPOIS
+		Coord:        alert.Coordinate,
+		OriginSector: sectorFSM.GetSector(), //TODO: DEFINIR SECTOR MELHOR DEPOIS
+		LamportTime:  LClock.GetTime(),
+	}
+
+	newPayload, _ := json.Marshal(requisition)
 
 	cmd := shared.HeaderCommand{
-		Operation: OP_ADDI,
+		Operation: OP_ADDR,
 		Payload:   newPayload,
 	}
 
