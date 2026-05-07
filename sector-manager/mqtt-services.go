@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -30,27 +31,34 @@ var onMissionDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 }
 
-var onIncidentHandler = func(client mqtt.Client, msg mqtt.Message) {
+var onIncidentHandler = func(client mqtt.Client, msg mqtt.Message, raftNode *raft.Raft) {
+	// TODO: NAO ESTOU VERIFICANDO SE E LIDER RAFT. OBSERVAR MELHOR DEPOIS
 	fmt.Printf("Nova ocorrência: %s\n", string(msg.Payload()))
-
 	incident := shared.Incident{}
 	if err := json.Unmarshal(msg.Payload(), &incident); err != nil {
 		fmt.Printf("Erro ao unmarshal payload: %v\n", err)
 		return
 	}
 
-	cmd := shared.DroneCommand{
-		OccurrenceID: incident.ID, //TODO: EDITAR DEPOIS
-		Action:       "oil",
+	LClock.CompareAndUpdate(incident.LamportTime)
+	incident.LamportTime = LClock.GetTime()
+
+	newPayload, _ := json.Marshal(incident)
+
+	cmd := shared.HeaderCommand{
+		Operation: OP_ADDI,
+		Payload:   newPayload,
 	}
 
-	payload, err := json.Marshal(cmd)
-	if err != nil {
-		fmt.Printf("Erro ao marshal comando: %v\n", err)
+	cmdBytes, _ := json.Marshal(cmd)
+
+	future := raftNode.Apply(cmdBytes, 5*time.Second)
+	if err := future.Error(); err != nil {
+		fmt.Printf("Erro ao aplicar comando ADDI: %v\n", err)
 		return
 	}
 
-	sendCommand(client, payload)
+	fmt.Println("Incidente replicado com sucesso no cluster")
 
 }
 
@@ -58,62 +66,4 @@ func sendCommand(client mqtt.Client, payload []byte) {
 	//TODO: HARDCODED
 	topic := "drones/drone01/missions"
 	client.Publish(topic, 2, false, payload)
-}
-
-func joinLeaderViaMQTT(brokerAddr, nodeID string, raftAddr string) error {
-	client, err := shared.MakeClient(brokerAddr, "temporary_node")
-
-	if err != nil {
-		return err
-	}
-
-	defer client.Disconnect(250)
-
-	req := joinReq{
-		ID:   nodeID,
-		Addr: raftAddr,
-	}
-
-	payload, err := json.Marshal(req)
-
-	if err != nil {
-		return err
-	}
-
-	token := client.Publish("/clusters/join", 2, false, payload)
-	token.Wait()
-
-	if token.Error() != nil {
-		return fmt.Errorf("erro ao publicar join: %v", token.Error())
-	}
-
-	fmt.Printf("✔ Pedido de join enviado ao broker %s\n", brokerAddr)
-	return nil
-
-}
-
-func MQTTJoinHandler(raftNode *raft.Raft, client mqtt.Client) {
-	client.Subscribe("/clusters/join", 2, func(client mqtt.Client, msg mqtt.Message) {
-		// 1. Só o líder processa mudanças na topologia
-		if raftNode.State() != raft.Leader {
-			return
-		}
-
-		var req joinReq
-		if err := json.Unmarshal(msg.Payload(), &req); err != nil {
-			fmt.Printf("Erro ao desserializar join: %v\n", err)
-			return
-		}
-
-		fmt.Printf("→ Processando pedido de join: Nó %s em %s\n", req.ID, req.Addr)
-
-		// 2. AddVoter é assíncrono, você PRECISA checar o futuro
-		future := raftNode.AddVoter(raft.ServerID(req.ID), raft.ServerAddress(req.Addr), 0, 0)
-		if err := future.Error(); err != nil {
-			fmt.Printf("Falha ao adicionar nó %s ao consenso: %v\n", req.ID, err)
-			return
-		}
-
-		fmt.Printf("Nó %s integrado com sucesso!\n", req.ID)
-	})
 }
