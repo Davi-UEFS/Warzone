@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"encoding/json"
 	"io"
 	"strings"
 	"sync"
@@ -44,6 +45,16 @@ type Incident struct {
 	Priority    int        `json:"priority"`
 	Coord       Coordinate `json:"coord"`
 	LamportTime int        `json:"lamport_time"`
+}
+
+type SolvedInfo struct {
+	IncidentID string `json:"incident_id"`
+	LCTime     int    `json:"lc_time"`
+}
+
+type HeaderCommand struct {
+	Operation string          `json:"op"`
+	Payload   json.RawMessage `json:"payload"`
 }
 
 type Coordinate struct {
