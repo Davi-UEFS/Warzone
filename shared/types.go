@@ -35,16 +35,24 @@ func (drone *Drone) UpdateBroker(id string) {
 	drone.CurrentBroker = id
 }
 
-type Requisition struct {
+type CommandTemporary struct {
 	OccurrenceID string `json:"occurrence_id"`
 	DroneID      string `json:"drone_id"`
 }
 
-type Incident struct {
-	ID          string     `json:"id"`
-	Priority    int        `json:"priority"`
-	Coord       Coordinate `json:"coord"`
+type Alert struct {
+	SensorID    string     `json:"sensor_id"`
+	Coordinate  Coordinate `json:"coordinate"`
+	Type        string     `json:"type"`
 	LamportTime int        `json:"lamport_time"`
+}
+
+type Requisition struct {
+	ID           string     `json:"id"`
+	Priority     int        `json:"priority"`
+	Coord        Coordinate `json:"coord"`
+	OriginSector string     `json:"origin_sector"`
+	LamportTime  int        `json:"lamport_time"`
 }
 
 type SolvedInfo struct {
@@ -58,8 +66,8 @@ type HeaderCommand struct {
 }
 
 type Coordinate struct {
-	Longitude float64 `json:"longitude"`
-	Latitude  float64 `json:"latitude"`
+	Longitude int `json:"longitude"`
+	Latitude  int `json:"latitude"`
 }
 
 type LamportClock struct {
