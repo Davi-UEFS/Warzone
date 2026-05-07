@@ -104,23 +104,21 @@ func main() {
 	flag.Parse()
 
 	// Porta do serviço de sinalização, calculada a partir da porta do Raft.
-	sigPort := *raftPortFlag + 1000
+	sigPort = *raftPortFlag + 1000
 	// Endereço completo do Raft usando host base e porta configurada.
 	raftAddr := net.JoinHostPort(*hostFlag, strconv.Itoa(*raftPortFlag))
 	// Endereço completo do serviço SIG usando o mesmo host e a porta derivada.
 	sigAddr := net.JoinHostPort(*hostFlag, strconv.Itoa(sigPort))
 	// Lista de peers informada na flag, separada por vírgula.
-	peers := strings.Split(*peersFlag, ",")
+	peers = strings.Split(*peersFlag, ",")
 	// Endereço do broker MQTT normalizado para o formato esperado pela aplicação.
 	brokerAddr := shared.NormalizeBrokerAddr(net.JoinHostPort(*brokerHostFlag, strconv.Itoa(*brokerPortFlag)))
 
 	// --- Inicialização do Raft ---
-	fsm := &RaftFSM{
-		DroneMap:     make(map[string]shared.Drone),
-		IncidentList: []shared.Incident{},
-	}
 
-	raftNode, err := setupRaft(*dataDirFlag, *nodeIDFlag, raftAddr, fsm, *bootstrapFlag)
+	// FSM criada em vars.go
+
+	raftNode, err := setupRaft(*dataDirFlag, *nodeIDFlag, raftAddr, sectorFSM, *bootstrapFlag)
 	if err != nil {
 		fmt.Printf("Erro ao iniciar Raft: %v\n", err)
 		return
