@@ -3,9 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
@@ -16,25 +16,24 @@ func getEnviromentVariables() (string, string, string) {
 	return os.Getenv("BROKER_IP"), os.Getenv("CLIENT_ID"), os.Getenv("SENSOR_TYPE")
 }
 
-func createIncidentID(CLIENT_ID string) string {
-	cnt := commandCounter.Add(1)
-	return fmt.Sprintf("%s-%d", CLIENT_ID, cnt)
-}
+func createAlertPayload(SENSOR_TYPE, SENSOR_ID string) ([]byte, error) {
 
-func createIncidentPayload(SENSOR_TYPE string, priority int, incidentID string) ([]byte, error) {
-
-	incident := shared.Incident{
-		ID:          incidentID,
-		Priority:    priority,
+	alert := shared.Alert{
+		SensorID:    SENSOR_ID,
+		Coordinate:  generateRandomCoordinate(), //TODO: GERAR COORDENADAS MELHOR DEPOIS
+		Type:        SENSOR_TYPE,
 		LamportTime: LClock.GetTime(),
-		Coord: shared.Coordinate{
-			Longitude: 100,
-			Latitude:  100,
-		},
 	}
 
-	return json.Marshal(incident)
+	return json.Marshal(alert)
 
+}
+
+func generateRandomCoordinate() shared.Coordinate {
+	return shared.Coordinate{
+		Latitude:  rand.Intn(500),
+		Longitude: rand.Intn(500),
+	}
 }
 
 /////////////////////////////////////////////////////
@@ -45,8 +44,6 @@ var LClock = &shared.LamportClock{
 	Time: 0,
 	Mu:   sync.Mutex{},
 }
-
-var commandCounter atomic.Int64
 
 var solvedSignal = make(chan struct{}, 1)
 
@@ -81,21 +78,21 @@ func main() {
 
 	for {
 		if !trigger {
-			trigger = generateIncident()
+			trigger = generateAlert()
 		} else {
 			LClock.Tick()
-			incidentID := createIncidentID(CLIENT_ID)
-			payload, _ := createIncidentPayload(SENSOR_TYPE, 1, incidentID) //TODO: PRIORITY HARDCODED
+
+			payload, _ := createAlertPayload(SENSOR_TYPE, CLIENT_ID)
 
 			token := client.Publish(TOPIC, 1, false, payload)
 			token.Wait()
 
-			fmt.Println("Ocorrência enviada ao gerenciador.")
+			fmt.Println("Alerta enviado ao gerenciador.")
 
 			<-solvedSignal
 			trigger = false
 
-			fmt.Println("Ocorrência resolvida. Começando de novo...")
+			fmt.Println("Alerta resolvido. Começando de novo...")
 
 		}
 

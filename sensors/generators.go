@@ -3,7 +3,7 @@ package main
 import "math/rand"
 
 // Retorna incidente com chance de 10%
-func generateIncident() bool {
+func generateAlert() bool {
 	chance := rand.Float64()
 	if chance <= 0.1 {
 		return true
