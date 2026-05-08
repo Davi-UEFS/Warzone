@@ -17,14 +17,15 @@ const (
 const (
 	QUERY          = "QUERY_LEADER"
 	JOIN           = "JOIN_CLUSTER"
-	FORWARD        = "FORWARD_REQUISITION"
+	FORWARD_ALR    = "FORWARD_ALERT"
+	FORWARD_DONE   = "FORWARD_DONE"
 	SUCCESS        = "SUCESSO: OPERAÇÃO CONCLUÍDA"
 	ERR_NOT_LEADER = "ERRO: NÃO É O LIDER"
 )
 
 var sectorFSM = &RaftFSM{
 	DroneMap:         make(map[string]shared.Drone),
-	RequisitionQueue: []shared.Requisition{},
+	PendingReqsQueue: []shared.Requisition{},
 }
 
 var LClock = shared.LamportClock{

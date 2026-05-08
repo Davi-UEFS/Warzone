@@ -54,7 +54,7 @@ func handleConnection(conn net.Conn, raftNode *raft.Raft) {
 			json.NewEncoder(conn).Encode(SUCCESS)
 		}
 
-	case FORWARD:
+	case FORWARD_ALR:
 		if raftNode.State() != raft.Leader {
 			json.NewEncoder(conn).Encode(ERR_NOT_LEADER)
 			return
@@ -133,6 +133,28 @@ func forwardAlert(sigAddr string, cmd shared.HeaderCommand) error {
 
 }
 
+func forwardDone(sigAddr string, cmd shared.HeaderCommand) error {
+	conn, err := net.DialTimeout("tcp", sigAddr, 5*time.Second)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	json.NewEncoder(conn).Encode(cmd)
+
+	var response string
+	if err := json.NewDecoder(conn).Decode(&response); err != nil {
+		return err
+	}
+
+	if response != SUCCESS {
+		return fmt.Errorf("Resposta inesperada: %s", response)
+	}
+
+	return nil
+
+}
+
 func handleForwardingAlert(raftNode *raft.Raft, payload json.RawMessage) error {
 
 	var alert shared.Alert
@@ -163,15 +185,48 @@ func handleForwardingAlert(raftNode *raft.Raft, payload json.RawMessage) error {
 		LamportTime: LClock.GetTime(),
 	}
 
-	cmdData, _ := json.Marshal(cmd)
+	cmdBytes, _ := json.Marshal(cmd)
 
-	future := raftNode.Apply(cmdData, 5*time.Second)
+	future := raftNode.Apply(cmdBytes, 5*time.Second)
 
 	if err := future.Error(); err != nil {
 		fmt.Println("Falha ao adicionar requisição ao consenso: ", err)
 		return err
 	}
 
+	return nil
+
+}
+
+func handleForwardingDone(raftNode *raft.Raft, payload json.RawMessage) error {
+	var result shared.DoneInfo
+
+	if err := json.Unmarshal(payload, &result); err != nil {
+		fmt.Printf("Erro ao unmarshal payload: %v\n", err)
+		return err
+	}
+
+	LClock.CompareAndUpdate(result.LCTime)
+	LClock.Tick()
+
+	droneID := result.DroneID
+	newPayload, _ := json.Marshal(droneID)
+
+	cmd := shared.HeaderCommand{
+		Operation:   OP_RMVR,
+		Payload:     newPayload,
+		LamportTime: LClock.GetTime(),
+	}
+
+	cmdBytes, _ := json.Marshal(cmd)
+
+	future := raftNode.Apply(cmdBytes, 5*time.Second)
+
+	if err := future.Error(); err != nil {
+		return fmt.Errorf("Erro ao aplicar comando no Raft: %v\n", err)
+	}
+
+	fmt.Printf("Drone %s liberado da missão %s\n", droneID, result.RequisitionID)
 	return nil
 
 }

@@ -15,20 +15,49 @@ type joinReq struct {
 	Addr string `json:"addr"`
 }
 
-var onMissionDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
-	fmt.Printf("Missão concluída: %s\n", string(msg.Payload())) //TODO: EDITAR DEPOIS
-	result := shared.CommandTemporary{}
+var onDroneDone = func(client mqtt.Client, msg mqtt.Message, raftNode *raft.Raft) {
+
+	var result shared.DoneInfo
 
 	if err := json.Unmarshal(msg.Payload(), &result); err != nil {
 		fmt.Printf("Erro ao unmarshal payload: %v\n", err)
 		return
 	}
 
-	sensorID := shared.ExtractSensorID(result.OccurrenceID)
+	if raftNode.State() != raft.Leader {
+		fmt.Println("Sou seguidor, encaminhando resultado para o líder via TCP...")
 
-	token := client.Publish(fmt.Sprintf("sensors/%s/solved", sensorID), 1, false, []byte("DONE"))
-	token.Wait()
+		leaderInfo := searchForLeaderInfo(peers, sigPort)
+		if err := forwardAlert(leaderInfo.SigAddr, shared.HeaderCommand{
+			Operation: FORWARD_DONE,
+			Payload:   msg.Payload(),
+		}); err != nil {
+			fmt.Printf("Erro ao encaminhar resultado: %v\n", err)
+		}
+		return
+	}
 
+	LClock.CompareAndUpdate(result.LCTime)
+	LClock.Tick()
+
+	droneID := result.DroneID
+	payload, _ := json.Marshal(droneID)
+
+	cmd := shared.HeaderCommand{
+		Operation:   OP_RMVR,
+		Payload:     payload,
+		LamportTime: LClock.GetTime(),
+	}
+
+	cmdBytes, _ := json.Marshal(cmd)
+
+	future := raftNode.Apply(cmdBytes, 5*time.Second)
+
+	if err := future.Error(); err != nil {
+		fmt.Printf("Erro ao aplicar comando no Raft: %v\n", err)
+	} else {
+		fmt.Printf("Drone %s liberado da missão %s\n", droneID, result.RequisitionID)
+	}
 }
 
 func createIncidentID(SENSOR_ID string) string {
@@ -52,7 +81,7 @@ var onAlertHandler = func(client mqtt.Client, msg mqtt.Message, raftNode *raft.R
 		leaderInfo := searchForLeaderInfo(peers, sigPort)
 
 		if err := forwardAlert(leaderInfo.SigAddr, shared.HeaderCommand{
-			Operation: FORWARD,
+			Operation: FORWARD_ALR,
 			Payload:   msg.Payload(),
 		}); err != nil {
 			fmt.Printf("Erro ao encaminhar alerta: %v\n", err)

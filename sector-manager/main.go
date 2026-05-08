@@ -9,7 +9,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -29,10 +28,12 @@ func mainMenu(client mqtt.Client) {
 			fmt.Println("EM BREVE...")
 
 		case "2":
-			cmd := shared.DroneCommand{
-				OccurrenceID: fmt.Sprintf("cmd-%d", i),
-				Action:       "oil",
-				Timestamp:    time.Now(),
+			//TODO: DEPRECATED
+			cmd := shared.DroneMission{
+				RequisitionID: fmt.Sprintf("cmd-%d", i),
+				Type:          "oil",
+				Coordinate:    shared.Coordinate{}, // Coordenada de exemplo, deve ser preenchida com dados reais
+				LamportTime:   0,                   // Tempo lógico inicial, deve ser atualizado conforme necessário
 			}
 			payload, _ := json.Marshal(cmd)
 			sendCommand(client, payload)

@@ -5,13 +5,21 @@ import (
 	"io"
 	"strings"
 	"sync"
-	"time"
 )
 
-type DroneCommand struct {
-	OccurrenceID string
-	Action       string
-	Timestamp    time.Time
+const (
+	DRONE_IDLE   = "IDLE"
+	DRONE_BUSY   = "BUSY"
+	DRONE_ERROR  = "ERROR"
+	DRONE_RETURN = "RETURNING"
+)
+
+type DroneMission struct {
+	RequisitionID string     `json:"id"`           // ID da Requisição (OccurrenceID)
+	AssignedDrone string     `json:"drone_id"`     // ID do drone designado para a missão
+	Type          string     `json:"type"`         // Tipo do incidente (Fogo, Óleo, etc.)
+	Coordinate    Coordinate `json:"coordinate"`   // Onde o drone deve ir
+	LamportTime   int        `json:"lamport_time"` // Tempo lógico da missão
 }
 
 type Drone struct {
@@ -24,20 +32,29 @@ type Drone struct {
 }
 
 func (drone *Drone) SetBusy() {
-	drone.Status = "BUSY"
+	drone.Status = DRONE_BUSY
 }
 
 func (drone *Drone) SetIdle() {
-	drone.Status = "IDLE"
+	drone.Status = DRONE_IDLE
 }
 
 func (drone *Drone) UpdateBroker(id string) {
 	drone.CurrentBroker = id
 }
 
-type CommandTemporary struct {
-	OccurrenceID string `json:"occurrence_id"`
-	DroneID      string `json:"drone_id"`
+func (drone *Drone) AssignMission(missionID string) {
+	drone.CurrentMission = missionID
+}
+
+func (drone *Drone) ClearMission() {
+	drone.CurrentMission = ""
+}
+
+type DoneInfo struct {
+	RequisitionID string `json:"occurrence_id"`
+	DroneID       string `json:"drone_id"`
+	LCTime        int    `json:"lc_time"`
 }
 
 type Alert struct {
@@ -56,8 +73,8 @@ type Requisition struct {
 }
 
 type SolvedInfo struct {
-	IncidentID string `json:"incident_id"`
-	LCTime     int    `json:"lc_time"`
+	RequisitionID string `json:"incident_id"`
+	LCTime        int    `json:"lc_time"`
 }
 
 type HeaderCommand struct {

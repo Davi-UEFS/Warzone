@@ -36,10 +36,10 @@ func handleAction(ctx context.Context) {
 }
 
 func makeResult(command shared.DroneCommand) ([]byte, error) {
-	result := shared.CommandTemporary{
-		OccurrenceID: command.OccurrenceID,
-		Action:       command.Action,
-		Status:       "DONE",
+	result := shared.DoneInfo{
+		RequisitionID: command.OccurrenceID,
+		Action:        command.Action,
+		Status:        "DONE",
 	}
 	return json.Marshal(result)
 }

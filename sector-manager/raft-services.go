@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net"
 	"os"
 	"path/filepath"
@@ -21,7 +22,8 @@ import (
 type RaftFSM struct {
 	Mu               sync.Mutex
 	DroneMap         map[string]shared.Drone
-	RequisitionQueue []shared.Requisition //TODO: IMPLEMENTAR PRIORITY QUEUE DEPOIS
+	PendingReqsQueue []shared.Requisition //TODO: IMPLEMENTAR PRIORITY QUEUE DEPOIS
+	InProgressReqs   map[string]shared.Requisition
 	Sector           string
 	Client           mqtt.Client
 }
@@ -29,6 +31,7 @@ type RaftFSM struct {
 type RaftSnapshot struct {
 	DroneMap     map[string]shared.Drone
 	IncidentList []shared.Requisition
+	InProgress   map[string]shared.Requisition
 }
 
 func (fsm *RaftFSM) Apply(log *raft.Log) interface{} {
@@ -73,89 +76,109 @@ func (fsm *RaftFSM) handleADDRequisition(payload json.RawMessage) error {
 	}
 	fsm.Mu.Lock()
 
-	for _, v := range fsm.RequisitionQueue {
+	for _, v := range fsm.PendingReqsQueue {
 		if v.ID == requisition.ID {
 			fmt.Printf("Requisição %s já existe.\n", v.ID)
 			fsm.Mu.Unlock()
 			return nil
 		}
 	}
-	fsm.RequisitionQueue = append(fsm.RequisitionQueue, requisition) //TODO: IMPLEMENTAR PRIORITY QUEUE DEPOIS
+	fsm.PendingReqsQueue = append(fsm.PendingReqsQueue, requisition) //TODO: IMPLEMENTAR PRIORITY QUEUE DEPOIS
 	fsm.Mu.Unlock()
 
 	return nil
 }
 
 func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
-	var requisition shared.Requisition
 
-	if err := json.Unmarshal(payload, &requisition); err != nil {
-		fmt.Printf("Erro ao desserializar pacote: %v.\n", err)
+	var droneID string
+
+	if err := json.Unmarshal(payload, &droneID); err != nil {
+		fmt.Printf("Erro ao desserializar ID do drone: %v.\n", err)
 		return err
 	}
 
 	fsm.Mu.Lock()
 	defer fsm.Mu.Unlock()
 
-	for i, v := range fsm.RequisitionQueue { //TODO: IMPLEMENTAR PRIORITY QUEUE DEPOIS
-		if v.ID == requisition.ID {
-			fsm.RequisitionQueue = append(fsm.RequisitionQueue[:i], fsm.RequisitionQueue[i+1:]...)
-			LClock.Tick()
+	drone, ok := fsm.DroneMap[droneID]
 
-			if requisition.OriginSector == fsm.Sector {
-				topic := fmt.Sprintf("sensors/%s/solved", shared.ExtractSensorID(requisition.ID))
+	if !ok {
+		return fmt.Errorf("Drone %s não encontrado\n", droneID)
+	}
 
-				response := shared.SolvedInfo{
-					IncidentID: requisition.ID,
-					LCTime:     LClock.GetTime(),
-				}
+	reqID := drone.CurrentMission
+	requisition, exist := fsm.InProgressReqs[reqID]
 
-				payload, _ := json.Marshal(response)
+	if exist {
 
-				token := fsm.Client.Publish(topic, 1, false, payload)
-				token.Wait()
+		LClock.Tick()
+
+		if requisition.OriginSector == fsm.Sector {
+			topic := fmt.Sprintf("sensors/%s/solved", shared.ExtractSensorID(requisition.ID))
+
+			response := shared.SolvedInfo{
+				RequisitionID: requisition.ID,
+				LCTime:        LClock.GetTime(),
 			}
 
-			break
+			payload, _ := json.Marshal(response)
+
+			token := fsm.Client.Publish(topic, 1, false, payload)
+			token.Wait()
 		}
+
+		delete(fsm.InProgressReqs, reqID)
+		drone.SetIdle()
+		drone.ClearMission()
+		fsm.DroneMap[droneID] = drone
+
+		fmt.Printf("Requisição %s concluída pelo drone %s.\n", reqID, droneID)
+
 	}
 
 	return nil
 }
 
 func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
-	var req shared.CommandTemporary
-	if err := json.Unmarshal(payload, &req); err != nil {
-		return fmt.Errorf("erro unmarshal: %w", err)
+	var mission shared.DroneMission
+	if err := json.Unmarshal(payload, &mission); err != nil {
+		return fmt.Errorf("erro unmarshal: %v", err)
 	}
 
 	fsm.Mu.Lock()
 	defer fsm.Mu.Unlock()
 
-	drone, ok := fsm.DroneMap[req.DroneID]
-	if !ok {
-		fmt.Printf("Abortando: Drone %s não mapeado na FSM.\n", req.DroneID)
-		return fmt.Errorf("drone não encontrado")
-	}
+	var targetReq shared.Requisition
+	targetReqIndex := -1
 
-	foundIndex := -1
-	for i, incident := range fsm.RequisitionQueue {
-		if incident.ID == req.OccurrenceID {
-			foundIndex = i
+	for i, req := range fsm.PendingReqsQueue {
+		if req.ID == mission.RequisitionID {
+			targetReq = req
+			targetReqIndex = i
 			break
 		}
 	}
 
-	if foundIndex == -1 {
-		fmt.Printf("Abortando: Incidente %s já foi removido ou não existe.\n", req.OccurrenceID)
-		return nil
+	if targetReqIndex == -1 {
+		fmt.Printf("Abortando: Requisição %s não encontrada na fila.\n", mission.RequisitionID)
+		return fmt.Errorf("requisição não encontrada")
+	}
+
+	fsm.InProgressReqs[mission.RequisitionID] = targetReq
+	fsm.PendingReqsQueue = append(fsm.PendingReqsQueue[:targetReqIndex], fsm.PendingReqsQueue[targetReqIndex+1:]...)
+
+	drone, ok := fsm.DroneMap[mission.AssignedDrone]
+	if !ok {
+		fmt.Printf("Abortando: Drone %s não mapeado na FSM.\n", mission.AssignedDrone)
+		return fmt.Errorf("drone não encontrado")
 	}
 
 	drone.SetBusy()
-	fsm.DroneMap[req.DroneID] = drone
-	fsm.RequisitionQueue = slices.Delete(fsm.RequisitionQueue, foundIndex, foundIndex+1)
+	drone.AssignMission(mission.RequisitionID)
+	fsm.DroneMap[mission.AssignedDrone] = drone
 
-	fmt.Printf("Sucesso: Drone %s alocado para Incidente %s.\n", req.DroneID, req.OccurrenceID)
+	fmt.Printf("Sucesso: Drone %s alocado para Incidente %s.\n", mission.AssignedDrone, mission.RequisitionID)
 	return nil
 }
 
@@ -216,15 +239,17 @@ func (fsm *RaftFSM) Snapshot() (raft.FSMSnapshot, error) {
 	defer fsm.Mu.Unlock()
 
 	clonedDrones := make(map[string]shared.Drone)
-	for k, v := range fsm.DroneMap {
-		clonedDrones[k] = v
-	}
+	maps.Copy(clonedDrones, fsm.DroneMap)
 
-	clonedIncidents := slices.Clone(fsm.RequisitionQueue)
+	clonedIncidents := slices.Clone(fsm.PendingReqsQueue)
+
+	clonedInProgress := make(map[string]shared.Requisition)
+	maps.Copy(clonedInProgress, fsm.InProgressReqs)
 
 	snapshot := &RaftSnapshot{
 		DroneMap:     clonedDrones,
 		IncidentList: clonedIncidents,
+		InProgress:   clonedInProgress,
 	}
 	return snapshot, nil
 }
@@ -255,11 +280,12 @@ func (fsm *RaftFSM) Restore(rc io.ReadCloser) error {
 
 	fsm.Mu.Lock()
 	fsm.DroneMap = restored.DroneMap
-	fsm.RequisitionQueue = restored.IncidentList
+	fsm.PendingReqsQueue = restored.IncidentList
+	fsm.InProgressReqs = restored.InProgress
 	fsm.Mu.Unlock()
 
 	fmt.Printf("FSM Restaurada: %d drones e %d incidentes carregados.\n",
-		len(fsm.DroneMap), len(fsm.RequisitionQueue))
+		len(fsm.DroneMap), len(fsm.PendingReqsQueue))
 
 	return nil
 }
