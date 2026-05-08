@@ -65,6 +65,18 @@ func handleConnection(conn net.Conn, raftNode *raft.Raft) {
 		if err == nil {
 			json.NewEncoder(conn).Encode(SUCCESS)
 		}
+
+	case FORWARD_DONE:
+		if raftNode.State() != raft.Leader {
+			json.NewEncoder(conn).Encode(ERR_NOT_LEADER)
+			return
+		}
+
+		err := handleForwardingDone(raftNode, cmd.Payload)
+
+		if err == nil {
+			json.NewEncoder(conn).Encode(SUCCESS)
+		}
 	}
 
 }

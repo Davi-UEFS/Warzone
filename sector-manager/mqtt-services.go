@@ -15,7 +15,7 @@ type joinReq struct {
 	Addr string `json:"addr"`
 }
 
-var onDroneDone = func(client mqtt.Client, msg mqtt.Message, raftNode *raft.Raft) {
+var onDroneDone = func(client mqtt.Client, msg mqtt.Message) {
 
 	var result shared.DoneInfo
 
@@ -28,7 +28,7 @@ var onDroneDone = func(client mqtt.Client, msg mqtt.Message, raftNode *raft.Raft
 		fmt.Println("Sou seguidor, encaminhando resultado para o líder via TCP...")
 
 		leaderInfo := searchForLeaderInfo(peers, sigPort)
-		if err := forwardAlert(leaderInfo.SigAddr, shared.HeaderCommand{
+		if err := forwardDone(leaderInfo.SigAddr, shared.HeaderCommand{
 			Operation: FORWARD_DONE,
 			Payload:   msg.Payload(),
 		}); err != nil {
@@ -64,7 +64,7 @@ func createIncidentID(SENSOR_ID string) string {
 	return fmt.Sprintf("inc-%s-%d", SENSOR_ID, time.Now().Unix())
 }
 
-var onAlertHandler = func(client mqtt.Client, msg mqtt.Message, raftNode *raft.Raft) {
+var onAlertHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 	fmt.Printf("Nova ocorrência: %s\n", string(msg.Payload()))
 	alert := shared.Alert{}
@@ -120,10 +120,4 @@ var onAlertHandler = func(client mqtt.Client, msg mqtt.Message, raftNode *raft.R
 
 	fmt.Println("Incidente replicado com sucesso no cluster")
 
-}
-
-func sendCommand(client mqtt.Client, payload []byte) {
-	//TODO: HARDCODED
-	topic := "drones/drone01/missions"
-	client.Publish(topic, 2, false, payload)
 }

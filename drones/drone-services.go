@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/Davi-UEFS/Warzone/shared"
 )
@@ -16,18 +17,18 @@ func handleAction(ctx context.Context) {
 
 		case payload := <-payloadChannel:
 
-			var command shared.DroneCommand
+			var command shared.DroneMission
 
 			if err := json.Unmarshal(payload, &command); err != nil {
-				//TODO: POSSO AVISAR NUM PRINT AQUI
+				fmt.Printf("Erro ao desserializar pacote: %v", err)
 				continue
 			}
 
-			switch command.Action {
-			case "water":
+			switch command.Type {
+			case shared.WATER:
 				carryWater(command)
 
-			case "oil":
+			case shared.OIL:
 				drainOil(command)
 			}
 
@@ -35,11 +36,14 @@ func handleAction(ctx context.Context) {
 	}
 }
 
-func makeResult(command shared.DroneCommand) ([]byte, error) {
+func makeResult(command shared.DroneMission) ([]byte, error) {
+
+	LClock.CompareAndUpdate(command.LamportTime)
+
 	result := shared.DoneInfo{
-		RequisitionID: command.OccurrenceID,
-		Action:        command.Action,
-		Status:        "DONE",
+		RequisitionID: command.RequisitionID,
+		DroneID:       command.AssignedDrone,
+		LCTime:        LClock.GetTime(),
 	}
 	return json.Marshal(result)
 }

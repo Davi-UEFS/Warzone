@@ -1,73 +1,133 @@
 SHELL := /bin/bash
 
 IMAGE_NAME = sector-manager
-
-NODE_ID ?= node1
 HOST ?= 127.0.0.1
-RAFT_PORT ?= 10001
-SIG_PORT ?= 9123
+
+NODE1_ID ?= setorA
+NODE2_ID ?= setorB
+NODE3_ID ?= setorC
+
+NODE1_RAFT_PORT ?= 10001
+NODE2_RAFT_PORT ?= 10002
+NODE3_RAFT_PORT ?= 10003
+
+NODE1_SIG_PORT ?= 11001
+NODE2_SIG_PORT ?= 11002
+NODE3_SIG_PORT ?= 11003
+
 BROKER_HOST ?= 127.0.0.1
-BROKER_PORT ?= 1883
-BOOTSTRAP ?= false
-PEERS ?=
-DATA_DIR ?= $(shell pwd)/dataRaft/$(NODE_ID)
-RUN_ARGS ?=
+BROKER1_PORT ?= 1883
+BROKER2_PORT ?= 1884
+BROKER3_PORT ?= 1885
 
 USER_ID = $(shell id -u)
 GROUP_ID = $(shell id -g)
+DATA_BASE_DIR ?= $(shell pwd)/dataRaft
 
-.PHONY: build run-node-host clean help
+.PHONY: build run-all run-node1 run-node2 run-node3 run-node-prompt clean help
 
 help:
 	@echo "Targets:"
-	@echo "  build         - Builda a imagem"
-	@echo "  run-node-host - Sobe um node em modo host"
-	@echo "  clean         - Limpa containers e dados"
+	@echo "  build           - Builda a imagem dos nodes"
+	@echo "  run-all         - Sobe os 3 nodes"
+	@echo "  run-node-prompt - Sobe 1 node com configuracao interativa"
+	@echo "  clean           - Remove containers e dados"
 	@echo ""
-	@echo "Exemplo:"
-	@echo "  make run-node-host NODE_ID=node1 BOOTSTRAP=true"
-	@echo "  make run-node-host NODE_ID=node2 PEERS=192.168.0.10:9123 RAFT_PORT=10002 SIG_PORT=9124"
+	@echo "Exemplos:"
+	@echo "  make -f Makefile.nodes run-all"
+	@echo "  make -f Makefile.nodes run-node-prompt"
 
 build:
-	@echo "Compilando imagem Docker..."
+	@echo "Compilando imagem Docker dos nodes..."
 	docker build -t $(IMAGE_NAME) -f dockerfile ..
 
-run-node-host:
+run-all: run-node1 run-node2 run-node3
+
+run-node1:
+	@mkdir -p $(DATA_BASE_DIR)/$(NODE1_ID)
+	docker run -d --rm \
+		--name $(NODE1_ID) \
+		-p $(NODE1_RAFT_PORT):$(NODE1_RAFT_PORT) \
+		-p $(NODE1_SIG_PORT):$(NODE1_SIG_PORT) \
+		--user $(USER_ID):$(GROUP_ID) \
+		-v "$(DATA_BASE_DIR)/$(NODE1_ID)":/data \
+		$(IMAGE_NAME) \
+		-id=$(NODE1_ID) \
+		-raft=$(HOST):$(NODE1_RAFT_PORT) \
+		-sig=$(HOST):$(NODE1_SIG_PORT) \
+		-peers=$(HOST):$(NODE2_SIG_PORT),$(HOST):$(NODE3_SIG_PORT) \
+		-broker=tcp://$(BROKER_HOST):$(BROKER1_PORT) \
+		-dir=/data \
+		-bootstrap=true
+
+run-node2:
+	@mkdir -p $(DATA_BASE_DIR)/$(NODE2_ID)
+	docker run -d --rm \
+		--name $(NODE2_ID) \
+		-p $(NODE2_RAFT_PORT):$(NODE2_RAFT_PORT) \
+		-p $(NODE2_SIG_PORT):$(NODE2_SIG_PORT) \
+		--user $(USER_ID):$(GROUP_ID) \
+		-v "$(DATA_BASE_DIR)/$(NODE2_ID)":/data \
+		$(IMAGE_NAME) \
+		-id=$(NODE2_ID) \
+		-raft=$(HOST):$(NODE2_RAFT_PORT) \
+		-sig=$(HOST):$(NODE2_SIG_PORT) \
+		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE3_SIG_PORT) \
+		-broker=tcp://$(BROKER_HOST):$(BROKER2_PORT) \
+		-dir=/data
+
+run-node3:
+	@mkdir -p $(DATA_BASE_DIR)/$(NODE3_ID)
+	docker run -d --rm \
+		--name $(NODE3_ID) \
+		-p $(NODE3_RAFT_PORT):$(NODE3_RAFT_PORT) \
+		-p $(NODE3_SIG_PORT):$(NODE3_SIG_PORT) \
+		--user $(USER_ID):$(GROUP_ID) \
+		-v "$(DATA_BASE_DIR)/$(NODE3_ID)":/data \
+		$(IMAGE_NAME) \
+		-id=$(NODE3_ID) \
+		-raft=$(HOST):$(NODE3_RAFT_PORT) \
+		-sig=$(HOST):$(NODE3_SIG_PORT) \
+		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE2_SIG_PORT) \
+		-broker=tcp://$(BROKER_HOST):$(BROKER3_PORT) \
+		-dir=/data
+
+run-node-prompt:
 	@echo "Configuracao interativa (host)"
 	@echo "Pressione ENTER para usar o padrao"
 	@echo ""
 	@echo "O id do nó"; \
-	echo "NODE_ID [padrao: $(NODE_ID)]:"; \
+	echo "NODE_ID [padrao: $(NODE1_ID)]:"; \
 	read _NODE_ID; \
-	_NODE_ID=$${_NODE_ID:-$(NODE_ID)}; \
+	_NODE_ID=$${_NODE_ID:-$(NODE1_ID)}; \
 	echo "Se este nó vai iniciar como lider"; \
-	echo "BOOTSTRAP (true/false) [padrao: $(BOOTSTRAP)]:"; \
+	echo "BOOTSTRAP (true/false) [padrao: false]:"; \
 	read _BOOT; \
-	_BOOT=$${_BOOT:-$(BOOTSTRAP)}; \
+	_BOOT=$${_BOOT:-false}; \
 	echo "Lista de peers (SIG host:porta), separados por virgula"; \
-	echo "PEERS [padrao: $(PEERS)]:"; \
+	echo "PEERS [padrao: ]:"; \
 	read _PEERS; \
-	_PEERS=$${_PEERS:-$(PEERS)}; \
+	_PEERS=$${_PEERS:-}; \
 	echo "Host base para Raft e SIG (modo host)"; \
 	echo "HOST [padrao: $(HOST)]:"; \
 	read _HOST; \
 	_HOST=$${_HOST:-$(HOST)}; \
 	echo "Porta do Raft"; \
-	echo "RAFT_PORT [padrao: $(RAFT_PORT)]:"; \
+	echo "RAFT_PORT [padrao: 10001]:"; \
 	read _RAFT_PORT; \
-	_RAFT_PORT=$${_RAFT_PORT:-$(RAFT_PORT)}; \
+	_RAFT_PORT=$${_RAFT_PORT:-10001}; \
 	echo "Porta do servidor de sinalizacao"; \
-	echo "SIG_PORT [padrao: $(SIG_PORT)]:"; \
+	echo "SIG_PORT [padrao: 11001]:"; \
 	read _SIG_PORT; \
-	_SIG_PORT=$${_SIG_PORT:-$(SIG_PORT)}; \
+	_SIG_PORT=$${_SIG_PORT:-11001}; \
 	echo "Host do broker MQTT"; \
 	echo "BROKER_HOST [padrao: $(BROKER_HOST)]:"; \
 	read _BROKER_HOST; \
 	_BROKER_HOST=$${_BROKER_HOST:-$(BROKER_HOST)}; \
 	echo "Porta do broker MQTT"; \
-	echo "BROKER_PORT [padrao: $(BROKER_PORT)]:"; \
+	echo "BROKER_PORT [padrao: $(BROKER1_PORT)]:"; \
 	read _BROKER_PORT; \
-	_BROKER_PORT=$${_BROKER_PORT:-$(BROKER_PORT)}; \
+	_BROKER_PORT=$${_BROKER_PORT:-$(BROKER1_PORT)}; \
 	_DIR="$(CURDIR)/dataRaft/$$_NODE_ID"; \
 	mkdir -p "$$_DIR"; \
 	PEERS_ARG=""; \
@@ -80,7 +140,6 @@ run-node-host:
 		--network host \
 		--user $(USER_ID):$(GROUP_ID) \
 		-v "$$_DIR":/data \
-		$(RUN_ARGS) \
 		$(IMAGE_NAME) \
 		-id=$$_NODE_ID \
 		-raft=$$_HOST:$$_RAFT_PORT \
@@ -91,7 +150,7 @@ run-node-host:
 		$$BOOT_ARG
 
 clean:
-	@echo "Limpando containers e dados..."
-	-docker stop $(NODE_ID) 2>/dev/null
-	-docker rm $(NODE_ID) 2>/dev/null
-	rm -rf dataRaft/
+	@echo "Limpando containers e dados dos nodes..."
+	-@docker stop $(NODE1_ID) $(NODE2_ID) $(NODE3_ID) 2>/dev/null || true
+	-@docker rm $(NODE1_ID) $(NODE2_ID) $(NODE3_ID) 2>/dev/null || true
+	rm -rf $(DATA_BASE_DIR)

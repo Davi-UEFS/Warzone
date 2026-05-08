@@ -9,18 +9,18 @@ import (
 	raft "github.com/hashicorp/raft"
 )
 
-func startDispatcher(raftNode *raft.Raft) {
+func startDispatcher() {
 	ticker := time.NewTicker(2 * time.Second)
 
 	for range ticker.C {
 		if raftNode.State() == raft.Leader {
-			processRequisitions(raftNode)
+			processRequisitions()
 		}
 
 	}
 }
 
-func processRequisitions(raftNode *raft.Raft) {
+func processRequisitions() {
 
 	sectorFSM.Mu.Lock()
 
@@ -56,7 +56,7 @@ func dispatch(raftNode *raft.Raft, droneID string, req shared.Requisition) {
 
 	mission := shared.DroneMission{
 		RequisitionID: req.ID,
-		Type:          "oil", //TODO: Definir tipo com base na requisição
+		Type:          shared.OIL, //TODO: Definir tipo com base na requisição
 		Coordinate:    req.Coord,
 		LamportTime:   LClock.GetTime(),
 	}

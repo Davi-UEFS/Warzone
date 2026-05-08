@@ -8,7 +8,7 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
-func carryWater(command shared.DroneCommand) {
+func carryWater(command shared.DroneMission) {
 
 	fmt.Println("Carregando água para o local do incidente...")
 	bar := progressbar.Default(100)
@@ -22,7 +22,7 @@ func carryWater(command shared.DroneCommand) {
 
 }
 
-func drainOil(command shared.DroneCommand) {
+func drainOil(command shared.DroneMission) {
 
 	fmt.Println("Drenando óleo...")
 	bar := progressbar.Default(100)

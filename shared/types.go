@@ -14,6 +14,11 @@ const (
 	DRONE_RETURN = "RETURNING"
 )
 
+const (
+	WATER = "THROW_WATER"
+	OIL   = "DRAIN_OIL"
+)
+
 type DroneMission struct {
 	RequisitionID string     `json:"id"`           // ID da Requisição (OccurrenceID)
 	AssignedDrone string     `json:"drone_id"`     // ID do drone designado para a missão
@@ -27,7 +32,7 @@ type Drone struct {
 	StationID      string
 	BatteryLevel   int
 	Status         string
-	CurrentBroker  string
+	CurrentSector  string
 	CurrentMission string
 }
 
@@ -40,7 +45,7 @@ func (drone *Drone) SetIdle() {
 }
 
 func (drone *Drone) UpdateBroker(id string) {
-	drone.CurrentBroker = id
+	drone.CurrentSector = id
 }
 
 func (drone *Drone) AssignMission(missionID string) {

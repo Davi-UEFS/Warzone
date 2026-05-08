@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/Davi-UEFS/Warzone/shared"
+	raft "github.com/hashicorp/raft"
 )
 
 const (
@@ -24,8 +25,10 @@ const (
 )
 
 var sectorFSM = &RaftFSM{
+	Mu:               sync.Mutex{},
 	DroneMap:         make(map[string]shared.Drone),
 	PendingReqsQueue: []shared.Requisition{},
+	InProgressReqs:   map[string]shared.Requisition{},
 }
 
 var LClock = shared.LamportClock{
@@ -34,6 +37,7 @@ var LClock = shared.LamportClock{
 }
 
 var (
-	peers   []string
-	sigPort int
+	peers    []string
+	sigPort  int
+	raftNode *raft.Raft
 )

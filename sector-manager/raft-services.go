@@ -178,6 +178,13 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 	drone.AssignMission(mission.RequisitionID)
 	fsm.DroneMap[mission.AssignedDrone] = drone
 
+	//TODO: DEIXAR DRONE CUIDAR DO ASSIGNED MISSION?
+
+	if drone.CurrentSector == fsm.Sector {
+		token := fsm.Client.Publish(fmt.Sprintf("drones/%s/", mission.AssignedDrone), 1, false, payload)
+		token.Wait()
+	}
+
 	fmt.Printf("Sucesso: Drone %s alocado para Incidente %s.\n", mission.AssignedDrone, mission.RequisitionID)
 	return nil
 }

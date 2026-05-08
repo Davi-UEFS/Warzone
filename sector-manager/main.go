@@ -1,19 +1,17 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"net"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/Davi-UEFS/Warzone/shared"
-	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
+/* DEPRECATED
 func mainMenu(client mqtt.Client) {
 	scanner := bufio.NewScanner(os.Stdin)
 	var i int = 1
@@ -67,6 +65,8 @@ func mainMenu(client mqtt.Client) {
 	}
 }
 
+*/
+
 // normalizePeerAddr assegura que o endereço dado está no formato IP + Porta
 // Se não possuir porta, adiciona a porta dada.
 
@@ -119,7 +119,8 @@ func main() {
 
 	// FSM criada em vars.go
 
-	raftNode, err := setupRaft(*dataDirFlag, *nodeIDFlag, raftAddr, sectorFSM, *bootstrapFlag)
+	var err error
+	raftNode, err = setupRaft(*dataDirFlag, *nodeIDFlag, raftAddr, sectorFSM, *bootstrapFlag)
 	if err != nil {
 		fmt.Printf("Erro ao iniciar Raft: %v\n", err)
 		return
@@ -133,6 +134,14 @@ func main() {
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		fmt.Printf("Erro MQTT: %v\n", token.Error())
 	}
+
+	client.Subscribe("sensors/+/incidents", 1, onAlertHandler)
+	client.Subscribe("drones/+/done", 1, onDroneDone)
+
+	//////////////////////////////////////////////////
+
+	sectorFSM.Sector = *nodeIDFlag
+	sectorFSM.Client = client
 
 	if !*bootstrapFlag {
 		fmt.Println("Procurando líder na lista de peers...")
@@ -169,5 +178,8 @@ func main() {
 	}
 	fmt.Printf("Nó %s em execução\n", *nodeIDFlag)
 	fmt.Printf("Raft: %s | SIG: %s | Broker: %s\n", raftAddr, sigAddr, brokerAddr)
+
+	go startDispatcher()
+
 	select {}
 }
