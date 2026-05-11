@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"maps"
 	"net"
 	"os"
@@ -340,12 +341,15 @@ func setupRaft(dir, id, raftAddr string, fsm *RaftFSM, bootstrap bool) (*raft.Ra
 		},
 	}
 
+	log.Printf("Raft address: %s\n", raftAddr)
+
 	config.Logger = hclog.New(&hclog.LoggerOptions{
 		Name:   "raft",
 		Level:  hclog.Error,
 		Output: filtered,
 	})
 
+	// bind do socket
 	tcpAddr, err := net.ResolveTCPAddr("tcp", raftAddr)
 	if err != nil {
 		return nil, err

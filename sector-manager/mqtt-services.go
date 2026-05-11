@@ -15,6 +15,11 @@ type joinReq struct {
 	Addr string `json:"addr"`
 }
 
+type forwardedAlert struct {
+	Alert        shared.Alert `json:"alert"`
+	OriginSector string       `json:"origin_sector"`
+}
+
 var onDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 	var result shared.DoneInfo
@@ -80,9 +85,18 @@ var onAlertHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 		leaderInfo := searchForLeaderInfo(peers, sigPort)
 
+		forwardPayload, err := json.Marshal(forwardedAlert{
+			Alert:        alert,
+			OriginSector: sectorFSM.GetSector(),
+		})
+		if err != nil {
+			fmt.Printf("Erro ao serializar forward alert: %v\n", err)
+			return
+		}
+
 		if err := forwardAlert(leaderInfo.SigAddr, shared.HeaderCommand{
 			Operation: FORWARD_ALR,
-			Payload:   msg.Payload(),
+			Payload:   forwardPayload,
 		}); err != nil {
 			fmt.Printf("Erro ao encaminhar alerta: %v\n", err)
 		}

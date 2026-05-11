@@ -48,12 +48,12 @@ run-sectorA:
 	@chmod -R 777 $(DATA_BASE_DIR)/$(NODE1_ID)
 	docker run -it --rm \
 		--name $(NODE1_ID) \
-		-p $(NODE1_RAFT_PORT):$(NODE1_RAFT_PORT) \
-		-p $(NODE1_SIG_PORT):$(NODE1_SIG_PORT) \
+		--network host \
 		--user $(USER_ID):$(GROUP_ID) \
 		-v "$(DATA_BASE_DIR)/$(NODE1_ID)":/data \
 		$(IMAGE_NAME) \
 		-id=$(NODE1_ID) \
+		-host=$(HOST) \
 		-raft-port=$(NODE1_RAFT_PORT) \
 		-broker-host=$(BROKER_HOST) \
 		-broker-port=$(BROKER1_PORT) \
@@ -66,17 +66,16 @@ run-sectorB:
 	@chmod -R 777 $(DATA_BASE_DIR)/$(NODE2_ID)
 	docker run -it --rm \
 		--name $(NODE2_ID) \
-		-p $(NODE2_RAFT_PORT):$(NODE2_RAFT_PORT) \
-		-p $(NODE2_SIG_PORT):$(NODE2_SIG_PORT) \
+		--network host \
 		--user $(USER_ID):$(GROUP_ID) \
 		-v "$(DATA_BASE_DIR)/$(NODE2_ID)":/data \
 		$(IMAGE_NAME) \
 		-id=$(NODE2_ID) \
+		-host=$(HOST) \
 		-raft-port=$(NODE2_RAFT_PORT) \
-		-sig-port=$(NODE2_SIG_PORT) \
 		-broker-host=$(BROKER_HOST) \
 		-broker-port=$(BROKER2_PORT) \
-		-dir=/data
+		-dir=/data \
 		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE3_SIG_PORT) \
 
 run-sectorC:
@@ -84,17 +83,16 @@ run-sectorC:
 	@chmod -R 777 $(DATA_BASE_DIR)/$(NODE3_ID)
 	docker run -it --rm \
 		--name $(NODE3_ID) \
-		-p $(NODE3_RAFT_PORT):$(NODE3_RAFT_PORT) \
-		-p $(NODE3_SIG_PORT):$(NODE3_SIG_PORT) \
+		--network host \
 		--user $(USER_ID):$(GROUP_ID) \
 		-v "$(DATA_BASE_DIR)/$(NODE3_ID)":/data \
 		$(IMAGE_NAME) \
 		-id=$(NODE3_ID) \
+		-host=$(HOST) \
 		-raft-port=$(NODE3_RAFT_PORT) \
-		-sig-port=$(NODE3_SIG_PORT) \
 		-broker-host=$(BROKER_HOST) \
 		-broker-port=$(BROKER3_PORT) \
-		-dir=/data
+		-dir=/data \
 		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE2_SIG_PORT) \
 
 run-node-prompt:

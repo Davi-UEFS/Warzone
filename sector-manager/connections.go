@@ -207,11 +207,16 @@ func forwardRegisterDrone(sigAddr string, cmd shared.HeaderCommand) error {
 
 func handleForwardingAlert(raftNode *raft.Raft, payload json.RawMessage) error {
 
-	var alert shared.Alert
-
-	if err := json.Unmarshal(payload, &alert); err != nil {
+	var fwd forwardedAlert
+	if err := json.Unmarshal(payload, &fwd); err != nil {
 		fmt.Printf("Erro ao desserializar alerta: %v\n", err)
 		return err
+	}
+
+	alert := fwd.Alert
+	originSector := fwd.OriginSector
+	if originSector == "" {
+		originSector = sectorFSM.GetSector()
 	}
 
 	LClock.CompareAndUpdate(alert.LamportTime)
@@ -223,7 +228,7 @@ func handleForwardingAlert(raftNode *raft.Raft, payload json.RawMessage) error {
 		ID:           reqID,
 		Priority:     1, //TODO: DEFINIR PRIORITY MELHOR DEPOIS
 		Coord:        alert.Coordinate,
-		OriginSector: sectorFSM.GetSector(), //TODO: DEFINIR SECTOR MELHOR DEPOIS
+		OriginSector: originSector,
 		LamportTime:  LClock.GetTime(),
 	}
 

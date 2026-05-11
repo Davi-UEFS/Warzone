@@ -107,9 +107,8 @@ func main() {
 
 	// Porta do serviço de sinalização, calculada a partir da porta do Raft.
 	sigPort = *raftPortFlag + 1000
-	// Endereço completo do Raft usando host base e porta configurada.
+	// Endereços completos (bind + advertise) usando o host base.
 	raftAddr := net.JoinHostPort(*hostFlag, strconv.Itoa(*raftPortFlag))
-	// Endereço completo do serviço SIG usando o mesmo host e a porta derivada.
 	sigAddr := net.JoinHostPort(*hostFlag, strconv.Itoa(sigPort))
 	// Lista de peers informada na flag, separada por vírgula.
 	peers = strings.Split(*peersFlag, ",")
