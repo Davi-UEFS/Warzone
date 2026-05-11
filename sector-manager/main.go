@@ -7,6 +7,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/Davi-UEFS/Warzone/shared"
 )
@@ -117,8 +118,12 @@ func main() {
 
 	// --- Inicialização do Raft ---
 
-	// FSM criada em vars.go
-
+	sectorFSM = &RaftFSM{
+		Mu:               sync.Mutex{},
+		DroneMap:         make(map[string]shared.Drone),
+		PendingReqsQueue: []shared.Requisition{},
+		InProgressReqs:   map[string]shared.Requisition{},
+	}
 	var err error
 	raftNode, err = setupRaft(*dataDirFlag, *nodeIDFlag, raftAddr, sectorFSM, *bootstrapFlag)
 	if err != nil {
@@ -136,7 +141,8 @@ func main() {
 	}
 
 	client.Subscribe("sensors/+/incidents", 1, onAlertHandler)
-	client.Subscribe("drones/+/done", 1, onDroneDone)
+	client.Subscribe("drones/+/done", 1, onDoneHandler)
+	client.Subscribe("drones/register", 1, onNewDroneHandler)
 
 	//////////////////////////////////////////////////
 

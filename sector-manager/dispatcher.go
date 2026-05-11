@@ -56,7 +56,8 @@ func dispatch(raftNode *raft.Raft, droneID string, req shared.Requisition) {
 
 	mission := shared.DroneMission{
 		RequisitionID: req.ID,
-		Type:          shared.OIL, //TODO: Definir tipo com base na requisição
+		AssignedDrone: droneID,
+		Type:          shared.WATER, //TODO: Definir tipo com base na requisição
 		Coordinate:    req.Coord,
 		LamportTime:   LClock.GetTime(),
 	}

@@ -30,7 +30,7 @@ build:
 run-all: run-broker1 run-broker2 run-broker3
 
 run-broker1:
-	docker run -d --rm \
+	docker run -it --rm \
 		--name $(BROKER1_NAME) \
 		-p $(BROKER1_PORT):$(BROKER1_PORT) \
 		$(IMAGE_NAME) \
@@ -38,7 +38,7 @@ run-broker1:
 		-port=$(BROKER1_PORT)
 
 run-broker2:
-	docker run -d --rm \
+	docker run -it --rm \
 		--name $(BROKER2_NAME) \
 		-p $(BROKER2_PORT):$(BROKER2_PORT) \
 		$(IMAGE_NAME) \
@@ -46,7 +46,7 @@ run-broker2:
 		-port=$(BROKER2_PORT)
 
 run-broker3:
-	docker run -d --rm \
+	docker run -it --rm \
 		--name $(BROKER3_NAME) \
 		-p $(BROKER3_PORT):$(BROKER3_PORT) \
 		$(IMAGE_NAME) \

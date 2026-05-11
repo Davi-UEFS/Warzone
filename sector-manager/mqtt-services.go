@@ -15,7 +15,7 @@ type joinReq struct {
 	Addr string `json:"addr"`
 }
 
-var onDroneDone = func(client mqtt.Client, msg mqtt.Message) {
+var onDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 	var result shared.DoneInfo
 
@@ -44,7 +44,7 @@ var onDroneDone = func(client mqtt.Client, msg mqtt.Message) {
 	payload, _ := json.Marshal(droneID)
 
 	cmd := shared.HeaderCommand{
-		Operation:   OP_RMVR,
+		Operation:   OP_RMVREQ,
 		Payload:     payload,
 		LamportTime: LClock.GetTime(),
 	}
@@ -105,7 +105,7 @@ var onAlertHandler = func(client mqtt.Client, msg mqtt.Message) {
 	newPayload, _ := json.Marshal(requisition)
 
 	cmd := shared.HeaderCommand{
-		Operation:   OP_ADDR,
+		Operation:   OP_ADDREQ,
 		Payload:     newPayload,
 		LamportTime: LClock.GetTime(),
 	}
@@ -119,5 +119,42 @@ var onAlertHandler = func(client mqtt.Client, msg mqtt.Message) {
 	}
 
 	fmt.Println("Incidente replicado com sucesso no cluster")
+
+}
+
+var onNewDroneHandler = func(client mqtt.Client, msg mqtt.Message) {
+
+	if raftNode.State() != raft.Leader {
+		fmt.Println("Sou seguidor, encaminhando registro de drone para o líder via TCP...")
+
+		leaderInfo := searchForLeaderInfo(peers, sigPort)
+
+		if err := forwardRegisterDrone(leaderInfo.SigAddr, shared.HeaderCommand{
+			Operation: FORWARD_REG,
+			Payload:   msg.Payload(),
+		}); err != nil {
+			fmt.Printf("Erro ao encaminhar registro de drone: %v\n", err)
+		}
+
+		return
+	}
+
+	LClock.Tick()
+
+	cmd := shared.HeaderCommand{
+		Operation:   OP_REGDRONE,
+		Payload:     msg.Payload(),
+		LamportTime: LClock.GetTime(),
+	}
+
+	cmdBytes, _ := json.Marshal(cmd)
+
+	future := raftNode.Apply(cmdBytes, 5*time.Second)
+	if err := future.Error(); err != nil {
+		fmt.Printf("Erro ao aplicar comando REGDRONE: %v\n", err)
+		return
+	}
+
+	fmt.Println("Novo drone registrado com sucesso no cluster")
 
 }

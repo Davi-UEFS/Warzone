@@ -8,11 +8,12 @@ import (
 )
 
 const (
-	OP_ADDR      = "ADD_REQUISITION"
-	OP_RMVR      = "REMOVE_REQUISITION"
+	OP_ADDREQ    = "ADD_REQUISITION"
+	OP_RMVREQ    = "REMOVE_REQUISITION"
 	OP_ASSIGN    = "ASSIGN_DRONE"
 	OP_DEASSIGN  = "DEASSIGN_DRONE"
 	OP_UPDATEDRB = "UPDATE_DRONE_BROKER"
+	OP_REGDRONE  = "REGISTER_DRONE"
 )
 
 const (
@@ -20,16 +21,13 @@ const (
 	JOIN           = "JOIN_CLUSTER"
 	FORWARD_ALR    = "FORWARD_ALERT"
 	FORWARD_DONE   = "FORWARD_DONE"
+	FORWARD_ASSIGN = "FORWARD_ASSIGN"
+	FORWARD_REG    = "FORWARD_REGISTER"
 	SUCCESS        = "SUCESSO: OPERAÇÃO CONCLUÍDA"
 	ERR_NOT_LEADER = "ERRO: NÃO É O LIDER"
 )
 
-var sectorFSM = &RaftFSM{
-	Mu:               sync.Mutex{},
-	DroneMap:         make(map[string]shared.Drone),
-	PendingReqsQueue: []shared.Requisition{},
-	InProgressReqs:   map[string]shared.Requisition{},
-}
+var sectorFSM *RaftFSM
 
 var LClock = shared.LamportClock{
 	Time: 0,

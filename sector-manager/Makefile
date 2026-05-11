@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 
 IMAGE_NAME = sector-manager
-HOST ?= 127.0.0.1
+HOST ?= 192.168.18.7
 
 NODE1_ID ?= setorA
 NODE2_ID ?= setorB
@@ -15,7 +15,7 @@ NODE1_SIG_PORT ?= 11001
 NODE2_SIG_PORT ?= 11002
 NODE3_SIG_PORT ?= 11003
 
-BROKER_HOST ?= 127.0.0.1
+BROKER_HOST ?= 192.168.18.7
 BROKER1_PORT ?= 1883
 BROKER2_PORT ?= 1884
 BROKER3_PORT ?= 1885
@@ -41,11 +41,12 @@ build:
 	@echo "Compilando imagem Docker dos nodes..."
 	docker build -t $(IMAGE_NAME) -f dockerfile ..
 
-run-all: run-node1 run-node2 run-node3
+run-all: run-sectorA run-sectorB run-sectorC
 
-run-node1:
+run-sectorA:
 	@mkdir -p $(DATA_BASE_DIR)/$(NODE1_ID)
-	docker run -d --rm \
+	@chmod -R 777 $(DATA_BASE_DIR)/$(NODE1_ID)
+	docker run -it --rm \
 		--name $(NODE1_ID) \
 		-p $(NODE1_RAFT_PORT):$(NODE1_RAFT_PORT) \
 		-p $(NODE1_SIG_PORT):$(NODE1_SIG_PORT) \
@@ -53,16 +54,17 @@ run-node1:
 		-v "$(DATA_BASE_DIR)/$(NODE1_ID)":/data \
 		$(IMAGE_NAME) \
 		-id=$(NODE1_ID) \
-		-raft=$(HOST):$(NODE1_RAFT_PORT) \
-		-sig=$(HOST):$(NODE1_SIG_PORT) \
-		-peers=$(HOST):$(NODE2_SIG_PORT),$(HOST):$(NODE3_SIG_PORT) \
-		-broker=tcp://$(BROKER_HOST):$(BROKER1_PORT) \
+		-raft-port=$(NODE1_RAFT_PORT) \
+		-broker-host=$(BROKER_HOST) \
+		-broker-port=$(BROKER1_PORT) \
 		-dir=/data \
+		-peers=$(HOST):$(NODE2_SIG_PORT),$(HOST):$(NODE3_SIG_PORT) \
 		-bootstrap=true
 
-run-node2:
+run-sectorB:
 	@mkdir -p $(DATA_BASE_DIR)/$(NODE2_ID)
-	docker run -d --rm \
+	@chmod -R 777 $(DATA_BASE_DIR)/$(NODE2_ID)
+	docker run -it --rm \
 		--name $(NODE2_ID) \
 		-p $(NODE2_RAFT_PORT):$(NODE2_RAFT_PORT) \
 		-p $(NODE2_SIG_PORT):$(NODE2_SIG_PORT) \
@@ -70,15 +72,17 @@ run-node2:
 		-v "$(DATA_BASE_DIR)/$(NODE2_ID)":/data \
 		$(IMAGE_NAME) \
 		-id=$(NODE2_ID) \
-		-raft=$(HOST):$(NODE2_RAFT_PORT) \
-		-sig=$(HOST):$(NODE2_SIG_PORT) \
-		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE3_SIG_PORT) \
-		-broker=tcp://$(BROKER_HOST):$(BROKER2_PORT) \
+		-raft-port=$(NODE2_RAFT_PORT) \
+		-sig-port=$(NODE2_SIG_PORT) \
+		-broker-host=$(BROKER_HOST) \
+		-broker-port=$(BROKER2_PORT) \
 		-dir=/data
+		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE3_SIG_PORT) \
 
-run-node3:
+run-sectorC:
 	@mkdir -p $(DATA_BASE_DIR)/$(NODE3_ID)
-	docker run -d --rm \
+	@chmod -R 777 $(DATA_BASE_DIR)/$(NODE3_ID)
+	docker run -it --rm \
 		--name $(NODE3_ID) \
 		-p $(NODE3_RAFT_PORT):$(NODE3_RAFT_PORT) \
 		-p $(NODE3_SIG_PORT):$(NODE3_SIG_PORT) \
@@ -86,11 +90,12 @@ run-node3:
 		-v "$(DATA_BASE_DIR)/$(NODE3_ID)":/data \
 		$(IMAGE_NAME) \
 		-id=$(NODE3_ID) \
-		-raft=$(HOST):$(NODE3_RAFT_PORT) \
-		-sig=$(HOST):$(NODE3_SIG_PORT) \
-		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE2_SIG_PORT) \
-		-broker=tcp://$(BROKER_HOST):$(BROKER3_PORT) \
+		-raft-port=$(NODE3_RAFT_PORT) \
+		-sig-port=$(NODE3_SIG_PORT) \
+		-broker-host=$(BROKER_HOST) \
+		-broker-port=$(BROKER3_PORT) \
 		-dir=/data
+		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE2_SIG_PORT) \
 
 run-node-prompt:
 	@echo "Configuracao interativa (host)"
@@ -135,6 +140,8 @@ run-node-prompt:
 	BOOT_ARG=""; \
 	if [ "$$_BOOT" = "true" ]; then BOOT_ARG="-bootstrap=true"; fi; \
 	echo "Iniciando no $$_NODE_ID em modo host..."; \
+	mkdir -p "$$_DIR"; \
+	chmod -R 777 "$$_DIR"; \
 	docker run -it --rm \
 		--name $$_NODE_ID \
 		--network host \
@@ -142,9 +149,10 @@ run-node-prompt:
 		-v "$$_DIR":/data \
 		$(IMAGE_NAME) \
 		-id=$$_NODE_ID \
-		-raft=$$_HOST:$$_RAFT_PORT \
-		-sig=$$_HOST:$$_SIG_PORT \
-		-broker=tcp://$$_BROKER_HOST:$$_BROKER_PORT \
+		-raft-port=$$_RAFT_PORT \
+		-sig-port=$$_SIG_PORT \
+		-broker-host=$$_BROKER_HOST \
+		-broker-port=$$_BROKER_PORT \
 		-dir=/data \
 		$$PEERS_ARG \
 		$$BOOT_ARG

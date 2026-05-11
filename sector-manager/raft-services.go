@@ -46,10 +46,10 @@ func (fsm *RaftFSM) Apply(log *raft.Log) interface{} {
 	LClock.CompareAndUpdate(cmd.LamportTime)
 
 	switch cmd.Operation {
-	case OP_ADDR:
+	case OP_ADDREQ:
 		return fsm.handleADDRequisition(cmd.Payload)
 
-	case OP_RMVR:
+	case OP_RMVREQ:
 		return fsm.handleRMVRequisition(cmd.Payload)
 
 	case OP_ASSIGN:
@@ -60,6 +60,9 @@ func (fsm *RaftFSM) Apply(log *raft.Log) interface{} {
 
 	case OP_UPDATEDRB:
 		return fsm.handleUPDATEDRBroker(cmd.Payload)
+
+	case OP_REGDRONE:
+		return fsm.handleADDDrone(cmd.Payload)
 	default:
 		fmt.Printf("Operação desconhecida: %s\n", cmd.Operation)
 		return nil //TODO: TRATAR MELHOR ESSA SITUAÇÃO DE OPERAÇÃO DESCONHECIDA
@@ -140,6 +143,25 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 	return nil
 }
 
+func (fsm *RaftFSM) handleADDDrone(payload json.RawMessage) error {
+
+	var newDrone shared.Drone
+
+	if err := json.Unmarshal(payload, &newDrone); err != nil {
+		return fmt.Errorf("erro unmarshal: %v", err)
+	}
+
+	fsm.Mu.Lock()
+	defer fsm.Mu.Unlock()
+
+	fsm.DroneMap[newDrone.ID] = newDrone
+
+	fmt.Printf("FSM: Novo drone registrado: %s (Broker: %s)\n", newDrone.ID, newDrone.CurrentBroker)
+
+	return nil
+
+}
+
 func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 	var mission shared.DroneMission
 	if err := json.Unmarshal(payload, &mission); err != nil {
@@ -181,8 +203,13 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 	//TODO: DEIXAR DRONE CUIDAR DO ASSIGNED MISSION?
 
 	if drone.CurrentSector == fsm.Sector {
-		token := fsm.Client.Publish(fmt.Sprintf("drones/%s/", mission.AssignedDrone), 1, false, payload)
+		topic := fmt.Sprintf("drones/%s/mission", mission.AssignedDrone)
+		fmt.Printf("Publicando missão para tópico: %s | payload: %s\n", topic, string(payload))
+		token := fsm.Client.Publish(topic, 1, false, []byte(payload))
 		token.Wait()
+		if token.Error() != nil {
+			fmt.Printf("Erro ao publicar missão: %v\n", token.Error())
+		}
 	}
 
 	fmt.Printf("Sucesso: Drone %s alocado para Incidente %s.\n", mission.AssignedDrone, mission.RequisitionID)
@@ -226,7 +253,7 @@ func (fsm *RaftFSM) handleUPDATEDRBroker(payload json.RawMessage) error {
 	defer fsm.Mu.Unlock()
 
 	if drone, ok := fsm.DroneMap[values.DroneID]; ok {
-		drone.UpdateBroker(values.BrokerID)
+		drone.UpdateSector(values.BrokerID)
 		fsm.DroneMap[values.DroneID] = drone
 	} else {
 		fmt.Printf("Drone %s não encontrado.\n", values.DroneID)

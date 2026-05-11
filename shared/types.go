@@ -7,11 +7,13 @@ import (
 	"sync"
 )
 
+type DroneStatus string
+
 const (
-	DRONE_IDLE   = "IDLE"
-	DRONE_BUSY   = "BUSY"
-	DRONE_ERROR  = "ERROR"
-	DRONE_RETURN = "RETURNING"
+	DRONE_IDLE   DroneStatus = "IDLE"
+	DRONE_BUSY   DroneStatus = "BUSY"
+	DRONE_ERROR  DroneStatus = "ERROR"
+	DRONE_RETURN DroneStatus = "RETURNING"
 )
 
 const (
@@ -29,10 +31,10 @@ type DroneMission struct {
 
 type Drone struct {
 	ID             string
-	StationID      string
 	BatteryLevel   int
-	Status         string
+	Status         DroneStatus
 	CurrentSector  string
+	CurrentBroker  string
 	CurrentMission string
 }
 
@@ -44,8 +46,12 @@ func (drone *Drone) SetIdle() {
 	drone.Status = DRONE_IDLE
 }
 
-func (drone *Drone) UpdateBroker(id string) {
+func (drone *Drone) UpdateSector(id string) {
 	drone.CurrentSector = id
+}
+
+func (drone *Drone) UpdateBroker(id string) {
+	drone.CurrentBroker = id
 }
 
 func (drone *Drone) AssignMission(missionID string) {

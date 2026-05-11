@@ -1,10 +1,7 @@
-// 1) The broker. We create an embedded MQTT server using mochi-mqtt,
-// add a TCP listener on the standard MQTT port 1883, and start serving.
-// This single process handles all message routing, QoS, retained messages,
-// and Last Will & Testament.
 package main
 
 import (
+	"bytes"
 	"flag"
 	"log"
 	"os"
@@ -15,16 +12,60 @@ import (
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/hooks/auth"
 	"github.com/mochi-mqtt/server/v2/listeners"
+	"github.com/mochi-mqtt/server/v2/packets"
 )
+
+type ConnectionLoggerHook struct {
+	mqtt.HookBase
+}
+
+func (h *ConnectionLoggerHook) ID() string {
+	return "connection-logger"
+}
+
+func (h *ConnectionLoggerHook) Provides(b byte) bool {
+	return bytes.Contains([]byte{
+		mqtt.OnConnect,
+		mqtt.OnDisconnect,
+	}, []byte{b})
+}
+
+func (h *ConnectionLoggerHook) OnConnect(cl *mqtt.Client, pk packets.Packet) error {
+	h.Log.Info("Dispositivo conectado",
+		"client_id", cl.ID,
+		"remote", cl.Net.Remote,
+		"username", pk.Connect.Username,
+	)
+	return nil
+}
+
+func (h *ConnectionLoggerHook) OnDisconnect(cl *mqtt.Client, err error, expire bool) {
+	if err != nil {
+		h.Log.Info("Dispositivo desconectado",
+			"client_id", cl.ID,
+			"remote", cl.Net.Remote,
+			"expire", expire,
+			"error", err,
+		)
+		return
+	}
+
+	h.Log.Info("Dispositivo desconectado",
+		"client_id", cl.ID,
+		"remote", cl.Net.Remote,
+		"expire", expire,
+	)
+}
 
 func main() {
 	ID := flag.String("id", "tcp1", "ID do Mochi MQTT")
 	PORT := flag.Int("port", 1883, "Porta do MQTT")
 	flag.Parse()
+
 	server := mqtt.New(nil)
 
-	// Allow all connections (no auth for demo purposes)
 	_ = server.AddHook(new(auth.AllowHook), nil)
+	_ = server.AddHook(new(ConnectionLoggerHook), nil)
 
 	address := ":" + strconv.Itoa(*PORT)
 
