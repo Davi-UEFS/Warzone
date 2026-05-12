@@ -2,9 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"math/rand"
-	"os"
 	"sync"
 	"time"
 
@@ -12,9 +12,7 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
-func getEnviromentVariables() (string, string, string) {
-	return os.Getenv("BROKER_IP"), os.Getenv("CLIENT_ID"), os.Getenv("SENSOR_TYPE")
-}
+// flags are handled in main; removed getEnviromentVariables
 
 func createAlertPayload(SENSOR_TYPE, SENSOR_ID string) ([]byte, error) {
 
@@ -66,8 +64,13 @@ var onSolvedHandler = func(client mqtt.Client, msg mqtt.Message) {
 //////////////////////////////////////////
 
 func main() {
+	// Flags
+	broker := flag.String("broker", "tcp://localhost:1883", "Endereço do broker MQTT (ex: tcp://host:1883)")
+	sensorID := flag.String("id", "sensor-01", "ID do cliente/sensor")
+	sensorType := flag.String("type", "temperature", "Tipo de sensor")
+	flag.Parse()
 
-	BROKER_IP, CLIENT_ID, SENSOR_TYPE := getEnviromentVariables()
+	BROKER_IP, CLIENT_ID, SENSOR_TYPE := *broker, *sensorID, *sensorType
 	TOPIC := fmt.Sprintf("sensors/%s/incidents", CLIENT_ID)
 
 	client, _ := shared.MakeClient(BROKER_IP, CLIENT_ID)
