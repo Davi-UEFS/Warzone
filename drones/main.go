@@ -29,9 +29,6 @@ func (app *DroneApp) onConnect(client mqtt.Client) {
 	MISSION_TOPIC = fmt.Sprintf("drones/%s/mission", app.ID)
 	MISSION_DONE_TOPIC = fmt.Sprintf("drones/%s/done", app.ID)
 
-	//TODO: DEBUG
-	log.Printf("topico: %s", MISSION_TOPIC)
-
 	// O drone fica ouvindo as missões publicadas para ele.
 	client.Subscribe(MISSION_TOPIC, 1, app.missionHandler)
 

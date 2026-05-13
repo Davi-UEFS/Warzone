@@ -45,12 +45,9 @@ var onDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 	LClock.CompareAndUpdate(result.LCTime)
 	LClock.Tick()
 
-	droneID := result.DroneID
-	payload, _ := json.Marshal(droneID)
-
 	cmd := shared.HeaderCommand{
 		Operation:   OP_RMVREQ,
-		Payload:     payload,
+		Payload:     msg.Payload(),
 		LamportTime: LClock.GetTime(),
 	}
 
@@ -61,7 +58,7 @@ var onDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 	if err := future.Error(); err != nil {
 		fmt.Printf("Erro ao aplicar comando no Raft: %v\n", err)
 	} else {
-		fmt.Printf("Drone %s liberado da missão %s\n", droneID, result.RequisitionID)
+		fmt.Printf("Drone %s liberado da missão %s\n", result.DroneID, result.RequisitionID)
 	}
 }
 

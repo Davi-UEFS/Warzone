@@ -4,72 +4,19 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"log"
 	"net"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
 )
 
-/* DEPRECATED
-func mainMenu(client mqtt.Client) {
-	scanner := bufio.NewScanner(os.Stdin)
-	var i int = 1
-
-	for {
-		//showMenu()		//TODO: ERRO AQUI
-		scanner.Scan()
-		option := scanner.Text()
-
-		switch option {
-		case "1":
-			fmt.Println("EM BREVE...")
-
-		case "2":
-			//TODO: DEPRECATED
-			cmd := shared.DroneMission{
-				RequisitionID: fmt.Sprintf("cmd-%d", i),
-				Type:          "oil",
-				Coordinate:    shared.Coordinate{}, // Coordenada de exemplo, deve ser preenchida com dados reais
-				LamportTime:   0,                   // Tempo lógico inicial, deve ser atualizado conforme necessário
-			}
-			payload, _ := json.Marshal(cmd)
-			sendCommand(client, payload)
-
-		case "3":
-			fmt.Print("ID do sensor: ")
-			scanner.Scan()
-			sensorID := scanner.Text()
-
-			payload, _ := json.Marshal("DONE")
-
-			topic := fmt.Sprintf("sensors/%s/solved", sensorID)
-			token := client.Publish(topic, 2, false, payload)
-			token.Wait()
-			if token.Error() != nil {
-				fmt.Println("Erro ao publicar:", token.Error())
-			} else {
-				fmt.Printf("→ Ocorrência marcada como resolvida no sensor %s\n", sensorID)
-			}
-
-		case "4":
-			fmt.Println("Saindo...")
-			client.Disconnect(250)
-			return
-
-		default:
-			fmt.Println("Opção inválida")
-		}
-
-		i++
-	}
-}
-
-*/
-
-// normalizePeerAddr assegura que o endereço dado está no formato IP + Porta
-// Se não possuir porta, adiciona a porta dada.
+// ==========================================
+// 2. LÓGICA DO SECTOR MANAGER E RAFT
+// ==========================================
 
 func normalizePeerAddr(peer string, defaultPort int) string {
 	trimmed := strings.TrimSpace(peer)
@@ -85,69 +32,62 @@ func normalizePeerAddr(peer string, defaultPort int) string {
 }
 
 func main() {
-
-	// Identifica este nó no cluster.
+	// Flags de configuração
 	nodeIDFlag := flag.String("id", "node1", "ID único deste nó")
-	// Define o host base usado para calcular os endereços do Raft e do SIG.
-	hostFlag := flag.String("host", "127.0.0.1", "Host base para Raft e SIG (modo host)")
-	// Porta usada pelo serviço Raft deste nó.
+	hostFlag := flag.String("host", "127.0.0.1", "Host base para Raft e SIG")
 	raftPortFlag := flag.Int("raft-port", 10001, "Porta Raft")
-	// Host do broker MQTT que será utilizado para publicar e assinar mensagens.
-	brokerHostFlag := flag.String("broker-host", "127.0.0.1", "Host do broker MQTT")
-	// Porta do broker MQTT.
 	brokerPortFlag := flag.Int("broker-port", 1883, "Porta do broker MQTT")
-
-	// Diretório onde o estado do Raft será persistido.
 	dataDirFlag := flag.String("dir", "data/node1", "Diretório de dados")
-	// Define se este nó deve iniciar como líder e montar o cluster localmente.
 	bootstrapFlag := flag.Bool("bootstrap", false, "Iniciar como líder")
-	// Lista de peers usada para descobrir o líder quando este nó não é bootstrap.
 	peersFlag := flag.String("peers", "", "Endereços dos peers (SIG do líder). Separe por vírgula")
 	flag.Parse()
 
-	// Porta do serviço de sinalização, calculada a partir da porta do Raft.
+	// --- 1. INICIALIZA O BROKER EMBUTIDO ---
+	startEmbeddedBroker(*brokerPortFlag)
+
+	// Aguarda um segundo para garantir que a porta TCP do broker foi aberta
+	time.Sleep(1 * time.Second)
+
+	// Endereços
 	sigPort = *raftPortFlag + 1000
-	// Endereços completos (bind + advertise) usando o host base.
 	raftAddr := net.JoinHostPort(*hostFlag, strconv.Itoa(*raftPortFlag))
 	sigAddr := net.JoinHostPort(*hostFlag, strconv.Itoa(sigPort))
-	// Lista de peers informada na flag, separada por vírgula.
 	peers = strings.Split(*peersFlag, ",")
-	// Endereço do broker MQTT normalizado para o formato esperado pela aplicação.
-	brokerAddr = shared.NormalizeBrokerAddr(net.JoinHostPort(*brokerHostFlag, strconv.Itoa(*brokerPortFlag)))
 
-	// --- Inicialização do Raft ---
+	// Como o broker é embutido, o manager local sempre se conecta no localhost na porta do broker
+	brokerAddr := shared.NormalizeBrokerAddr(net.JoinHostPort("127.0.0.1", strconv.Itoa(*brokerPortFlag)))
 
+	// --- 2. INICIALIZAÇÃO DO RAFT ---
 	sectorFSM = &RaftFSM{
 		Mu:               sync.Mutex{},
 		DroneMap:         make(map[string]shared.Drone),
 		PendingReqsQueue: []shared.Requisition{},
 		InProgressReqs:   map[string]shared.Requisition{},
 	}
+
 	var err error
 	raftNode, err = setupRaft(*dataDirFlag, *nodeIDFlag, raftAddr, sectorFSM, *bootstrapFlag)
 	if err != nil {
-		fmt.Printf("Erro ao iniciar Raft: %v\n", err)
-		return
+		log.Fatalf("Erro ao iniciar Raft: %v\n", err)
 	}
 
 	go startSignaling(raftNode, sigAddr)
 
-	// --- Inicialização do MQTT ---
-	client, err := shared.MakeClient(brokerAddr, *nodeIDFlag)
-
+	// --- 3. INICIALIZAÇÃO DO CLIENTE MQTT LOCAL (PAHO) ---
+	// Este client conecta-se ao broker que acabou de ser criado na própria máquina
+	client, err := shared.MakeClient(brokerAddr, *nodeIDFlag+"-client")
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
-		fmt.Printf("Erro MQTT: %v\n", token.Error())
+		log.Fatalf("Erro ao conectar Paho MQTT local: %v\n", token.Error())
 	}
 
 	client.Subscribe("sensors/+/incidents", 1, onAlertHandler)
 	client.Subscribe("drones/+/done", 1, onDoneHandler)
 	client.Subscribe("drones/register", 1, onNewDroneHandler)
 
-	//////////////////////////////////////////////////
-
 	sectorFSM.Sector = *nodeIDFlag
 	sectorFSM.Client = client
 
+	// --- 4. LÓGICA DE JOIN NO CLUSTER ---
 	if !*bootstrapFlag {
 		fmt.Println("Procurando líder na lista de peers...")
 		leaderInfo := searchForLeaderInfo(peers, sigPort)
@@ -179,12 +119,12 @@ func main() {
 		}
 
 		fmt.Println("Join request enviado, aguardando replicação...")
-
 	}
-	fmt.Printf("Nó %s em execução\n", *nodeIDFlag)
-	fmt.Printf("Raft: %s | SIG: %s | Broker: %s\n", raftAddr, sigAddr, brokerAddr)
+
+	fmt.Printf("✅ Nó %s em execução com Broker Embutido\n", *nodeIDFlag)
+	fmt.Printf("Raft: %s | SIG: %s | Broker Embutido: :%d\n", raftAddr, sigAddr, *brokerPortFlag)
 
 	go startDispatcher()
 
-	select {}
+	select {} // Trava a thread principal mantendo o Manager (e o Broker) vivos
 }

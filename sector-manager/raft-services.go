@@ -104,27 +104,27 @@ func (fsm *RaftFSM) handleADDRequisition(payload json.RawMessage) error {
 
 func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 
-	var droneID string
+	var doneInfo shared.DoneInfo
 
-	if err := json.Unmarshal(payload, &droneID); err != nil {
-		fmt.Printf("Erro ao desserializar ID do drone: %v.\n", err)
+	if err := json.Unmarshal(payload, &doneInfo); err != nil {
+		fmt.Printf("Erro ao desserializar pacote: %v.\n", err)
 		return err
 	}
 
 	fsm.Mu.Lock()
 	defer fsm.Mu.Unlock()
 
-	drone, ok := fsm.DroneMap[droneID]
+	drone, ok := fsm.DroneMap[doneInfo.DroneID]
 
 	if !ok {
-		return fmt.Errorf("Drone %s não encontrado\n", droneID)
+		return fmt.Errorf("Drone %s não encontrado\n", doneInfo.DroneID)
 	}
 
-	reqID := drone.CurrentMission
+	reqID := doneInfo.RequisitionID
 
 	if reqID == "" {
 		// Sem missão atribuída; nada a remover
-		fmt.Printf("Drone %s não possui missão atual.\n", droneID)
+		fmt.Printf("Drone %s não possui missão atual.\n", doneInfo.DroneID)
 		return nil
 	}
 
@@ -153,10 +153,10 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 
 		// Primeiro liberta o drone localmente, depois limpa o registro da requisição
 		drone.SetIdle()
-		fsm.DroneMap[droneID] = drone
-		delete(fsm.InProgressReqs, reqID)
+		fsm.DroneMap[doneInfo.DroneID] = drone
+		delete(fsm.InProgressReqs, doneInfo.RequisitionID)
 
-		fmt.Printf("Requisição %s concluída pelo drone %s.\n", reqID, droneID)
+		fmt.Printf("Requisição %s concluída pelo drone %s.\n", doneInfo.RequisitionID, doneInfo.DroneID)
 
 	}
 
@@ -174,9 +174,14 @@ func (fsm *RaftFSM) handleREGDrone(payload json.RawMessage) error {
 	fsm.Mu.Lock()
 	defer fsm.Mu.Unlock()
 
-	fsm.DroneMap[newDrone.ID] = newDrone
+	if existingDrone, ok := fsm.DroneMap[newDrone.ID]; ok {
+		newDrone.Status = existingDrone.Status
+		newDrone.CurrentMission = existingDrone.CurrentMission
+	} else {
+		fmt.Printf("FSM: Novo drone registrado: %s (Broker: %s)\n", newDrone.ID, newDrone.CurrentBroker)
+	}
 
-	fmt.Printf("FSM: Novo drone registrado: %s (Broker: %s)\n", newDrone.ID, newDrone.CurrentBroker)
+	fsm.DroneMap[newDrone.ID] = newDrone
 
 	return nil
 

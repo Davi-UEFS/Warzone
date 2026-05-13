@@ -74,7 +74,7 @@ func (app *DroneApp) connectWithFailover() error {
 	for {
 		// Normaliza o endereço do broker atual.
 		broker := shared.NormalizeBrokerAddr(app.Brokers[app.CurrentIdx])
-		fmt.Printf("[Drone %s] Tentando conectar em %s...\n", app.ID, broker)
+		fmt.Printf("Tentando conectar em %s...\n", broker)
 
 		// Se houver uma conexão anterior ativa, encerra antes de trocar.
 		if app.Client != nil && app.Client.IsConnected() {
@@ -84,7 +84,7 @@ func (app *DroneApp) connectWithFailover() error {
 		// Cria um client novo apontando somente para o broker atual.
 		client, err := newDroneMQTTClient(app.ID, []string{broker}, app.onConnect, app.onLost)
 		if err != nil {
-			fmt.Printf("[Drone %s] Erro ao criar client: %v\n", app.ID, err)
+			fmt.Printf("Erro ao criar client: %v\n", err)
 		} else {
 			// Conecta efetivamente.
 			token := client.Connect()
@@ -93,11 +93,11 @@ func (app *DroneApp) connectWithFailover() error {
 			if token.Error() == nil {
 				// Conexão bem-sucedida: salva o client ativo.
 				app.Client = client
-				fmt.Printf("[Drone %s] Conectado em %s\n", app.ID, broker)
+				fmt.Printf("Conectado em %s\n", broker)
 				return nil
 			}
 
-			fmt.Printf("[Drone %s] Falha em %s: %v\n", app.ID, broker, token.Error())
+			fmt.Printf("Falha em %s: %v\n", broker, token.Error())
 		}
 
 		// Próximo broker da lista.

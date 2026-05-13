@@ -249,6 +249,8 @@ func handleForwardingAlert(raftNode *raft.Raft, payload json.RawMessage) error {
 		return err
 	}
 
+	fmt.Printf("Requisição criada para o sensor %s: %s\n", alert.SensorID, reqID)
+
 	return nil
 
 }
@@ -264,8 +266,8 @@ func handleForwardingDone(raftNode *raft.Raft, payload json.RawMessage) error {
 	LClock.CompareAndUpdate(result.LCTime)
 	LClock.Tick()
 
-	droneID := result.DroneID
-	newPayload, _ := json.Marshal(droneID)
+	// Preciso fazer isso pq RawMessage nao e considerado []byte.
+	newPayload, _ := json.Marshal(result)
 
 	cmd := shared.HeaderCommand{
 		Operation:   OP_RMVREQ,
@@ -281,7 +283,7 @@ func handleForwardingDone(raftNode *raft.Raft, payload json.RawMessage) error {
 		return fmt.Errorf("Erro ao aplicar comando no Raft: %v\n", err)
 	}
 
-	fmt.Printf("Drone %s liberado da missão %s\n", droneID, result.RequisitionID)
+	fmt.Printf("Drone %s liberado da missão %s\n", result.DroneID, result.RequisitionID)
 	return nil
 
 }
