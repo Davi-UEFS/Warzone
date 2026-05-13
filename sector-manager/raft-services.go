@@ -64,7 +64,7 @@ func (fsm *RaftFSM) Apply(log *raft.Log) interface{} {
 			return fsm.handleUPDATEDRBroker(cmd.Payload)
 		*/
 	case OP_REGDRONE:
-		return fsm.handleADDDrone(cmd.Payload)
+		return fsm.handleREGDrone(cmd.Payload)
 	default:
 		fmt.Printf("Operação desconhecida: %s\n", cmd.Operation)
 		return nil //TODO: TRATAR MELHOR ESSA SITUAÇÃO DE OPERAÇÃO DESCONHECIDA
@@ -81,13 +81,21 @@ func (fsm *RaftFSM) handleADDRequisition(payload json.RawMessage) error {
 	}
 	fsm.Mu.Lock()
 
+	// Evita duplicatas: checar tanto em Pending quanto em InProgress
 	for _, v := range fsm.PendingReqsQueue {
 		if v.ID == requisition.ID {
-			fmt.Printf("Requisição %s já existe.\n", v.ID)
+			fmt.Printf("Requisição %s já existe na fila pendente.\n", v.ID)
 			fsm.Mu.Unlock()
 			return nil
 		}
 	}
+
+	if _, inProgress := fsm.InProgressReqs[requisition.ID]; inProgress {
+		fmt.Printf("Requisição %s já está em progresso.\n", requisition.ID)
+		fsm.Mu.Unlock()
+		return nil
+	}
+
 	fsm.PendingReqsQueue = append(fsm.PendingReqsQueue, requisition) //TODO: IMPLEMENTAR PRIORITY QUEUE DEPOIS
 	fsm.Mu.Unlock()
 
@@ -113,6 +121,13 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 	}
 
 	reqID := drone.CurrentMission
+
+	if reqID == "" {
+		// Sem missão atribuída; nada a remover
+		fmt.Printf("Drone %s não possui missão atual.\n", droneID)
+		return nil
+	}
+
 	requisition, exist := fsm.InProgressReqs[reqID]
 
 	if exist {
@@ -120,9 +135,7 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 		LClock.Tick()
 
 		if requisition.OriginSector == fsm.Sector {
-			log.Println("entrei no if")
 			topic := fmt.Sprintf("sensors/%s/solved", shared.ExtractSensorID(requisition.ID))
-			log.Println(topic)
 			response := shared.SolvedInfo{
 				RequisitionID: requisition.ID,
 				LCTime:        LClock.GetTime(),
@@ -138,9 +151,10 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 			}
 		}
 
-		delete(fsm.InProgressReqs, reqID)
+		// Primeiro liberta o drone localmente, depois limpa o registro da requisição
 		drone.SetIdle()
 		fsm.DroneMap[droneID] = drone
+		delete(fsm.InProgressReqs, reqID)
 
 		fmt.Printf("Requisição %s concluída pelo drone %s.\n", reqID, droneID)
 
@@ -149,7 +163,7 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 	return nil
 }
 
-func (fsm *RaftFSM) handleADDDrone(payload json.RawMessage) error {
+func (fsm *RaftFSM) handleREGDrone(payload json.RawMessage) error {
 
 	var newDrone shared.Drone
 
@@ -193,14 +207,22 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 		return fmt.Errorf("requisição não encontrada")
 	}
 
-	fsm.InProgressReqs[mission.RequisitionID] = targetReq
-	fsm.PendingReqsQueue = append(fsm.PendingReqsQueue[:targetReqIndex], fsm.PendingReqsQueue[targetReqIndex+1:]...)
+	// Já está em progresso?
+	if _, exists := fsm.InProgressReqs[mission.RequisitionID]; exists {
+		fmt.Printf("Requisição %s já está em progresso.\n", mission.RequisitionID)
+		return nil
+	}
 
+	// Verifica se o drone existe antes de alterar o estado da fila/inq.
 	drone, ok := fsm.DroneMap[mission.AssignedDrone]
 	if !ok {
 		fmt.Printf("Abortando: Drone %s não mapeado na FSM.\n", mission.AssignedDrone)
 		return fmt.Errorf("drone não encontrado")
 	}
+
+	// Agora que tudo foi validado, atualiza o estado
+	fsm.InProgressReqs[mission.RequisitionID] = targetReq
+	fsm.PendingReqsQueue = append(fsm.PendingReqsQueue[:targetReqIndex], fsm.PendingReqsQueue[targetReqIndex+1:]...)
 
 	drone.SetBusy(mission.RequisitionID)
 	fsm.DroneMap[mission.AssignedDrone] = drone
