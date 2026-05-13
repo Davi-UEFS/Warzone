@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Davi-UEFS/Warzone/internal/messaging"
 	"github.com/Davi-UEFS/Warzone/shared"
 )
 
@@ -132,21 +133,19 @@ func main() {
 
 	go startSignaling(raftNode, sigAddr)
 
-	// --- Inicialização do MQTT ---
-	client, err := shared.MakeClient(brokerAddr, *nodeIDFlag)
+	sectorFSM.Sector = *nodeIDFlag
+	events := make(chan FSMEvent, 256)
+	sectorFSM.EventSink = events
 
-	if token := client.Connect(); token.Wait() && token.Error() != nil {
-		fmt.Printf("Erro MQTT: %v\n", token.Error())
-	}
-
-	client.Subscribe("sensors/+/incidents", 1, onAlertHandler)
-	client.Subscribe("drones/+/done", 1, onDoneHandler)
-	client.Subscribe("drones/register", 1, onNewDroneHandler)
+	// --- Inicialização do MQTT (isolado do FSM) ---
+	mqttClient := messaging.NewClient(brokerAddr, *nodeIDFlag)
+	mqttClient.Subscribe("sensors/+/incidents", 1, onAlertHandler)
+	mqttClient.Subscribe("drones/+/done", 1, onDoneHandler)
+	mqttClient.Subscribe("drones/register", 1, onNewDroneHandler)
+	mqttClient.Connect()
+	startFSMEventPublisher(events, mqttClient)
 
 	//////////////////////////////////////////////////
-
-	sectorFSM.Sector = *nodeIDFlag
-	sectorFSM.Client = client
 
 	if !*bootstrapFlag {
 		fmt.Println("Procurando líder na lista de peers...")

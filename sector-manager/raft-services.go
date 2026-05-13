@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
-	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/hashicorp/go-hclog"
 	raft "github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
@@ -26,7 +25,7 @@ type RaftFSM struct {
 	PendingReqsQueue []shared.Requisition //TODO: IMPLEMENTAR PRIORITY QUEUE DEPOIS
 	InProgressReqs   map[string]shared.Requisition
 	Sector           string
-	Client           mqtt.Client
+	EventSink        chan<- FSMEvent
 }
 
 type RaftSnapshot struct {
@@ -112,11 +111,11 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 	}
 
 	fsm.Mu.Lock()
-	defer fsm.Mu.Unlock()
 
 	drone, ok := fsm.DroneMap[droneID]
 
 	if !ok {
+		fsm.Mu.Unlock()
 		return fmt.Errorf("Drone %s não encontrado\n", droneID)
 	}
 
@@ -125,10 +124,12 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 	if reqID == "" {
 		// Sem missão atribuída; nada a remover
 		fmt.Printf("Drone %s não possui missão atual.\n", droneID)
+		fsm.Mu.Unlock()
 		return nil
 	}
 
 	requisition, exist := fsm.InProgressReqs[reqID]
+	var solvedEvent *FSMEvent
 
 	if exist {
 
@@ -141,13 +142,16 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 				LCTime:        LClock.GetTime(),
 			}
 
-			payload, _ := json.Marshal(response)
-
-			token := fsm.Client.Publish(topic, 1, false, payload)
-			token.Wait()
-
-			if token.Error() != nil {
-				fmt.Printf("Erro ao publicar resolução de incidente: %v\n", token.Error())
+			eventPayload, err := json.Marshal(response)
+			if err != nil {
+				fmt.Printf("Erro ao serializar resolução de incidente: %v\n", err)
+			} else {
+				solvedEvent = &FSMEvent{
+					Topic:    topic,
+					QoS:      1,
+					Retained: false,
+					Payload:  eventPayload,
+				}
 			}
 		}
 
@@ -158,6 +162,11 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 
 		fmt.Printf("Requisição %s concluída pelo drone %s.\n", reqID, droneID)
 
+	}
+
+	fsm.Mu.Unlock()
+	if solvedEvent != nil {
+		fsm.emitEvent(*solvedEvent)
 	}
 
 	return nil
@@ -189,7 +198,6 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 	}
 
 	fsm.Mu.Lock()
-	defer fsm.Mu.Unlock()
 
 	var targetReq shared.Requisition
 	targetReqIndex := -1
@@ -204,12 +212,14 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 
 	if targetReqIndex == -1 {
 		fmt.Printf("Abortando: Requisição %s não encontrada na fila.\n", mission.RequisitionID)
+		fsm.Mu.Unlock()
 		return fmt.Errorf("requisição não encontrada")
 	}
 
 	// Já está em progresso?
 	if _, exists := fsm.InProgressReqs[mission.RequisitionID]; exists {
 		fmt.Printf("Requisição %s já está em progresso.\n", mission.RequisitionID)
+		fsm.Mu.Unlock()
 		return nil
 	}
 
@@ -217,6 +227,7 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 	drone, ok := fsm.DroneMap[mission.AssignedDrone]
 	if !ok {
 		fmt.Printf("Abortando: Drone %s não mapeado na FSM.\n", mission.AssignedDrone)
+		fsm.Mu.Unlock()
 		return fmt.Errorf("drone não encontrado")
 	}
 
@@ -228,15 +239,21 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 	fsm.DroneMap[mission.AssignedDrone] = drone
 
 	//TODO: DEIXAR DRONE CUIDAR DO ASSIGNED MISSION?
+	var missionEvent *FSMEvent
 
 	if drone.CurrentSector == fsm.Sector {
 		topic := fmt.Sprintf("drones/%s/mission", mission.AssignedDrone)
-		fmt.Printf("Publicando missão para tópico: %s | payload: %s\n", topic, string(payload))
-		token := fsm.Client.Publish(topic, 1, false, []byte(payload))
-		token.Wait()
-		if token.Error() != nil {
-			fmt.Printf("Erro ao publicar missão: %v\n", token.Error())
+		missionEvent = &FSMEvent{
+			Topic:    topic,
+			QoS:      1,
+			Retained: false,
+			Payload:  payload,
 		}
+	}
+
+	fsm.Mu.Unlock()
+	if missionEvent != nil {
+		fsm.emitEvent(*missionEvent)
 	}
 
 	fmt.Printf("Sucesso: Drone %s alocado para Incidente %s.\n", mission.AssignedDrone, mission.RequisitionID)
