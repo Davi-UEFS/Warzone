@@ -44,12 +44,12 @@ func NewClient(brokerAddr, clientID string) *Client {
 func (c *Client) Connect() {
 	token := c.client.Connect()
 	if !token.WaitTimeout(3 * time.Second) {
-		fmt.Printf("MQTT indisponível no momento (client=%s): timeout de conexão\n", c.clientID)
+		fmt.Printf("MQTT indisponível no momento (client=%s): timeout de conexão, reconexão automática seguirá em background\n", c.clientID)
 		return
 	}
 
 	if token.Error() != nil {
-		fmt.Printf("MQTT indisponível no momento (client=%s): %v\n", c.clientID, token.Error())
+		fmt.Printf("MQTT indisponível no momento (client=%s): %v (reconexão automática seguirá em background)\n", c.clientID, token.Error())
 	}
 }
 
