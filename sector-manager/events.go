@@ -21,7 +21,7 @@ func (fsm *RaftFSM) emitEvent(event FSMEvent) {
 	select {
 	case fsm.EventSink <- event:
 	default:
-		fmt.Printf("Fila de eventos cheia. Evento descartado: %s\n", event.Topic)
+		fmt.Printf("Fila de eventos cheia, descartando tópico %s (pode perder notificações de missão/incidente)\n", event.Topic)
 	}
 }
 

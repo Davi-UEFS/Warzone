@@ -129,7 +129,7 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 	}
 
 	requisition, exist := fsm.InProgressReqs[reqID]
-	var solvedEvent *FSMEvent
+	var incidentSolvedEvent *FSMEvent
 
 	if exist {
 
@@ -146,7 +146,7 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 			if err != nil {
 				fmt.Printf("Erro ao serializar resolução de incidente: %v\n", err)
 			} else {
-				solvedEvent = &FSMEvent{
+				incidentSolvedEvent = &FSMEvent{
 					Topic:    topic,
 					QoS:      1,
 					Retained: false,
@@ -165,8 +165,8 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 	}
 
 	fsm.Mu.Unlock()
-	if solvedEvent != nil {
-		fsm.emitEvent(*solvedEvent)
+	if incidentSolvedEvent != nil {
+		fsm.emitEvent(*incidentSolvedEvent)
 	}
 
 	return nil
@@ -239,11 +239,11 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 	fsm.DroneMap[mission.AssignedDrone] = drone
 
 	//TODO: DEIXAR DRONE CUIDAR DO ASSIGNED MISSION?
-	var missionEvent *FSMEvent
+	var droneMissionEvent *FSMEvent
 
 	if drone.CurrentSector == fsm.Sector {
 		topic := fmt.Sprintf("drones/%s/mission", mission.AssignedDrone)
-		missionEvent = &FSMEvent{
+		droneMissionEvent = &FSMEvent{
 			Topic:    topic,
 			QoS:      1,
 			Retained: false,
@@ -252,8 +252,8 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 	}
 
 	fsm.Mu.Unlock()
-	if missionEvent != nil {
-		fsm.emitEvent(*missionEvent)
+	if droneMissionEvent != nil {
+		fsm.emitEvent(*droneMissionEvent)
 	}
 
 	fmt.Printf("Sucesso: Drone %s alocado para Incidente %s.\n", mission.AssignedDrone, mission.RequisitionID)
