@@ -111,7 +111,6 @@ func main() {
 	raftBindAddr := net.JoinHostPort("0.0.0.0", strconv.Itoa(*raftPortFlag))
 	raftAdvertiseAddr := net.JoinHostPort(*hostFlag, strconv.Itoa(*raftPortFlag))
 	sigBindAddr := net.JoinHostPort("0.0.0.0", strconv.Itoa(sigPort))
-	sigAdvertiseAddr := net.JoinHostPort(*hostFlag, strconv.Itoa(sigPort))
 	// Lista de peers informada na flag, separada por vírgula.
 	peers = strings.Split(*peersFlag, ",")
 	// Endereço do broker MQTT normalizado para o formato esperado pela aplicação.
@@ -188,8 +187,8 @@ func main() {
 
 	}
 	fmt.Printf("Nó %s em execução\n", *nodeIDFlag)
-	fmt.Printf("Raft(bind=%s advertise=%s) | SIG(bind=%s advertise=%s) | Broker: %s\n",
-		raftBindAddr, raftAdvertiseAddr, sigBindAddr, sigAdvertiseAddr, brokerAddr)
+	fmt.Printf("Raft(bind=%s, advertise=%s) | SIG(bind=%s, advertise=%s) | Broker: %s\n",
+		raftBindAddr, raftAdvertiseAddr, sigBindAddr, getSigAddr(raftAdvertiseAddr), brokerAddr)
 
 	go startDispatcher()
 

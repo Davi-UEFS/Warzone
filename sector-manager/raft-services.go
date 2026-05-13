@@ -379,7 +379,7 @@ func setupRaft(dir, id, bindAddr, advertiseAddr string, fsm *RaftFSM, bootstrap 
 		Output: filtered,
 	})
 
-	// Endereço anunciado aos demais nós precisa ser roteável (não 0.0.0.0).
+	// Address advertised to other nodes must be routable (not 0.0.0.0).
 	advertiseTCPAddr, err := net.ResolveTCPAddr("tcp", advertiseAddr)
 	if err != nil {
 		return nil, err
