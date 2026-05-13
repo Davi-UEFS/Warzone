@@ -12,7 +12,11 @@ import (
 )
 
 func startSignaling(raftNode *raft.Raft, port string) {
-	ln, _ := net.Listen("tcp", port)
+	ln, err := net.Listen("tcp", port)
+	if err != nil {
+		fmt.Printf("Erro ao iniciar signaling em %s: %v\n", port, err)
+		return
+	}
 	defer ln.Close()
 	for {
 		conn, err := ln.Accept()

@@ -354,7 +354,7 @@ func (fsm *RaftFSM) Restore(rc io.ReadCloser) error {
 	return nil
 }
 
-func setupRaft(dir, id, raftAddr string, fsm *RaftFSM, bootstrap bool) (*raft.Raft, error) {
+func setupRaft(dir, id, bindAddr, advertiseAddr string, fsm *RaftFSM, bootstrap bool) (*raft.Raft, error) {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, err
 	}
@@ -371,7 +371,7 @@ func setupRaft(dir, id, raftAddr string, fsm *RaftFSM, bootstrap bool) (*raft.Ra
 		},
 	}
 
-	log.Printf("Raft address: %s\n", raftAddr)
+	log.Printf("Raft bind=%s advertise=%s\n", bindAddr, advertiseAddr)
 
 	config.Logger = hclog.New(&hclog.LoggerOptions{
 		Name:   "raft",
@@ -379,13 +379,13 @@ func setupRaft(dir, id, raftAddr string, fsm *RaftFSM, bootstrap bool) (*raft.Ra
 		Output: filtered,
 	})
 
-	// bind do socket
-	tcpAddr, err := net.ResolveTCPAddr("tcp", raftAddr)
+	// Endereço anunciado aos demais nós precisa ser roteável (não 0.0.0.0).
+	advertiseTCPAddr, err := net.ResolveTCPAddr("tcp", advertiseAddr)
 	if err != nil {
 		return nil, err
 	}
 
-	transport, err := raft.NewTCPTransport(raftAddr, tcpAddr, 3, 10*time.Second, os.Stderr)
+	transport, err := raft.NewTCPTransport(bindAddr, advertiseTCPAddr, 3, 10*time.Second, os.Stderr)
 	if err != nil {
 		return nil, err
 	}
@@ -414,7 +414,7 @@ func setupRaft(dir, id, raftAddr string, fsm *RaftFSM, bootstrap bool) (*raft.Ra
 		cfg := raft.Configuration{
 			Servers: []raft.Server{{
 				ID:      config.LocalID,
-				Address: raft.ServerAddress(raftAddr),
+				Address: raft.ServerAddress(advertiseAddr),
 			}},
 		}
 		if err := raftNode.BootstrapCluster(cfg).Error(); err != nil && err != raft.ErrCantBootstrap {

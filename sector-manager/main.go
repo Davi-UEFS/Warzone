@@ -107,9 +107,11 @@ func main() {
 
 	// Porta do serviço de sinalização, calculada a partir da porta do Raft.
 	sigPort = *raftPortFlag + 1000
-	// Endereços completos (bind + advertise) usando o host base.
-	raftAddr := net.JoinHostPort(*hostFlag, strconv.Itoa(*raftPortFlag))
-	sigAddr := net.JoinHostPort(*hostFlag, strconv.Itoa(sigPort))
+	// Endereços separados entre bind local e advertise para os demais nós.
+	raftBindAddr := net.JoinHostPort("0.0.0.0", strconv.Itoa(*raftPortFlag))
+	raftAdvertiseAddr := net.JoinHostPort(*hostFlag, strconv.Itoa(*raftPortFlag))
+	sigBindAddr := net.JoinHostPort("0.0.0.0", strconv.Itoa(sigPort))
+	sigAdvertiseAddr := net.JoinHostPort(*hostFlag, strconv.Itoa(sigPort))
 	// Lista de peers informada na flag, separada por vírgula.
 	peers = strings.Split(*peersFlag, ",")
 	// Endereço do broker MQTT normalizado para o formato esperado pela aplicação.
@@ -124,16 +126,20 @@ func main() {
 		InProgressReqs:   map[string]shared.Requisition{},
 	}
 	var err error
-	raftNode, err = setupRaft(*dataDirFlag, *nodeIDFlag, raftAddr, sectorFSM, *bootstrapFlag)
+	raftNode, err = setupRaft(*dataDirFlag, *nodeIDFlag, raftBindAddr, raftAdvertiseAddr, sectorFSM, *bootstrapFlag)
 	if err != nil {
 		fmt.Printf("Erro ao iniciar Raft: %v\n", err)
 		return
 	}
 
-	go startSignaling(raftNode, sigAddr)
+	go startSignaling(raftNode, sigBindAddr)
 
 	// --- Inicialização do MQTT ---
 	client, err := shared.MakeClient(brokerAddr, *nodeIDFlag)
+	if err != nil {
+		fmt.Printf("Erro ao criar cliente MQTT: %v\n", err)
+		return
+	}
 
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		fmt.Printf("Erro MQTT: %v\n", token.Error())
@@ -159,7 +165,7 @@ func main() {
 
 		req := joinReq{
 			ID:   *nodeIDFlag,
-			Addr: raftAddr,
+			Addr: raftAdvertiseAddr,
 		}
 
 		reqPayload, err := json.Marshal(req)
@@ -182,7 +188,8 @@ func main() {
 
 	}
 	fmt.Printf("Nó %s em execução\n", *nodeIDFlag)
-	fmt.Printf("Raft: %s | SIG: %s | Broker: %s\n", raftAddr, sigAddr, brokerAddr)
+	fmt.Printf("Raft(bind=%s advertise=%s) | SIG(bind=%s advertise=%s) | Broker: %s\n",
+		raftBindAddr, raftAdvertiseAddr, sigBindAddr, sigAdvertiseAddr, brokerAddr)
 
 	go startDispatcher()
 
