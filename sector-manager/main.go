@@ -113,7 +113,7 @@ func main() {
 	// Lista de peers informada na flag, separada por vírgula.
 	peers = strings.Split(*peersFlag, ",")
 	// Endereço do broker MQTT normalizado para o formato esperado pela aplicação.
-	brokerAddr := shared.NormalizeBrokerAddr(net.JoinHostPort(*brokerHostFlag, strconv.Itoa(*brokerPortFlag)))
+	brokerAddr = shared.NormalizeBrokerAddr(net.JoinHostPort(*brokerHostFlag, strconv.Itoa(*brokerPortFlag)))
 
 	// --- Inicialização do Raft ---
 

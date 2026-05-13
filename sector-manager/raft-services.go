@@ -59,9 +59,10 @@ func (fsm *RaftFSM) Apply(log *raft.Log) interface{} {
 	case OP_DEASSIGN:
 		return fsm.handleDEASSIGNDrone(cmd.Payload)
 
-	case OP_UPDATEDRB:
-		return fsm.handleUPDATEDRBroker(cmd.Payload)
-
+		/* DEPRECATED
+		case OP_UPDATEDRB:
+			return fsm.handleUPDATEDRBroker(cmd.Payload)
+		*/
 	case OP_REGDRONE:
 		return fsm.handleADDDrone(cmd.Payload)
 	default:
@@ -119,8 +120,9 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 		LClock.Tick()
 
 		if requisition.OriginSector == fsm.Sector {
+			log.Println("entrei no if")
 			topic := fmt.Sprintf("sensors/%s/solved", shared.ExtractSensorID(requisition.ID))
-
+			log.Println(topic)
 			response := shared.SolvedInfo{
 				RequisitionID: requisition.ID,
 				LCTime:        LClock.GetTime(),
@@ -130,11 +132,14 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 
 			token := fsm.Client.Publish(topic, 1, false, payload)
 			token.Wait()
+
+			if token.Error() != nil {
+				fmt.Printf("Erro ao publicar resolução de incidente: %v\n", token.Error())
+			}
 		}
 
 		delete(fsm.InProgressReqs, reqID)
 		drone.SetIdle()
-		drone.ClearMission()
 		fsm.DroneMap[droneID] = drone
 
 		fmt.Printf("Requisição %s concluída pelo drone %s.\n", reqID, droneID)
@@ -197,8 +202,7 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 		return fmt.Errorf("drone não encontrado")
 	}
 
-	drone.SetBusy()
-	drone.AssignMission(mission.RequisitionID)
+	drone.SetBusy(mission.RequisitionID)
 	fsm.DroneMap[mission.AssignedDrone] = drone
 
 	//TODO: DEIXAR DRONE CUIDAR DO ASSIGNED MISSION?
@@ -238,31 +242,34 @@ func (fsm *RaftFSM) handleDEASSIGNDrone(payload json.RawMessage) error {
 	return nil
 }
 
+/*
+	DEPRECATED
+
 func (fsm *RaftFSM) handleUPDATEDRBroker(payload json.RawMessage) error {
 
-	var values struct {
-		DroneID  string `json:"drone_id"`
-		BrokerID string `json:"broker_id"`
+		var values struct {
+			DroneID  string `json:"drone_id"`
+			BrokerID string `json:"broker_id"`
+		}
+
+		if err := json.Unmarshal(payload, &values); err != nil {
+			fmt.Printf("Erro ao desserializar pacote: %v.\n", err)
+			return err
+		}
+
+		fsm.Mu.Lock()
+		defer fsm.Mu.Unlock()
+
+		if drone, ok := fsm.DroneMap[values.DroneID]; ok {
+			drone.UpdateSector(values.BrokerID)
+			fsm.DroneMap[values.DroneID] = drone
+		} else {
+			fmt.Printf("Drone %s não encontrado.\n", values.DroneID)
+		}
+
+		return nil
 	}
-
-	if err := json.Unmarshal(payload, &values); err != nil {
-		fmt.Printf("Erro ao desserializar pacote: %v.\n", err)
-		return err
-	}
-
-	fsm.Mu.Lock()
-	defer fsm.Mu.Unlock()
-
-	if drone, ok := fsm.DroneMap[values.DroneID]; ok {
-		drone.UpdateSector(values.BrokerID)
-		fsm.DroneMap[values.DroneID] = drone
-	} else {
-		fmt.Printf("Drone %s não encontrado.\n", values.DroneID)
-	}
-
-	return nil
-}
-
+*/
 func (fsm *RaftFSM) GetSector() string {
 	fsm.Mu.Lock()
 	defer fsm.Mu.Unlock()
@@ -338,6 +345,7 @@ func setupRaft(dir, id, raftAddr string, fsm *RaftFSM, bootstrap bool) (*raft.Ra
 		Filters: []string{
 			"dial tcp",
 			"failed to appendEntries to",
+			"failed to heartbeat to",
 		},
 	}
 
@@ -345,7 +353,7 @@ func setupRaft(dir, id, raftAddr string, fsm *RaftFSM, bootstrap bool) (*raft.Ra
 
 	config.Logger = hclog.New(&hclog.LoggerOptions{
 		Name:   "raft",
-		Level:  hclog.Error,
+		Level:  hclog.Info,
 		Output: filtered,
 	})
 

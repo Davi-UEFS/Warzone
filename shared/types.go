@@ -38,28 +38,29 @@ type Drone struct {
 	CurrentMission string
 }
 
-func (drone *Drone) SetBusy() {
-	drone.Status = DRONE_BUSY
+// Warzone/shared/types.go
+
+// SetPhysicalLocation define onde o drone está fisicamente agora.
+func (d *Drone) SetPhysicalLocation(sectorID string, brokerAddr string) {
+	d.CurrentSector = sectorID
+	d.CurrentBroker = brokerAddr
 }
 
-func (drone *Drone) SetIdle() {
-	drone.Status = DRONE_IDLE
+// SetBusy marca o drone como ocupado com uma missão específica.
+func (d *Drone) SetBusy(missionID string) {
+	d.Status = DRONE_BUSY
+	d.CurrentMission = missionID
 }
 
-func (drone *Drone) UpdateSector(id string) {
-	drone.CurrentSector = id
+// SetIdle liberta o drone para novas tarefas.
+func (d *Drone) SetIdle() {
+	d.Status = DRONE_IDLE
+	d.CurrentMission = ""
 }
 
-func (drone *Drone) UpdateBroker(id string) {
-	drone.CurrentBroker = id
-}
-
-func (drone *Drone) AssignMission(missionID string) {
-	drone.CurrentMission = missionID
-}
-
-func (drone *Drone) ClearMission() {
-	drone.CurrentMission = ""
+// HasJurisdiction verifica se este manager local deve falar com este drone.
+func (d *Drone) HasJurisdiction(localSectorID string) bool {
+	return d.CurrentSector == localSectorID
 }
 
 type DoneInfo struct {

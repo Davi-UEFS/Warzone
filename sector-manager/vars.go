@@ -35,7 +35,8 @@ var LClock = shared.LamportClock{
 }
 
 var (
-	peers    []string
-	sigPort  int
-	raftNode *raft.Raft
+	peers      []string
+	sigPort    int
+	raftNode   *raft.Raft
+	brokerAddr string
 )

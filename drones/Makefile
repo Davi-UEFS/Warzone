@@ -4,7 +4,7 @@ IMAGE_NAME ?= warzone-drone
 
 DRONE_ID ?= drone-01
 SECTOR ?= Setor-A
-BROKERS ?= tcp://127.0.0.1:1883,tcp://127.0.0.1:1884
+BROKERS ?= tcp://127.0.0.1:1883,tcp://127.0.0.1:1884,tcp://127.0.0.1:1883
 
 .PHONY: help build run run-prompt clean
 

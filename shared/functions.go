@@ -49,6 +49,6 @@ func WaitForShutdown(client mqtt.Client) {
 }
 
 func ExtractSensorID(ocurrenceID string) string {
-	parts := strings.Split(ocurrenceID, "-")
+	parts := strings.Split(ocurrenceID, "/")
 	return parts[1]
 }

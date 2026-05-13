@@ -66,7 +66,7 @@ var onDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 }
 
 func createIncidentID(SENSOR_ID string) string {
-	return fmt.Sprintf("inc-%s-%d", SENSOR_ID, time.Now().Unix())
+	return fmt.Sprintf("inc/%s/%d", SENSOR_ID, time.Now().Unix())
 }
 
 var onAlertHandler = func(client mqtt.Client, msg mqtt.Message) {
@@ -138,6 +138,17 @@ var onAlertHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 var onNewDroneHandler = func(client mqtt.Client, msg mqtt.Message) {
 
+	var drone shared.Drone
+
+	if err := json.Unmarshal(msg.Payload(), &drone); err != nil {
+		fmt.Printf("Erro ao unmarshal payload: %v\n", err)
+		return
+	}
+
+	drone.SetPhysicalLocation(sectorFSM.GetSector(), brokerAddr)
+
+	payload, _ := json.Marshal(drone)
+
 	if raftNode.State() != raft.Leader {
 		fmt.Println("Sou seguidor, encaminhando registro de drone para o líder via TCP...")
 
@@ -145,7 +156,7 @@ var onNewDroneHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 		if err := forwardRegisterDrone(leaderInfo.SigAddr, shared.HeaderCommand{
 			Operation: FORWARD_REG,
-			Payload:   msg.Payload(),
+			Payload:   payload,
 		}); err != nil {
 			fmt.Printf("Erro ao encaminhar registro de drone: %v\n", err)
 		}
@@ -157,7 +168,7 @@ var onNewDroneHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 	cmd := shared.HeaderCommand{
 		Operation:   OP_REGDRONE,
-		Payload:     msg.Payload(),
+		Payload:     payload,
 		LamportTime: LClock.GetTime(),
 	}
 
