@@ -8,6 +8,12 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
+const (
+	defaultConnectRetryInterval = 3 * time.Second
+	defaultConnectTimeout       = 3 * time.Second
+	defaultMaxReconnectInterval = 30 * time.Second
+)
+
 type subscription struct {
 	topic   string
 	qos     byte
@@ -30,8 +36,8 @@ func NewClient(brokerAddr, clientID string) *Client {
 	opts.SetCleanSession(true)
 	opts.SetAutoReconnect(true)
 	opts.SetConnectRetry(true)
-	opts.SetConnectRetryInterval(3 * time.Second)
-	opts.SetMaxReconnectInterval(30 * time.Second)
+	opts.SetConnectRetryInterval(defaultConnectRetryInterval)
+	opts.SetMaxReconnectInterval(defaultMaxReconnectInterval)
 	opts.OnConnect = c.onConnect
 	opts.OnConnectionLost = func(_ mqtt.Client, err error) {
 		fmt.Printf("Conexão MQTT perdida (client=%s): %v\n", clientID, err)
@@ -43,7 +49,7 @@ func NewClient(brokerAddr, clientID string) *Client {
 
 func (c *Client) Connect() {
 	token := c.client.Connect()
-	if !token.WaitTimeout(3 * time.Second) {
+	if !token.WaitTimeout(defaultConnectTimeout) {
 		fmt.Printf("MQTT indisponível no momento (client=%s): timeout de conexão, reconexão automática seguirá em background\n", c.clientID)
 		return
 	}
@@ -68,12 +74,12 @@ func (c *Client) Subscribe(topic string, qos byte, handler mqtt.MessageHandler) 
 }
 
 func (c *Client) Publish(topic string, qos byte, retained bool, payload []byte) error {
-	if !c.client.IsConnected() {
-		return fmt.Errorf("cliente MQTT desconectado")
+	token := c.client.Publish(topic, qos, retained, payload)
+	if !token.WaitTimeout(defaultConnectTimeout) {
+		return fmt.Errorf("timeout ao publicar em %s", topic)
 	}
 
-	token := c.client.Publish(topic, qos, retained, payload)
-	if token.Wait() && token.Error() != nil {
+	if token.Error() != nil {
 		return token.Error()
 	}
 
