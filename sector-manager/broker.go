@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"log"
 	"strconv"
+
 	// Importações do Mochi MQTT (Broker Embutido)
 	mochimqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/hooks/auth"
@@ -31,7 +32,7 @@ func (h *ConnectionLoggerHook) Provides(b byte) bool {
 }
 
 func (h *ConnectionLoggerHook) OnConnect(cl *mochimqtt.Client, pk packets.Packet) error {
-	h.Log.Info("Dispositivo conectado ao Broker Embutido",
+	h.Log.Info("Dispositivo conectado ao Broker",
 		"client_id", cl.ID,
 		"remote", cl.Net.Remote,
 	)
@@ -39,7 +40,7 @@ func (h *ConnectionLoggerHook) OnConnect(cl *mochimqtt.Client, pk packets.Packet
 }
 
 func (h *ConnectionLoggerHook) OnDisconnect(cl *mochimqtt.Client, err error, expire bool) {
-	h.Log.Info("Dispositivo desconectado do Broker Embutido",
+	h.Log.Info("Dispositivo desconectado do Broker",
 		"client_id", cl.ID,
 		"remote", cl.Net.Remote,
 	)
@@ -71,5 +72,5 @@ func startEmbeddedBroker(port int) {
 		}
 	}()
 
-	log.Printf("Broker MQTT Embutido iniciado na porta %d", port)
+	log.Printf("Broker MQTT  iniciado na porta: %d", port)
 }

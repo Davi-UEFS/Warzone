@@ -234,7 +234,8 @@ func handleForwardingAlert(raftNode *raft.Raft, payload json.RawMessage) error {
 
 	requisition := shared.Requisition{
 		ID:           reqID,
-		Priority:     1, //TODO: DEFINIR PRIORITY MELHOR DEPOIS
+		Priority:     PRIOTIRIES[alert.Type], //Prioridade baseada no tipo de alerta
+		Type:         alert.Type,
 		Coord:        alert.Coordinate,
 		OriginSector: originSector,
 		LamportTime:  LClock.GetTime(),
@@ -307,6 +308,7 @@ func handleForwardingRegisterDrone(raftNode *raft.Raft, payload json.RawMessage)
 
 	LClock.Tick()
 
+	// Preciso fazer isso pq RawMessage nao e considerado []byte.
 	newPayload, _ := json.Marshal(drone)
 
 	cmd := shared.HeaderCommand{
@@ -329,9 +331,13 @@ func handleForwardingRegisterDrone(raftNode *raft.Raft, payload json.RawMessage)
 
 // A função de disparo no líder (coloque junto das outras de forward):
 func handleForwardingHeartbeat(raftNode *raft.Raft, payload json.RawMessage) {
+
+	// Preciso fazer isso pq RawMessage nao e considerado []byte.
+	newPayload := []byte(payload)
+
 	cmd := shared.HeaderCommand{
 		Operation:   OP_HEARTBEAT,
-		Payload:     payload,
+		Payload:     newPayload,
 		LamportTime: LClock.GetTime(),
 	}
 	cmdBytes, _ := json.Marshal(cmd)

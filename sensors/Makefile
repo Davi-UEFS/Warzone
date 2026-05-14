@@ -3,7 +3,7 @@ SHELL := /bin/bash
 IMAGE_NAME ?= warzone-sensor
 
 SENSOR_ID ?= sensor-01
-SENSOR_TYPE ?= oil
+SENSOR_TYPE ?= 2 
 BROKER_ADDR ?= tcp://127.0.0.1:1883
 
 .PHONY: help build run run-prompt clean
@@ -36,7 +36,16 @@ run-prompt:
 	echo "SENSOR_ID [padrao: $(SENSOR_ID)]:"; \
 	read _SENSOR_ID; \
 	_SENSOR_ID=$${_SENSOR_ID:-$(SENSOR_ID)}; \
-	echo "Tipo do sensor"; \
+	echo ""; \
+	echo "=== TIPOS DE SENSORES ==="; \
+	echo " 1 - FIRE           (THROW_WATER)"; \
+	echo " 2 - OIL            (DRAIN_OIL)"; \
+	echo " 3 - WRECKAGE       (RESCUE_GOODS)"; \
+	echo " 4 - INSPECTION     (INSPECT_AREA)"; \
+	echo " 5 - UNKNOWN_OBJECT (DETECT_UNKNOWN_OBJECT)"; \
+	echo " 6 - BOTTLENECK     (OPTIMIZE_TRAFFIC)"; \
+	echo "========================="; \
+	echo "Tipo do sensor (Digite o numero correspondente)"; \
 	echo "SENSOR_TYPE [padrao: $(SENSOR_TYPE)]:"; \
 	read _SENSOR_TYPE; \
 	_SENSOR_TYPE=$${_SENSOR_TYPE:-$(SENSOR_TYPE)}; \

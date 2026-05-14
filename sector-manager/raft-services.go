@@ -41,6 +41,7 @@ func (fsm *RaftFSM) Apply(log *raft.Log) interface{} {
 
 	if err := json.Unmarshal(log.Data, &cmd); err != nil {
 		fmt.Printf("Erro ao desserializar comando: %v.\n", err)
+		fmt.Printf("Log data: %s\n", string(log.Data))
 		return err
 	}
 

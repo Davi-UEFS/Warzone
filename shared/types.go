@@ -17,8 +17,12 @@ const (
 )
 
 const (
-	WATER = "THROW_WATER"
-	OIL   = "DRAIN_OIL"
+	FIRE           = "THROW_WATER"
+	OIL            = "DRAIN_OIL"
+	WRECKAGE       = "RESCUE_GOODS"
+	INSPECTION     = "INSPECT_AREA"
+	UNKNOWN_OBJECT = "DETECT_UNKNOWN_OBJECT"
+	BOTTLENECK     = "OPTIMIZE_TRAFFIC"
 )
 
 type DroneMission struct {
@@ -85,6 +89,7 @@ type Alert struct {
 type Requisition struct {
 	ID           string     `json:"id"`
 	Priority     int        `json:"priority"`
+	Type         string     `json:"type"`
 	Coord        Coordinate `json:"coord"`
 	OriginSector string     `json:"origin_sector"`
 	LamportTime  int        `json:"lamport_time"`

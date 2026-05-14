@@ -107,9 +107,10 @@ var onAlertHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 	requisition := shared.Requisition{
 		ID:           reqID,
-		Priority:     1, //TODO: DEFINIR PRIORITY MELHOR DEPOIS
+		Priority:     PRIOTIRIES[alert.Type], //Prioridade baseada no tipo de alerta
+		Type:         alert.Type,
 		Coord:        alert.Coordinate,
-		OriginSector: sectorFSM.GetSector(), //TODO: DEFINIR SECTOR MELHOR DEPOIS
+		OriginSector: sectorFSM.GetSector(),
 		LamportTime:  LClock.GetTime(),
 		CreatedAt:    time.Now().Unix(),
 	}

@@ -43,6 +43,7 @@ func processRequisitions() {
 		return
 	}
 
+	//TODO: Talvez seja melhor pedir para o Raft me dar um drone inves de iterar aqui.
 	var freeDroneID string
 
 	for id, drone := range sectorFSM.DroneMap {
@@ -68,7 +69,7 @@ func dispatch(raftNode *raft.Raft, droneID string, req shared.Requisition) {
 	mission := shared.DroneMission{
 		RequisitionID: req.ID,
 		AssignedDrone: droneID,
-		Type:          shared.WATER,
+		Type:          req.Type,
 		Coordinate:    req.Coord,
 		LamportTime:   LClock.GetTime(),
 	}
@@ -88,22 +89,35 @@ func dispatch(raftNode *raft.Raft, droneID string, req shared.Requisition) {
 	if err := future.Error(); err != nil {
 		fmt.Printf("Erro ao aplicar comando ASSIGN no Raft: %v\n", err)
 	}
-	// O MQTT não fica aqui! Ele é disparado pelo main.go através do EventChan.
 }
 
 // applyAging envia comando OP_AGING via Raft para envelhecer requisições
 func applyAging() {
 	LClock.Tick()
 
+	sectorFSM.Mu.Lock()
+	if len(sectorFSM.PendingReqsQueue) == 0 {
+		sectorFSM.Mu.Unlock()
+		return
+	}
+	sectorFSM.Mu.Unlock()
+
+	payload := []byte(`{}`) // Aging não precisa de payload, mas ainda preciso mandar um RawMEssage válido
+
 	cmd := shared.HeaderCommand{
 		Operation:   OP_AGING,
-		Payload:     []byte{}, // aging não precisa de payload
+		Payload:     payload,
 		LamportTime: LClock.GetTime(),
 	}
 
-	cmdBytes, _ := json.Marshal(cmd)
+	cmdBytes, err := json.Marshal(cmd)
 
-	future := raftNode.Apply(cmdBytes, 2*time.Second)
+	if err != nil {
+		fmt.Printf("Erro ao serializar comando AGING: %v\n", err)
+		return
+	}
+
+	future := raftNode.Apply(cmdBytes, 5*time.Second)
 
 	if err := future.Error(); err != nil {
 		fmt.Printf("Erro ao aplicar comando AGING no Raft: %v\n", err)

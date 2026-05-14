@@ -32,7 +32,7 @@ type DroneApp struct {
 // missionHandler é chamado quando uma missão chega no tópico MQTT do drone.
 // Ele apenas coloca o payload no canal interno para ser processado depois.
 func (app *DroneApp) missionHandler(client mqtt.Client, msg mqtt.Message) {
-	fmt.Printf("[Drone %s] Missão recebida!\n", app.ID)
+	fmt.Println("Missão recebida!")
 	app.PayloadChannel <- msg.Payload()
 }
 
@@ -56,12 +56,27 @@ func (app *DroneApp) handleAction(ctx context.Context) {
 
 			// Executa a tarefa conforme o tipo de missão.
 			switch command.Type {
-			case shared.WATER:
+			case shared.FIRE:
 				app.CarryWater(command)
 
 			case shared.OIL:
 				app.DrainOil(command)
+
+			case shared.BOTTLENECK:
+				app.OptimizeRoute(command)
+
+			case shared.WRECKAGE:
+				app.RetrieveGoods(command)
+
+			case shared.INSPECTION:
+				app.PerformInspection(command)
+
+			case shared.UNKNOWN_OBJECT:
+				app.IdentifyObject(command)
+			default:
+				fmt.Printf("Tipo de missão desconhecido: %s\n", command.Type)
 			}
+
 		}
 	}
 }
@@ -92,8 +107,18 @@ func (app *DroneApp) notifyDone(payload []byte) {
 			}
 			fmt.Printf("Erro ao publicar done: %v — tentando novamente...\n", token.Error())
 		} else {
-			fmt.Printf("[Drone %s] Não conectado ao broker — aguardando reconexão para publicar resultado...\n", app.ID)
+			fmt.Println("Não conectado ao broker — aguardando reconexão para publicar resultado...")
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
+}
+
+func (app *DroneApp) drainBattery(value int) {
+	app.Info.BatteryLevel -= value
+	if app.Info.BatteryLevel < 0 {
+		fmt.Println("Recarregando")
+		app.Info.BatteryLevel = 100
+		//TODO: POSSO IMPLEMENTAR UM TEMPO DE RECARGA AQUI SE QUISER DEIXAR MAIS REALISTA
+	}
+
 }

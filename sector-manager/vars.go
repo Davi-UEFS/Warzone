@@ -31,6 +31,15 @@ const (
 	ERR_NOT_LEADER = "ERRO: NÃO É O LIDER"
 )
 
+var PRIOTIRIES = map[string]int{
+	shared.OIL:            4,
+	shared.FIRE:           5,
+	shared.WRECKAGE:       3,
+	shared.INSPECTION:     1,
+	shared.UNKNOWN_OBJECT: 2,
+	shared.BOTTLENECK:     2,
+}
+
 var sectorFSM *RaftFSM
 
 var LClock = shared.LamportClock{
