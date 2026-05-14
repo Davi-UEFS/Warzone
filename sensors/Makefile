@@ -4,7 +4,7 @@ IMAGE_NAME ?= warzone-sensor
 
 SENSOR_ID ?= sensor-01
 SENSOR_TYPE ?= oil
-BROKER_ADDR ?= tcp://127.0.0.1:1884
+BROKER_ADDR ?= tcp://127.0.0.1:1883
 
 .PHONY: help build run run-prompt clean
 

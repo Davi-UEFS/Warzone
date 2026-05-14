@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
-	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
 // flags are handled in main; removed getEnviromentVariables
@@ -43,23 +42,7 @@ var LClock = &shared.LamportClock{
 	Mu:   sync.Mutex{},
 }
 
-var solvedSignal = make(chan struct{}, 1)
-
-var onSolvedHandler = func(client mqtt.Client, msg mqtt.Message) {
-	fmt.Println("Incidente resolvido")
-
-	var solvedInfo shared.SolvedInfo
-	if err := json.Unmarshal(msg.Payload(), &solvedInfo); err != nil {
-		fmt.Printf("Erro ao unmarshal payload: %v\n", err)
-		return
-	}
-
-	LClock.CompareAndUpdate(solvedInfo.LCTime)
-	fmt.Printf("Lamport clock atualizado: %d\n", LClock.GetTime())
-
-	solvedSignal <- struct{}{}
-
-}
+// Nota: lógica de notificação ao sensor removida — sensores não aguardam mais solução.
 
 //////////////////////////////////////////
 
@@ -74,7 +57,28 @@ func main() {
 	TOPIC := fmt.Sprintf("sensors/%s/incidents", CLIENT_ID)
 
 	client, _ := shared.MakeClient(BROKER_IP, CLIENT_ID)
-	client.Subscribe(fmt.Sprintf("sensors/%s/solved", CLIENT_ID), 1, onSolvedHandler)
+	// Nota: não nos inscrevemos em `sensors/<id>/solved` — sensores não aguardam confirmação.
+
+	// Monitor de conexão: tenta recriar o client se necessário
+	go func() {
+		for {
+			if client == nil {
+				c, err := shared.MakeClient(BROKER_IP, CLIENT_ID)
+				if err == nil {
+					client = c
+				}
+			} else if !client.IsConnected() {
+				fmt.Println("Conexão perdida com o broker — tentando reconectar...")
+				if token := client.Connect(); token.Wait() && token.Error() != nil {
+					fmt.Printf("Reconexão falhou: %v\n", token.Error())
+					time.Sleep(2 * time.Second)
+					continue
+				}
+				fmt.Println("Reconectado ao broker")
+			}
+			time.Sleep(1 * time.Second)
+		}
+	}()
 
 	var trigger bool
 	trigger = false
@@ -89,13 +93,14 @@ func main() {
 
 			token := client.Publish(TOPIC, 1, false, payload)
 			token.Wait()
+			if token.Error() != nil {
+				fmt.Printf("Erro ao publicar alerta: %v\n", token.Error())
+			}
 
 			fmt.Println("Alerta enviado ao gerenciador.")
 
-			<-solvedSignal
+			// Sensores não aguardam confirmação de resolução — continuam gerando alertas.
 			trigger = false
-
-			fmt.Println("Alerta resolvido. Começando de novo...")
 
 		}
 

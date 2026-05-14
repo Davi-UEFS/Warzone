@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -59,6 +60,20 @@ func (app *DroneApp) Run() {
 	ctx := context.Background()
 	go app.handleAction(ctx)
 
+	// --- O HEARTBEAT (PULSO DE VIDA) ---
+	// A cada 5 segundos, o drone avisa o cluster que está vivo e qual a sua bateria
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			// Só envia se a conexão MQTT estiver ativa no momento
+			if app.Client != nil && app.Client.IsConnected() {
+				app.sendHeartbeat()
+			}
+		}
+	}()
+
 	select {}
 }
 
@@ -83,6 +98,24 @@ func (app *DroneApp) register() {
 		fmt.Printf("Falha ao enviar registro: %v\n", token.Error())
 	} else {
 		fmt.Printf("Registro enviado: Drone %s no Broker %s\n", app.ID, app.Info.CurrentBroker)
+	}
+}
+
+func (app *DroneApp) sendHeartbeat() {
+	data := shared.DroneHeartbeat{
+		ID:           app.ID,
+		BatteryLevel: app.Info.BatteryLevel,
+	}
+
+	payload, err := json.Marshal(data)
+	if err != nil {
+		fmt.Printf("Erro ao preparar heartbeat: %v\n", err)
+		return
+	}
+	topic := fmt.Sprintf("drones/%s/heartbeat", app.ID)
+	token := app.Client.Publish(topic, 1, false, payload)
+	if token.Wait() && token.Error() != nil {
+		fmt.Printf("Erro ao enviar heartbeat: %v\n", token.Error())
 	}
 }
 
@@ -123,5 +156,5 @@ func main() {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	<-stop
 
-	fmt.Println("\n[Drone] Encerrando atividades...")
+	fmt.Println("\nEncerrando atividades...")
 }

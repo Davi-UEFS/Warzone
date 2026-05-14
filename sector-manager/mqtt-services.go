@@ -111,6 +111,7 @@ var onAlertHandler = func(client mqtt.Client, msg mqtt.Message) {
 		Coord:        alert.Coordinate,
 		OriginSector: sectorFSM.GetSector(), //TODO: DEFINIR SECTOR MELHOR DEPOIS
 		LamportTime:  LClock.GetTime(),
+		CreatedAt:    time.Now().Unix(),
 	}
 
 	newPayload, _ := json.Marshal(requisition)
@@ -179,4 +180,28 @@ var onNewDroneHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 	fmt.Println("Novo drone registrado com sucesso no cluster")
 
+}
+
+var onHeartbeatHandler = func(client mqtt.Client, msg mqtt.Message) {
+	if raftNode.State() != raft.Leader {
+		// Encaminha para o líder via TCP
+		leaderInfo := searchForLeaderInfo(peers, sigPort)
+		if err := forwardHeartbeat(leaderInfo.SigAddr, shared.HeaderCommand{
+			Operation: FORWARD_HB,
+			Payload:   msg.Payload(),
+		}); err != nil {
+			// Ignoramos o erro de log para não fludar o terminal
+		}
+		return
+	}
+
+	// É o líder, então aplica o pulso na FSM
+	cmd := shared.HeaderCommand{
+		Operation:   OP_HEARTBEAT,
+		Payload:     msg.Payload(),
+		LamportTime: LClock.GetTime(), // Heartbeat não precisa incrementar o clock estritamente, mas mantemos o padrão
+	}
+
+	cmdBytes, _ := json.Marshal(cmd)
+	raftNode.Apply(cmdBytes, 1*time.Second) // Timeout bem curto, pois é menos prioritário
 }

@@ -36,6 +36,12 @@ type Drone struct {
 	CurrentSector  string
 	CurrentBroker  string
 	CurrentMission string
+	LastSeen       int64
+}
+
+type DroneHeartbeat struct {
+	ID           string `json:"id"`
+	BatteryLevel int    `json:"battery_level"`
 }
 
 // Warzone/shared/types.go
@@ -82,6 +88,7 @@ type Requisition struct {
 	Coord        Coordinate `json:"coord"`
 	OriginSector string     `json:"origin_sector"`
 	LamportTime  int        `json:"lamport_time"`
+	CreatedAt    int64      `json:"created_at"` // Unix timestamp for aging
 }
 
 type SolvedInfo struct {

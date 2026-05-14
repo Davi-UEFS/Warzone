@@ -26,7 +26,10 @@ func MakeClient(brokerIP, clientID string) (mqtt.Client, error) {
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(brokerIP)
 	opts.SetClientID(clientID)
-	opts.SetCleanSession(true)
+	// Use clean session false so that broker may keep session, and
+	// enable automatic reconnect attempts.
+	opts.SetCleanSession(false)
+	opts.AutoReconnect = true
 	opts.OnConnect = func(client mqtt.Client) {
 		fmt.Println("Conectado ao broker")
 	}

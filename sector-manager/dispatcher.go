@@ -11,17 +11,31 @@ import (
 
 func startDispatcher() {
 	ticker := time.NewTicker(2 * time.Second)
+	watchdogTicker := time.NewTicker(10 * time.Second) // O Cão de Guarda roda a cada 10s
+	agingTicker := time.NewTicker(2 * time.Second)     // Aging a cada 2s
 
-	for range ticker.C {
-		if raftNode.State() == raft.Leader {
-			processRequisitions()
+	for {
+		select {
+		case <-ticker.C:
+			// Apenas o Líder despacha novas missões
+			if raftNode.State() == raft.Leader {
+				processRequisitions()
+			}
+		case <-watchdogTicker.C:
+			// Apenas o Líder caça os drones caídos
+			if raftNode.State() == raft.Leader {
+				checkDeadDrones()
+			}
+		case <-agingTicker.C:
+			// Apenas o Líder aplica aging (será replicado via Raft)
+			if raftNode.State() == raft.Leader {
+				applyAging()
+			}
 		}
-
 	}
 }
 
 func processRequisitions() {
-
 	sectorFSM.Mu.Lock()
 
 	if len(sectorFSM.PendingReqsQueue) == 0 {
@@ -39,25 +53,22 @@ func processRequisitions() {
 	}
 
 	if freeDroneID != "" {
-		req := sectorFSM.PendingReqsQueue[0]
+		req := sectorFSM.PendingReqsQueue.Peek()
 		sectorFSM.Mu.Unlock()
 
 		dispatch(raftNode, freeDroneID, req)
-
 	} else {
 		sectorFSM.Mu.Unlock()
 	}
-
 }
 
 func dispatch(raftNode *raft.Raft, droneID string, req shared.Requisition) {
-
 	LClock.Tick()
 
 	mission := shared.DroneMission{
 		RequisitionID: req.ID,
 		AssignedDrone: droneID,
-		Type:          shared.WATER, //TODO: Definir tipo com base na requisição
+		Type:          shared.WATER,
 		Coordinate:    req.Coord,
 		LamportTime:   LClock.GetTime(),
 	}
@@ -75,52 +86,59 @@ func dispatch(raftNode *raft.Raft, droneID string, req shared.Requisition) {
 	future := raftNode.Apply(cmdBytes, 5*time.Second)
 
 	if err := future.Error(); err != nil {
-		fmt.Printf("Erro ao aplicar comando no Raft: %v\n", err)
-	} else {
-		fmt.Printf("Requisição %s atribuída ao drone %s\n", req.ID, droneID)
+		fmt.Printf("Erro ao aplicar comando ASSIGN no Raft: %v\n", err)
 	}
-
+	// O MQTT não fica aqui! Ele é disparado pelo main.go através do EventChan.
 }
 
-/*
-var onMissionDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
-	fmt.Printf("Missão concluída: %s\n", string(msg.Payload()))
-	result := shared.Requisition{}
+// applyAging envia comando OP_AGING via Raft para envelhecer requisições
+func applyAging() {
+	LClock.Tick()
 
-	if err := json.Unmarshal(msg.Payload(), &result); err != nil {
-		fmt.Printf("Erro ao unmarshal payload: %v\n", err)
-		return
+	cmd := shared.HeaderCommand{
+		Operation:   OP_AGING,
+		Payload:     []byte{}, // aging não precisa de payload
+		LamportTime: LClock.GetTime(),
 	}
 
-	sensorID := shared.ExtractSensorID(result.OccurrenceID)
+	cmdBytes, _ := json.Marshal(cmd)
 
-	token := client.Publish(fmt.Sprintf("sensors/%s/solved", sensorID), 1, false, []byte("DONE"))
-	token.Wait()
+	future := raftNode.Apply(cmdBytes, 2*time.Second)
 
+	if err := future.Error(); err != nil {
+		fmt.Printf("Erro ao aplicar comando AGING no Raft: %v\n", err)
+	}
 }
 
-var onIncidentHandler = func(client mqtt.Client, msg mqtt.Message) {
-	fmt.Printf("Nova ocorrência: %s\n", string(msg.Payload()))
+// --- LÓGICA DO WATCHDOG (CÃO DE GUARDA) ---
+func checkDeadDrones() {
+	now := time.Now().Unix()
 
-	incident := shared.Incident{}
-	if err := json.Unmarshal(msg.Payload(), &incident); err != nil {
-		fmt.Printf("Erro ao unmarshal payload: %v\n", err)
-		return
+	sectorFSM.Mu.Lock()
+	var deadDrones []string
+
+	// Procura drones que não mandam o heartbeat há mais de 15 segundos
+	for id, drone := range sectorFSM.DroneMap {
+		if now-drone.LastSeen > 15 {
+			deadDrones = append(deadDrones, id)
+		}
 	}
+	sectorFSM.Mu.Unlock()
 
-	cmd := shared.DroneCommand{
-		OccurrenceID: incident.ID,
-		Action:       "oil",
-		Timestamp:    incident.Timestamp,
+	// Para cada drone inativo, avisa o Raft para matá-lo e resgatar a missão
+	for _, id := range deadDrones {
+		LClock.Tick()
+		payload, _ := json.Marshal(id)
+
+		cmd := shared.HeaderCommand{
+			Operation:   OP_DEADDRONE,
+			Payload:     payload,
+			LamportTime: LClock.GetTime(),
+		}
+
+		cmdBytes, _ := json.Marshal(cmd)
+
+		// Envia a ordem de morte para a FSM (o handleDEADDrone fará o resgate da requisição)
+		raftNode.Apply(cmdBytes, 5*time.Second)
 	}
-
-	payload, err := json.Marshal(cmd)
-	if err != nil {
-		fmt.Printf("Erro ao marshal comando: %v\n", err)
-		return
-	}
-
-	sendCommand(client, payload)
-
 }
-*/

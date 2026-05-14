@@ -1,8 +1,7 @@
 SHELL := /bin/bash
 
 IMAGE_NAME = sector-manager
-HOST ?= 192.168.18.7
-
+HOST ?= 127.0.0.1
 NODE1_ID ?= setorA
 NODE2_ID ?= setorB
 NODE3_ID ?= setorC

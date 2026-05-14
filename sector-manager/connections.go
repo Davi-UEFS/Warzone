@@ -90,6 +90,14 @@ func handleConnection(conn net.Conn, raftNode *raft.Raft) {
 			json.NewEncoder(conn).Encode(SUCCESS)
 		}
 
+	case FORWARD_HB:
+		if raftNode.State() != raft.Leader {
+			json.NewEncoder(conn).Encode(ERR_NOT_LEADER)
+			return
+		}
+		handleForwardingHeartbeat(raftNode, cmd.Payload)
+		json.NewEncoder(conn).Encode(SUCCESS)
+
 	default:
 		fmt.Printf("Operação desconhecida recebida via sinalização: %s\n", cmd.Operation)
 		json.NewEncoder(conn).Encode("Operação desconhecida")
@@ -230,6 +238,7 @@ func handleForwardingAlert(raftNode *raft.Raft, payload json.RawMessage) error {
 		Coord:        alert.Coordinate,
 		OriginSector: originSector,
 		LamportTime:  LClock.GetTime(),
+		CreatedAt:    time.Now().Unix(),
 	}
 
 	newPayload, _ := json.Marshal(requisition)
@@ -315,6 +324,28 @@ func handleForwardingRegisterDrone(raftNode *raft.Raft, payload json.RawMessage)
 	}
 
 	fmt.Printf("Drone %s registrado com sucesso\n", drone.ID)
+	return nil
+}
+
+// A função de disparo no líder (coloque junto das outras de forward):
+func handleForwardingHeartbeat(raftNode *raft.Raft, payload json.RawMessage) {
+	cmd := shared.HeaderCommand{
+		Operation:   OP_HEARTBEAT,
+		Payload:     payload,
+		LamportTime: LClock.GetTime(),
+	}
+	cmdBytes, _ := json.Marshal(cmd)
+	raftNode.Apply(cmdBytes, 1*time.Second)
+}
+
+// A função do cliente TCP (coloque junto do forwardAlert, forwardDone, etc):
+func forwardHeartbeat(sigAddr string, cmd shared.HeaderCommand) error {
+	conn, err := net.DialTimeout("tcp", sigAddr, 1*time.Second)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	json.NewEncoder(conn).Encode(cmd)
 	return nil
 }
 

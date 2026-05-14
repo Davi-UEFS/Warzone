@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/heap"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -61,9 +62,11 @@ func main() {
 	sectorFSM = &RaftFSM{
 		Mu:               sync.Mutex{},
 		DroneMap:         make(map[string]shared.Drone),
-		PendingReqsQueue: []shared.Requisition{},
+		PendingReqsQueue: ReqHeap{},
 		InProgressReqs:   map[string]shared.Requisition{},
 	}
+	// Inicializa heap da fila de requisições
+	heap.Init(&sectorFSM.PendingReqsQueue)
 
 	var err error
 	raftNode, err = setupRaft(*dataDirFlag, *nodeIDFlag, raftAddr, sectorFSM, *bootstrapFlag)
@@ -76,13 +79,14 @@ func main() {
 	// --- 3. INICIALIZAÇÃO DO CLIENTE MQTT LOCAL (PAHO) ---
 	// Este client conecta-se ao broker que acabou de ser criado na própria máquina
 	client, err := shared.MakeClient(brokerAddr, *nodeIDFlag+"-client")
-	if token := client.Connect(); token.Wait() && token.Error() != nil {
-		log.Fatalf("Erro ao conectar Paho MQTT local: %v\n", token.Error())
+	if err != nil {
+		log.Fatalf("Erro ao conectar Paho MQTT local: %v\n", err)
 	}
 
 	client.Subscribe("sensors/+/incidents", 1, onAlertHandler)
 	client.Subscribe("drones/+/done", 1, onDoneHandler)
 	client.Subscribe("drones/register", 1, onNewDroneHandler)
+	client.Subscribe("drones/+/heartbeat", 1, onHeartbeatHandler)
 
 	sectorFSM.Sector = *nodeIDFlag
 	sectorFSM.Client = client

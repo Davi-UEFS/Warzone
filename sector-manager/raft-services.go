@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/heap"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,7 +10,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"slices"
 	"sync"
 	"time"
 
@@ -23,7 +23,7 @@ import (
 type RaftFSM struct {
 	Mu               sync.Mutex
 	DroneMap         map[string]shared.Drone
-	PendingReqsQueue []shared.Requisition //TODO: IMPLEMENTAR PRIORITY QUEUE DEPOIS
+	PendingReqsQueue ReqHeap // priority queue for requisitions
 	InProgressReqs   map[string]shared.Requisition
 	Sector           string
 	Client           mqtt.Client
@@ -56,15 +56,16 @@ func (fsm *RaftFSM) Apply(log *raft.Log) interface{} {
 	case OP_ASSIGN:
 		return fsm.handleASSIGNDrone(cmd.Payload)
 
-	case OP_DEASSIGN:
-		return fsm.handleDEASSIGNDrone(cmd.Payload)
+	case OP_DEADDRONE:
+		return fsm.handleDEADDrone(cmd.Payload)
 
-		/* DEPRECATED
-		case OP_UPDATEDRB:
-			return fsm.handleUPDATEDRBroker(cmd.Payload)
-		*/
 	case OP_REGDRONE:
 		return fsm.handleREGDrone(cmd.Payload)
+
+	case OP_HEARTBEAT:
+		return fsm.handleHEARTBEAT(cmd.Payload)
+	case OP_AGING:
+		return fsm.handleAGING()
 	default:
 		fmt.Printf("Operação desconhecida: %s\n", cmd.Operation)
 		return nil //TODO: TRATAR MELHOR ESSA SITUAÇÃO DE OPERAÇÃO DESCONHECIDA
@@ -96,7 +97,8 @@ func (fsm *RaftFSM) handleADDRequisition(payload json.RawMessage) error {
 		return nil
 	}
 
-	fsm.PendingReqsQueue = append(fsm.PendingReqsQueue, requisition) //TODO: IMPLEMENTAR PRIORITY QUEUE DEPOIS
+	// push into priority queue
+	heap.Push(&fsm.PendingReqsQueue, requisition)
 	fsm.Mu.Unlock()
 
 	return nil
@@ -128,28 +130,13 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 		return nil
 	}
 
-	requisition, exist := fsm.InProgressReqs[reqID]
+	_, exist := fsm.InProgressReqs[reqID]
 
 	if exist {
 
 		LClock.Tick()
 
-		if requisition.OriginSector == fsm.Sector {
-			topic := fmt.Sprintf("sensors/%s/solved", shared.ExtractSensorID(requisition.ID))
-			response := shared.SolvedInfo{
-				RequisitionID: requisition.ID,
-				LCTime:        LClock.GetTime(),
-			}
-
-			payload, _ := json.Marshal(response)
-
-			token := fsm.Client.Publish(topic, 1, false, payload)
-			token.Wait()
-
-			if token.Error() != nil {
-				fmt.Printf("Erro ao publicar resolução de incidente: %v\n", token.Error())
-			}
-		}
+		// Nota: lógica de notificar sensor via MQTT removida — sensores não aguardam confirmação.
 
 		// Primeiro liberta o drone localmente, depois limpa o registro da requisição
 		drone.SetIdle()
@@ -174,9 +161,12 @@ func (fsm *RaftFSM) handleREGDrone(payload json.RawMessage) error {
 	fsm.Mu.Lock()
 	defer fsm.Mu.Unlock()
 
+	newDrone.LastSeen = time.Now().Unix()
+
 	if existingDrone, ok := fsm.DroneMap[newDrone.ID]; ok {
 		newDrone.Status = existingDrone.Status
 		newDrone.CurrentMission = existingDrone.CurrentMission
+
 	} else {
 		fmt.Printf("FSM: Novo drone registrado: %s (Broker: %s)\n", newDrone.ID, newDrone.CurrentBroker)
 	}
@@ -199,6 +189,7 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 	var targetReq shared.Requisition
 	targetReqIndex := -1
 
+	// Find target requisition index in heap underlying slice
 	for i, req := range fsm.PendingReqsQueue {
 		if req.ID == mission.RequisitionID {
 			targetReq = req
@@ -227,7 +218,8 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 
 	// Agora que tudo foi validado, atualiza o estado
 	fsm.InProgressReqs[mission.RequisitionID] = targetReq
-	fsm.PendingReqsQueue = append(fsm.PendingReqsQueue[:targetReqIndex], fsm.PendingReqsQueue[targetReqIndex+1:]...)
+	// remove from heap at index
+	fsm.PendingReqsQueue.RemoveAt(targetReqIndex)
 
 	drone.SetBusy(mission.RequisitionID)
 	fsm.DroneMap[mission.AssignedDrone] = drone
@@ -248,29 +240,93 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 	return nil
 }
 
-func (fsm *RaftFSM) handleDEASSIGNDrone(payload json.RawMessage) error {
-
+func (fsm *RaftFSM) handleDEADDrone(payload json.RawMessage) error {
 	var droneID string
-
 	if err := json.Unmarshal(payload, &droneID); err != nil {
-		fmt.Printf("Erro ao desserializar pacote: %v.\n", err)
 		return err
 	}
 
 	fsm.Mu.Lock()
-	if drone, ok := fsm.DroneMap[droneID]; ok {
-		drone.SetIdle()
-		fsm.DroneMap[droneID] = drone
-	} else {
-		fmt.Printf("Drone %s não encontrado.\n", droneID)
+	defer fsm.Mu.Unlock()
+
+	drone, ok := fsm.DroneMap[droneID]
+	if !ok {
+		return nil // O drone já foi removido ou nunca existiu
 	}
-	fsm.Mu.Unlock()
+
+	// O RESGATE: Se o drone morreu com uma missão na mão, devolvemos a missão à fila
+	reqID := drone.CurrentMission
+	if reqID != "" {
+		if req, exists := fsm.InProgressReqs[reqID]; exists {
+			// Reinsere na fila com prioridade elevada para ser despachada primeiro
+			req.Priority += 1000
+			heap.Push(&fsm.PendingReqsQueue, req)
+			delete(fsm.InProgressReqs, reqID)
+			fmt.Printf("FSM: MISSÃO RESGATADA: Incidente %s voltou para a fila (Drone %s caiu)\n", reqID, droneID)
+		}
+	}
+
+	// A LIMPEZA: Remove o registro do drone
+	delete(fsm.DroneMap, droneID)
+	fmt.Printf("FSM: DRONE REMOVIDO: %s foi declarado morto por falta de pulso.\n", droneID)
+
+	return nil
+}
+
+func (fsm *RaftFSM) handleHEARTBEAT(payload json.RawMessage) error {
+	var heartbeat shared.DroneHeartbeat
+	if err := json.Unmarshal(payload, &heartbeat); err != nil {
+		return err
+	}
+
+	fsm.Mu.Lock()
+	defer fsm.Mu.Unlock()
+
+	if drone, ok := fsm.DroneMap[heartbeat.ID]; ok {
+		drone.BatteryLevel = heartbeat.BatteryLevel
+		drone.LastSeen = time.Now().Unix()
+		fsm.DroneMap[heartbeat.ID] = drone
+		fmt.Printf("FSM: Heartbeat recebido do Drone %s | Bateria: %d%%\n", heartbeat.ID, heartbeat.BatteryLevel)
+	} else {
+		fmt.Printf("FSM: Heartbeat recebido de drone desconhecido: %s\n", heartbeat.ID)
+	}
+
+	return nil
+}
+
+func (fsm *RaftFSM) handleAGING() error {
+	fsm.Mu.Lock()
+	defer fsm.Mu.Unlock()
+
+	// Apply aging: requisições esperando > 10s ganham +1 prioridade
+	fsm.PendingReqsQueue.ApplyAging(time.Now().Unix(), 10, 1)
 
 	return nil
 }
 
 /*
 	DEPRECATED
+
+func (fsm *RaftFSM) handleDEASSIGNDrone(payload json.RawMessage) error {
+
+		var droneID string
+
+		if err := json.Unmarshal(payload, &droneID); err != nil {
+			fmt.Printf("FSM: Erro ao desserializar pacote: %v.\n", err)
+			return err
+		}
+
+		fsm.Mu.Lock()
+		if drone, ok := fsm.DroneMap[droneID]; ok {
+			drone.SetIdle()
+			fsm.DroneMap[droneID] = drone
+		} else {
+			fmt.Printf("Drone %s não encontrado.\n", droneID)
+		}
+		fsm.Mu.Unlock()
+
+		return nil
+	}
 
 func (fsm *RaftFSM) handleUPDATEDRBroker(payload json.RawMessage) error {
 
@@ -310,7 +366,7 @@ func (fsm *RaftFSM) Snapshot() (raft.FSMSnapshot, error) {
 	clonedDrones := make(map[string]shared.Drone)
 	maps.Copy(clonedDrones, fsm.DroneMap)
 
-	clonedIncidents := slices.Clone(fsm.PendingReqsQueue)
+	clonedIncidents := fsm.PendingReqsQueue.ToSlice()
 
 	clonedInProgress := make(map[string]shared.Requisition)
 	maps.Copy(clonedInProgress, fsm.InProgressReqs)
@@ -349,7 +405,7 @@ func (fsm *RaftFSM) Restore(rc io.ReadCloser) error {
 
 	fsm.Mu.Lock()
 	fsm.DroneMap = restored.DroneMap
-	fsm.PendingReqsQueue = restored.IncidentList
+	fsm.PendingReqsQueue.FromSlice(restored.IncidentList)
 	fsm.InProgressReqs = restored.InProgress
 	fsm.Mu.Unlock()
 
@@ -395,14 +451,29 @@ func setupRaft(dir, id, raftAddr string, fsm *RaftFSM, bootstrap bool) (*raft.Ra
 		return nil, err
 	}
 
-	logStore, err := raftboltdb.NewBoltStore(filepath.Join(dir, "log.db"))
-	if err != nil {
-		return nil, err
+	// Diagnostic: show which files/paths Raft will use for persistence
+	logPath := filepath.Join(dir, "log.db")
+	stablePath := filepath.Join(dir, "stable.db")
+	fmt.Printf("Raft data dir: %s\n", dir)
+	if fi, err := os.Stat(logPath); err == nil {
+		fmt.Printf("Found log.db - size=%d bytes\n", fi.Size())
+	} else {
+		fmt.Printf("log.db not found (will be created): %v\n", err)
+	}
+	if fi, err := os.Stat(stablePath); err == nil {
+		fmt.Printf("Found stable.db - size=%d bytes\n", fi.Size())
+	} else {
+		fmt.Printf("stable.db not found (will be created): %v\n", err)
 	}
 
-	stableStore, err := raftboltdb.NewBoltStore(filepath.Join(dir, "stable.db"))
+	logStore, err := raftboltdb.NewBoltStore(logPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("erro abrindo log store (%s): %w", logPath, err)
+	}
+
+	stableStore, err := raftboltdb.NewBoltStore(stablePath)
+	if err != nil {
+		return nil, fmt.Errorf("erro abrindo stable store (%s): %w", stablePath, err)
 	}
 
 	snapshots, err := raft.NewFileSnapshotStore(dir, 3, os.Stderr)
