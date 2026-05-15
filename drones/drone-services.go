@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"sync"
-	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -92,25 +91,6 @@ func (app *DroneApp) makeResult(command shared.DroneMission) ([]byte, error) {
 		LCTime:        app.LClock.GetTime(),
 	}
 	return json.Marshal(result)
-}
-
-// notifyDone publica no tópico de conclusão da missão.
-func (app *DroneApp) notifyDone(payload []byte) {
-	// Retry loop: if broker is down or publish fails, wait for reconnection and retry.
-	for {
-		if app.Client != nil && app.Client.IsConnected() {
-			token := app.Client.Publish(MISSION_DONE_TOPIC, 1, false, payload)
-			token.Wait()
-			if token.Error() == nil {
-				fmt.Printf("[Drone %s] Resultado da missão publicado no broker %s\n", app.ID, app.Brokers[app.CurrentIdx])
-				return
-			}
-			fmt.Printf("Erro ao publicar done: %v — tentando novamente...\n", token.Error())
-		} else {
-			fmt.Println("Não conectado ao broker — aguardando reconexão para publicar resultado...")
-		}
-		time.Sleep(500 * time.Millisecond)
-	}
 }
 
 func (app *DroneApp) drainBattery(value int) {

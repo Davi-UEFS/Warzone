@@ -60,6 +60,18 @@ run-sectorA:
 		-peers=$(HOST):$(NODE2_SIG_PORT),$(HOST):$(NODE3_SIG_PORT) \
 		-bootstrap=true
 
+run-sectorA-go:
+	@mkdir -p $(DATA_BASE_DIR)/$(NODE1_ID)
+	@chmod -R 777 $(DATA_BASE_DIR)/$(NODE1_ID)
+	go run . \
+		-id=$(NODE1_ID) \
+		-host=$(HOST) \
+		-raft-port=$(NODE1_RAFT_PORT) \
+		-broker-port=$(BROKER1_PORT) \
+		-dir=$(DATA_BASE_DIR)/$(NODE1_ID) \
+		-peers=$(HOST):$(NODE2_SIG_PORT),$(HOST):$(NODE3_SIG_PORT) \
+		-bootstrap=true
+
 run-sectorB:
 	@mkdir -p $(DATA_BASE_DIR)/$(NODE2_ID)
 	@chmod -R 777 $(DATA_BASE_DIR)/$(NODE2_ID)
@@ -76,6 +88,17 @@ run-sectorB:
 		-dir=/data \
 		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE3_SIG_PORT)
 
+run-sectorB-go:
+	@mkdir -p $(DATA_BASE_DIR)/$(NODE2_ID)
+	@chmod -R 777 $(DATA_BASE_DIR)/$(NODE2_ID)
+	go run . \
+		-id=$(NODE2_ID) \
+		-host=$(HOST) \
+		-raft-port=$(NODE2_RAFT_PORT) \
+		-broker-port=$(BROKER2_PORT) \
+		-dir=$(DATA_BASE_DIR)/$(NODE2_ID) \
+		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE3_SIG_PORT)
+
 run-sectorC:
 	@mkdir -p $(DATA_BASE_DIR)/$(NODE3_ID)
 	@chmod -R 777 $(DATA_BASE_DIR)/$(NODE3_ID)
@@ -90,6 +113,18 @@ run-sectorC:
 		-raft-port=$(NODE3_RAFT_PORT) \
 		-broker-port=$(BROKER3_PORT) \
 		-dir=/data \
+		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE2_SIG_PORT)
+
+
+run-sectorC-go:
+	@mkdir -p $(DATA_BASE_DIR)/$(NODE3_ID)
+	@chmod -R 777 $(DATA_BASE_DIR)/$(NODE3_ID)
+	go run . \
+		-id=$(NODE3_ID) \
+		-host=$(HOST) \
+		-raft-port=$(NODE3_RAFT_PORT) \
+		-broker-port=$(BROKER3_PORT) \
+		-dir=$(DATA_BASE_DIR)/$(NODE3_ID) \
 		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE2_SIG_PORT)
 
 run-node-prompt:

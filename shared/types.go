@@ -16,6 +16,8 @@ const (
 	DRONE_RETURN DroneStatus = "RETURNING"
 )
 
+const NONE = "NONE"
+
 const (
 	FIRE           = "THROW_WATER"
 	OIL            = "DRAIN_OIL"
@@ -65,7 +67,7 @@ func (d *Drone) SetBusy(missionID string) {
 // SetIdle liberta o drone para novas tarefas.
 func (d *Drone) SetIdle() {
 	d.Status = DRONE_IDLE
-	d.CurrentMission = ""
+	d.CurrentMission = NONE
 }
 
 // HasJurisdiction verifica se este manager local deve falar com este drone.

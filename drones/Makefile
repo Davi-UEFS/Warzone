@@ -3,7 +3,6 @@ SHELL := /bin/bash
 IMAGE_NAME ?= warzone-drone
 
 DRONE_ID ?= drone-01
-SECTOR ?= Setor-A
 BROKERS ?= tcp://127.0.0.1:1883,tcp://127.0.0.1:1884,tcp://127.0.0.1:1883
 
 .PHONY: help build run run-prompt clean
@@ -25,7 +24,12 @@ run:
 		--network host \
 		$(IMAGE_NAME) \
 		-id=$(DRONE_ID) \
-		-sector=$(SECTOR) \
+		-brokers=$(BROKERS)
+
+run-go:
+	@echo "Iniciando drone $(DRONE_ID) sem Docker..."
+	go run . \
+		-id=$(DRONE_ID) \
 		-brokers=$(BROKERS)
 
 run-prompt:
@@ -36,10 +40,6 @@ run-prompt:
 	echo "DRONE_ID [padrao: $(DRONE_ID)]:"; \
 	read _DRONE_ID; \
 	_DRONE_ID=$${_DRONE_ID:-$(DRONE_ID)}; \
-	echo "Setor base"; \
-	echo "SECTOR [padrao: $(SECTOR)]:"; \
-	read _SECTOR; \
-	_SECTOR=$${_SECTOR:-$(SECTOR)}; \
 	echo "Lista de brokers (separados por virgula)"; \
 	echo "BROKERS [padrao: $(BROKERS)]:"; \
 	read _BROKERS; \
@@ -50,7 +50,6 @@ run-prompt:
 		--network host \
 		$(IMAGE_NAME) \
 		-id=$$_DRONE_ID \
-		-sector=$$_SECTOR \
 		-brokers=$$_BROKERS
 
 clean:

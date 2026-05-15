@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
-	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/hashicorp/go-hclog"
 	raft "github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
@@ -23,10 +22,10 @@ import (
 type RaftFSM struct {
 	Mu               sync.Mutex
 	DroneMap         map[string]shared.Drone
-	PendingReqsQueue ReqHeap // priority queue for requisitions
+	PendingReqsQueue ReqHeap
 	InProgressReqs   map[string]shared.Requisition
 	Sector           string
-	Client           mqtt.Client
+	EventsChan       chan MissionPublishEvent
 }
 
 type RaftSnapshot struct {
@@ -35,8 +34,13 @@ type RaftSnapshot struct {
 	InProgress   map[string]shared.Requisition
 }
 
-func (fsm *RaftFSM) Apply(log *raft.Log) interface{} {
+type MissionPublishEvent struct {
+	Topic   string
+	Qos     byte
+	Payload []byte
+}
 
+func (fsm *RaftFSM) Apply(log *raft.Log) interface{} {
 	var cmd shared.HeaderCommand
 
 	if err := json.Unmarshal(log.Data, &cmd); err != nil {
@@ -50,28 +54,22 @@ func (fsm *RaftFSM) Apply(log *raft.Log) interface{} {
 	switch cmd.Operation {
 	case OP_ADDREQ:
 		return fsm.handleADDRequisition(cmd.Payload)
-
 	case OP_RMVREQ:
 		return fsm.handleRMVRequisition(cmd.Payload)
-
 	case OP_ASSIGN:
 		return fsm.handleASSIGNDrone(cmd.Payload)
-
 	case OP_DEADDRONE:
 		return fsm.handleDEADDrone(cmd.Payload)
-
 	case OP_REGDRONE:
 		return fsm.handleREGDrone(cmd.Payload)
-
 	case OP_HEARTBEAT:
 		return fsm.handleHEARTBEAT(cmd.Payload)
 	case OP_AGING:
 		return fsm.handleAGING()
 	default:
 		fmt.Printf("Operação desconhecida: %s\n", cmd.Operation)
-		return nil //TODO: TRATAR MELHOR ESSA SITUAÇÃO DE OPERAÇÃO DESCONHECIDA
+		return nil
 	}
-
 }
 
 func (fsm *RaftFSM) handleADDRequisition(payload json.RawMessage) error {
@@ -81,32 +79,29 @@ func (fsm *RaftFSM) handleADDRequisition(payload json.RawMessage) error {
 		fmt.Printf("Erro ao desserializar pacote: %v.\n", err)
 		return err
 	}
+
 	fsm.Mu.Lock()
+	defer fsm.Mu.Unlock()
 
 	// Evita duplicatas: checar tanto em Pending quanto em InProgress
 	for _, v := range fsm.PendingReqsQueue {
 		if v.ID == requisition.ID {
 			fmt.Printf("Requisição %s já existe na fila pendente.\n", v.ID)
-			fsm.Mu.Unlock()
 			return nil
 		}
 	}
 
 	if _, inProgress := fsm.InProgressReqs[requisition.ID]; inProgress {
 		fmt.Printf("Requisição %s já está em progresso.\n", requisition.ID)
-		fsm.Mu.Unlock()
 		return nil
 	}
 
 	// push into priority queue
 	heap.Push(&fsm.PendingReqsQueue, requisition)
-	fsm.Mu.Unlock()
-
 	return nil
 }
 
 func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
-
 	var doneInfo shared.DoneInfo
 
 	if err := json.Unmarshal(payload, &doneInfo); err != nil {
@@ -118,41 +113,31 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 	defer fsm.Mu.Unlock()
 
 	drone, ok := fsm.DroneMap[doneInfo.DroneID]
-
 	if !ok {
 		return fmt.Errorf("Drone %s não encontrado\n", doneInfo.DroneID)
 	}
 
 	reqID := doneInfo.RequisitionID
 
-	if reqID == "" {
+	if reqID == shared.NONE {
 		// Sem missão atribuída; nada a remover
 		fmt.Printf("Drone %s não possui missão atual.\n", doneInfo.DroneID)
 		return nil
 	}
 
-	_, exist := fsm.InProgressReqs[reqID]
-
-	if exist {
-
+	if _, exist := fsm.InProgressReqs[reqID]; exist {
 		LClock.Tick()
-
-		// Nota: lógica de notificar sensor via MQTT removida — sensores não aguardam confirmação.
-
-		// Primeiro liberta o drone localmente, depois limpa o registro da requisição
 		drone.SetIdle()
 		fsm.DroneMap[doneInfo.DroneID] = drone
 		delete(fsm.InProgressReqs, doneInfo.RequisitionID)
 
 		fmt.Printf("Requisição %s concluída pelo drone %s.\n", doneInfo.RequisitionID, doneInfo.DroneID)
-
 	}
 
 	return nil
 }
 
 func (fsm *RaftFSM) handleREGDrone(payload json.RawMessage) error {
-
 	var newDrone shared.Drone
 
 	if err := json.Unmarshal(payload, &newDrone); err != nil {
@@ -160,22 +145,55 @@ func (fsm *RaftFSM) handleREGDrone(payload json.RawMessage) error {
 	}
 
 	fsm.Mu.Lock()
-	defer fsm.Mu.Unlock()
-
+	prevDrone, exists := fsm.DroneMap[newDrone.ID]
 	newDrone.LastSeen = time.Now().Unix()
 
-	if existingDrone, ok := fsm.DroneMap[newDrone.ID]; ok {
-		newDrone.Status = existingDrone.Status
-		newDrone.CurrentMission = existingDrone.CurrentMission
+	var missionToRestore shared.DroneMission
+	var shouldRestoreMission bool
 
-	} else {
-		fmt.Printf("FSM: Novo drone registrado: %s (Broker: %s)\n", newDrone.ID, newDrone.CurrentBroker)
+	// Detecta se precisa restaurar a missão (Fast-Reboot ou Reconexão)
+	if exists && prevDrone.CurrentMission != shared.NONE {
+		newDrone.Status = prevDrone.Status
+		newDrone.CurrentMission = prevDrone.CurrentMission
+
+		if req, ok := fsm.InProgressReqs[prevDrone.CurrentMission]; ok {
+			missionToRestore = shared.DroneMission{
+				RequisitionID: req.ID,
+				AssignedDrone: newDrone.ID,
+				Type:          req.Type,
+				Coordinate:    req.Coord,
+				LamportTime:   req.LamportTime,
+			}
+			shouldRestoreMission = true
+		}
 	}
 
+	fmt.Printf("FSM: Novo drone registrado: %s (Broker: %s)\n", newDrone.ID, newDrone.CurrentBroker)
 	fsm.DroneMap[newDrone.ID] = newDrone
+	fsm.Mu.Unlock()
+
+	// Envia o evento de re-publicação da missão apenas se o nó atual for o dono do setor do drone
+	if shouldRestoreMission && newDrone.CurrentSector == fsm.Sector {
+		missionPayload, err := json.Marshal(missionToRestore)
+		if err != nil {
+			return fmt.Errorf("erro ao serializar missão de recuperação: %v", err)
+		}
+
+		event := MissionPublishEvent{
+			Topic:   fmt.Sprintf("drones/%s/mission", newDrone.ID),
+			Qos:     1,
+			Payload: missionPayload,
+		}
+
+		select {
+		case fsm.EventsChan <- event:
+			fmt.Printf("FSM: Evento gerado para restaurar missão %s do drone %s.\n", missionToRestore.RequisitionID, newDrone.ID)
+		default:
+			fmt.Printf("Aviso: Canal de eventos cheio. Falha ao gerar evento de restauração para %s\n", newDrone.ID)
+		}
+	}
 
 	return nil
-
 }
 
 func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
@@ -219,25 +237,30 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 
 	// Agora que tudo foi validado, atualiza o estado
 	fsm.InProgressReqs[mission.RequisitionID] = targetReq
-	// remove from heap at index
 	fsm.PendingReqsQueue.RemoveAt(targetReqIndex)
 
 	drone.SetBusy(mission.RequisitionID)
 	fsm.DroneMap[mission.AssignedDrone] = drone
 
-	//TODO: DEIXAR DRONE CUIDAR DO ASSIGNED MISSION?
+	log.Printf("O setor do drone atual é: \n", drone.CurrentSector)
 
+	// A FSM NÃO publica mais no MQTT diretamente. Em vez disso, gera um evento.
+	// Só despachamos o evento se este nó do Raft representar o setor atual do drone.
 	if drone.CurrentSector == fsm.Sector {
-		topic := fmt.Sprintf("drones/%s/mission", mission.AssignedDrone)
-		fmt.Printf("Publicando missão para tópico: %s | payload: %s\n", topic, string(payload))
-		token := fsm.Client.Publish(topic, 1, false, []byte(payload))
-		token.Wait()
-		if token.Error() != nil {
-			fmt.Printf("Erro ao publicar missão: %v\n", token.Error())
+		event := MissionPublishEvent{
+			Topic:   fmt.Sprintf("drones/%s/mission", mission.AssignedDrone),
+			Qos:     1,
+			Payload: payload,
+		}
+
+		select {
+		case fsm.EventsChan <- event:
+			fmt.Printf("Sucesso: Evento de alocação (Incidente %s -> Drone %s) enviado ao canal.\n", mission.RequisitionID, mission.AssignedDrone)
+		default:
+			fmt.Printf("Aviso: Canal de eventos cheio. Falha ao gerar evento MQTT para drone %s\n", mission.AssignedDrone)
 		}
 	}
 
-	fmt.Printf("Sucesso: Drone %s alocado para Incidente %s.\n", mission.AssignedDrone, mission.RequisitionID)
 	return nil
 }
 
@@ -257,7 +280,7 @@ func (fsm *RaftFSM) handleDEADDrone(payload json.RawMessage) error {
 
 	// O RESGATE: Se o drone morreu com uma missão na mão, devolvemos a missão à fila
 	reqID := drone.CurrentMission
-	if reqID != "" {
+	if reqID != shared.NONE { // CORREÇÃO: Tem que ser != (diferente de NONE) para indicar que existe missão
 		if req, exists := fsm.InProgressReqs[reqID]; exists {
 			// Reinsere na fila com prioridade elevada para ser despachada primeiro
 			req.Priority += 1000
@@ -287,9 +310,6 @@ func (fsm *RaftFSM) handleHEARTBEAT(payload json.RawMessage) error {
 		drone.BatteryLevel = heartbeat.BatteryLevel
 		drone.LastSeen = time.Now().Unix()
 		fsm.DroneMap[heartbeat.ID] = drone
-		fmt.Printf("FSM: Heartbeat recebido do Drone %s | Bateria: %d%%\n", heartbeat.ID, heartbeat.BatteryLevel)
-	} else {
-		fmt.Printf("FSM: Heartbeat recebido de drone desconhecido: %s\n", heartbeat.ID)
 	}
 
 	return nil
@@ -305,55 +325,6 @@ func (fsm *RaftFSM) handleAGING() error {
 	return nil
 }
 
-/*
-	DEPRECATED
-
-func (fsm *RaftFSM) handleDEASSIGNDrone(payload json.RawMessage) error {
-
-		var droneID string
-
-		if err := json.Unmarshal(payload, &droneID); err != nil {
-			fmt.Printf("FSM: Erro ao desserializar pacote: %v.\n", err)
-			return err
-		}
-
-		fsm.Mu.Lock()
-		if drone, ok := fsm.DroneMap[droneID]; ok {
-			drone.SetIdle()
-			fsm.DroneMap[droneID] = drone
-		} else {
-			fmt.Printf("Drone %s não encontrado.\n", droneID)
-		}
-		fsm.Mu.Unlock()
-
-		return nil
-	}
-
-func (fsm *RaftFSM) handleUPDATEDRBroker(payload json.RawMessage) error {
-
-		var values struct {
-			DroneID  string `json:"drone_id"`
-			BrokerID string `json:"broker_id"`
-		}
-
-		if err := json.Unmarshal(payload, &values); err != nil {
-			fmt.Printf("Erro ao desserializar pacote: %v.\n", err)
-			return err
-		}
-
-		fsm.Mu.Lock()
-		defer fsm.Mu.Unlock()
-
-		if drone, ok := fsm.DroneMap[values.DroneID]; ok {
-			drone.UpdateSector(values.BrokerID)
-			fsm.DroneMap[values.DroneID] = drone
-		} else {
-			fmt.Printf("Drone %s não encontrado.\n", values.DroneID)
-		}
-
-		return nil
-	}
-*/
 func (fsm *RaftFSM) GetSector() string {
 	fsm.Mu.Lock()
 	defer fsm.Mu.Unlock()
@@ -361,6 +332,7 @@ func (fsm *RaftFSM) GetSector() string {
 }
 
 func (fsm *RaftFSM) Snapshot() (raft.FSMSnapshot, error) {
+	log.Println("GUARDANDO ESTADO")
 	fsm.Mu.Lock()
 	defer fsm.Mu.Unlock()
 
@@ -384,11 +356,11 @@ func (snapshot *RaftSnapshot) Persist(sink raft.SnapshotSink) error {
 	err := json.NewEncoder(sink).Encode(snapshot)
 	if err != nil {
 		sink.Cancel()
-		return fmt.Errorf("erro ao codificar snapshot: %v", err)
+		return fmt.Errorf("Erro ao codificar snapshot: %v", err)
 	}
 
 	if err := sink.Close(); err != nil {
-		return fmt.Errorf("erro ao fechar snapshot sink: %v", err)
+		return fmt.Errorf("Erro ao fechar snapshot sink: %v", err)
 	}
 
 	return nil
@@ -398,10 +370,10 @@ func (snaphot *RaftSnapshot) Release() {
 }
 
 func (fsm *RaftFSM) Restore(rc io.ReadCloser) error {
-
+	log.Println("RESTAURANDO...")
 	var restored RaftSnapshot
 	if err := json.NewDecoder(rc).Decode(&restored); err != nil {
-		return fmt.Errorf("erro ao decodificar snapshot: %v", err)
+		return fmt.Errorf("Erro ao decodificar snapshot: %v", err)
 	}
 
 	fsm.Mu.Lock()
@@ -410,7 +382,7 @@ func (fsm *RaftFSM) Restore(rc io.ReadCloser) error {
 	fsm.InProgressReqs = restored.InProgress
 	fsm.Mu.Unlock()
 
-	fmt.Printf("FSM Restaurada: %d drones e %d incidentes carregados.\n",
+	log.Printf("FSM Restaurada: %d drones e %d incidentes carregados.\n",
 		len(fsm.DroneMap), len(fsm.PendingReqsQueue))
 
 	return nil
@@ -433,11 +405,11 @@ func setupRaft(dir, id, raftAddr string, fsm *RaftFSM, bootstrap bool) (*raft.Ra
 		},
 	}
 
-	log.Printf("Raft address: %s\n", raftAddr)
+	log.Printf("Endereço Raft: %s\n", raftAddr)
 
 	config.Logger = hclog.New(&hclog.LoggerOptions{
 		Name:   "raft",
-		Level:  hclog.Info,
+		Level:  hclog.Error, // Loga apenas erros para evitar poluição
 		Output: filtered,
 	})
 
@@ -457,24 +429,24 @@ func setupRaft(dir, id, raftAddr string, fsm *RaftFSM, bootstrap bool) (*raft.Ra
 	stablePath := filepath.Join(dir, "stable.db")
 	fmt.Printf("Raft data dir: %s\n", dir)
 	if fi, err := os.Stat(logPath); err == nil {
-		fmt.Printf("Found log.db - size=%d bytes\n", fi.Size())
+		fmt.Printf("Encontrado log.db - Tamanho = %d bytes\n", fi.Size())
 	} else {
-		fmt.Printf("log.db not found (will be created): %v\n", err)
+		fmt.Println("log.db não encontrado (será criado)")
 	}
 	if fi, err := os.Stat(stablePath); err == nil {
-		fmt.Printf("Found stable.db - size=%d bytes\n", fi.Size())
+		fmt.Printf("Encontrado stable.db - Tamanho = %d bytes\n", fi.Size())
 	} else {
-		fmt.Printf("stable.db not found (will be created): %v\n", err)
+		fmt.Println("stable.db não encontrado (será criado)")
 	}
 
 	logStore, err := raftboltdb.NewBoltStore(logPath)
 	if err != nil {
-		return nil, fmt.Errorf("erro abrindo log store (%s): %w", logPath, err)
+		return nil, fmt.Errorf("Erro abrindo log store (%s): %w", logPath, err)
 	}
 
 	stableStore, err := raftboltdb.NewBoltStore(stablePath)
 	if err != nil {
-		return nil, fmt.Errorf("erro abrindo stable store (%s): %w", stablePath, err)
+		return nil, fmt.Errorf("Erro abrindo stable store (%s): %w", stablePath, err)
 	}
 
 	snapshots, err := raft.NewFileSnapshotStore(dir, 3, os.Stderr)

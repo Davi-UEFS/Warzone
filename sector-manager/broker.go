@@ -1,57 +1,32 @@
 package main
 
 import (
-	"bytes"
 	"log"
+	"log/slog"
+	"os"
 	"strconv"
 
 	// Importações do Mochi MQTT (Broker Embutido)
 	mochimqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/hooks/auth"
 	"github.com/mochi-mqtt/server/v2/listeners"
-	"github.com/mochi-mqtt/server/v2/packets"
 )
 
 // ==========================================
 // 1. LÓGICA DO BROKER EMBUTIDO (MOCHI MQTT)
 // ==========================================
 
-type ConnectionLoggerHook struct {
-	mochimqtt.HookBase
-}
-
-func (h *ConnectionLoggerHook) ID() string {
-	return "connection-logger"
-}
-
-func (h *ConnectionLoggerHook) Provides(b byte) bool {
-	return bytes.Contains([]byte{
-		mochimqtt.OnConnect,
-		mochimqtt.OnDisconnect,
-	}, []byte{b})
-}
-
-func (h *ConnectionLoggerHook) OnConnect(cl *mochimqtt.Client, pk packets.Packet) error {
-	h.Log.Info("Dispositivo conectado ao Broker",
-		"client_id", cl.ID,
-		"remote", cl.Net.Remote,
-	)
-	return nil
-}
-
-func (h *ConnectionLoggerHook) OnDisconnect(cl *mochimqtt.Client, err error, expire bool) {
-	h.Log.Info("Dispositivo desconectado do Broker",
-		"client_id", cl.ID,
-		"remote", cl.Net.Remote,
-	)
-}
-
 // startEmbeddedBroker inicia o broker na mesma thread do Manager
 func startEmbeddedBroker(port int) {
-	server := mochimqtt.New(nil)
+	quietLogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: slog.LevelWarn, // Só vai imprimir se for WARN ou ERROR
+	}))
+
+	server := mochimqtt.New(&mochimqtt.Options{
+		Logger: quietLogger,
+	})
 
 	_ = server.AddHook(new(auth.AllowHook), nil)
-	_ = server.AddHook(new(ConnectionLoggerHook), nil)
 
 	address := ":" + strconv.Itoa(port)
 

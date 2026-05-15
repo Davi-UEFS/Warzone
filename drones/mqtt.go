@@ -110,3 +110,22 @@ func (app *DroneApp) connectWithFailover() error {
 		}
 	}
 }
+
+// notifyDone publica no tópico de conclusão da missão.
+func (app *DroneApp) notifyDone(payload []byte) {
+	// Retry loop: if broker is down or publish fails, wait for reconnection and retry.
+	for {
+		if app.Client != nil && app.Client.IsConnected() {
+			token := app.Client.Publish(MISSION_DONE_TOPIC, 1, false, payload)
+			token.Wait()
+			if token.Error() == nil {
+				fmt.Printf("Resultado da missão publicado no broker %s\n", app.Brokers[app.CurrentIdx])
+				return
+			}
+			fmt.Printf("Erro ao publicar done: %v — tentando novamente...\n", token.Error())
+		} else {
+			fmt.Println("Não conectado ao broker — aguardando reconexão para publicar resultado...")
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+}

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"strings"
@@ -33,7 +32,6 @@ func (app *DroneApp) onConnect(client mqtt.Client) {
 	// O drone fica ouvindo as missões publicadas para ele.
 	client.Subscribe(MISSION_TOPIC, 1, app.missionHandler)
 
-	// Assim que conecta, ele registra sua presença no cluster.
 	app.register()
 }
 
@@ -50,9 +48,8 @@ func (app *DroneApp) onLost(client mqtt.Client, err error) {
 // 3. mantém o processo vivo até receber SIGINT/SIGTERM
 func (app *DroneApp) Run() {
 	// Conecta inicialmente (ou tenta todos os brokers até conseguir).
-	log.Println("teste")
 	if err := app.connectWithFailover(); err != nil {
-		fmt.Printf("Falha crítica ao conectar: %v\n", err)
+		fmt.Printf("Falha ao conectar: %v\n", err)
 		return
 	}
 
@@ -122,12 +119,10 @@ func (app *DroneApp) sendHeartbeat() {
 func main() {
 	// Flags de configuração do drone.
 	idFlag := flag.String("id", "drone-01", "ID do drone")
-	sectorBaseFlag := flag.String("sector", "Setor-A", "Setor/broker base do drone")
 	brokersFlag := flag.String("brokers", "tcp://localhost:1883,tcp://localhost:1884", "Lista de brokers separados por vírgula")
 	flag.Parse()
 
 	droneID := *idFlag
-	setorBase := *sectorBaseFlag
 	brokers := strings.Split(*brokersFlag, ",")
 
 	// Inicializa o estado da aplicação.
@@ -139,10 +134,10 @@ func main() {
 			Mu:   sync.Mutex{},
 		},
 		Info: shared.Drone{
-			ID:            droneID,
-			BatteryLevel:  100,
-			Status:        shared.DRONE_IDLE,
-			CurrentSector: setorBase,
+			ID:             droneID,
+			BatteryLevel:   100,
+			Status:         shared.DRONE_IDLE,
+			CurrentMission: shared.NONE,
 		},
 		ReconnectChan:  make(chan bool),
 		PayloadChannel: make(chan []byte, 4096),

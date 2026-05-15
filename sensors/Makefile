@@ -3,7 +3,7 @@ SHELL := /bin/bash
 IMAGE_NAME ?= warzone-sensor
 
 SENSOR_ID ?= sensor-01
-SENSOR_TYPE ?= 2 
+SENSOR_TYPE ?= 4
 BROKER_ADDR ?= tcp://127.0.0.1:1883
 
 .PHONY: help build run run-prompt clean
@@ -24,6 +24,13 @@ run:
 		--name $(SENSOR_ID) \
 		--network host \
 		$(IMAGE_NAME) \
+		-id=$(SENSOR_ID) \
+		-type=$(SENSOR_TYPE) \
+		-broker=$(BROKER_ADDR)
+
+run-go:
+	@echo "Iniciando sensor $(SENSOR_ID) sem Docker..."
+	go run . \
 		-id=$(SENSOR_ID) \
 		-type=$(SENSOR_TYPE) \
 		-broker=$(BROKER_ADDR)

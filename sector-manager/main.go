@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -32,7 +33,20 @@ func normalizePeerAddr(peer string, defaultPort int) string {
 	return net.JoinHostPort(trimmed, strconv.Itoa(defaultPort))
 }
 
+// Filtro para mensagens do Raft
+type MuteRaftDBWriter struct{}
+
+func (w *MuteRaftDBWriter) Write(p []byte) (n int, err error) {
+	msg := string(p)
+	if strings.Contains(msg, "Rollback failed: tx closed") {
+		return len(p), nil
+	}
+	return os.Stderr.Write(p)
+}
+
 func main() {
+	// Filtro para logs irritantes
+	log.SetOutput(&MuteRaftDBWriter{})
 	// Flags de configuração
 	nodeIDFlag := flag.String("id", "node1", "ID único deste nó")
 	hostFlag := flag.String("host", "127.0.0.1", "Host base para Raft e SIG")
@@ -64,6 +78,7 @@ func main() {
 		DroneMap:         make(map[string]shared.Drone),
 		PendingReqsQueue: ReqHeap{},
 		InProgressReqs:   map[string]shared.Requisition{},
+		EventsChan:       make(chan MissionPublishEvent, 4096),
 	}
 	// Inicializa heap da fila de requisições
 	heap.Init(&sectorFSM.PendingReqsQueue)
@@ -78,18 +93,14 @@ func main() {
 
 	// --- 3. INICIALIZAÇÃO DO CLIENTE MQTT LOCAL (PAHO) ---
 	// Este client conecta-se ao broker que acabou de ser criado na própria máquina
-	client, err := shared.MakeClient(brokerAddr, *nodeIDFlag+"-client")
+	client, err := shared.MakeClient(brokerAddr, *nodeIDFlag+"-client", onConnect)
 	if err != nil {
 		log.Fatalf("Erro ao conectar Paho MQTT local: %v\n", err)
 	}
 
-	client.Subscribe("sensors/+/incidents", 1, onAlertHandler)
-	client.Subscribe("drones/+/done", 1, onDoneHandler)
-	client.Subscribe("drones/register", 1, onNewDroneHandler)
-	client.Subscribe("drones/+/heartbeat", 1, onHeartbeatHandler)
-
 	sectorFSM.Sector = *nodeIDFlag
-	sectorFSM.Client = client
+
+	go goDrones(sectorFSM.EventsChan, client)
 
 	// --- 4. LÓGICA DE JOIN NO CLUSTER ---
 	if !*bootstrapFlag {
@@ -125,8 +136,8 @@ func main() {
 		fmt.Println("Join request enviado, aguardando replicação...")
 	}
 
-	fmt.Printf("✅ Nó %s em execução com Broker Embutido\n", *nodeIDFlag)
-	fmt.Printf("Raft: %s | SIG: %s | Broker Embutido: :%d\n", raftAddr, sigAddr, *brokerPortFlag)
+	fmt.Printf("NÓ %s EM EXECUÇÃO\n", *nodeIDFlag)
+	fmt.Printf("Raft: %s | Endereço de escuta: %s | Broker Embutido: :%d\n", raftAddr, sigAddr, *brokerPortFlag)
 
 	go startDispatcher()
 

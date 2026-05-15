@@ -20,6 +20,16 @@ type forwardedAlert struct {
 	OriginSector string       `json:"origin_sector"`
 }
 
+var onConnect = func(client mqtt.Client) {
+	fmt.Printf("Conectado ao broker local em %s\n", brokerAddr)
+	fmt.Println("Se inscrevendo nos tópicos...")
+
+	client.Subscribe("sensors/+/incidents", 1, onAlertHandler)
+	client.Subscribe("drones/+/done", 1, onDoneHandler)
+	client.Subscribe("drones/register", 1, onNewDroneHandler)
+	client.Subscribe("drones/+/heartbeat", 1, onHeartbeatHandler)
+}
+
 var onDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 	var result shared.DoneInfo
@@ -205,4 +215,16 @@ var onHeartbeatHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 	cmdBytes, _ := json.Marshal(cmd)
 	raftNode.Apply(cmdBytes, 1*time.Second) // Timeout bem curto, pois é menos prioritário
+}
+
+func goDrones(eventsChan chan MissionPublishEvent, client mqtt.Client) {
+	for {
+		event := <-eventsChan
+		token := client.Publish(event.Topic, event.Qos, false, event.Payload)
+		if token.Wait() && token.Error() != nil {
+			fmt.Printf("Erro ao publicar evento para drone: %v\n", token.Error())
+		} else {
+			fmt.Printf("Evento publicado para drone no tópico %s\n", event.Topic)
+		}
+	}
 }
