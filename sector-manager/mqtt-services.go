@@ -21,7 +21,7 @@ type forwardedAlert struct {
 }
 
 var onConnect = func(client mqtt.Client) {
-	fmt.Printf("Conectado ao broker local em %s\n", brokerAddr)
+	fmt.Println("Conectado ao broker local")
 	fmt.Println("Se inscrevendo nos tópicos...")
 
 	client.Subscribe("sensors/+/incidents", 1, onAlertHandler)

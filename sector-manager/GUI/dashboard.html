@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Warzone - Dashboard do Setor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #0a0f14;
+        --bg-elev: #121a23;
+        --bg-elev-2: #16212d;
+        --accent: #4dd4b0;     /* Verde (Idle) */
+        --accent-2: #ffb454;
+        --accent-3: #4da3ff;
+        --text: #e7eef6;
+        --muted: #8ba2b8;
+        --danger: #ff5a5a;     /* Vermelho (Busy/Erro) */
+        --shadow: 0 30px 80px rgba(8, 12, 18, 0.45);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Space Grotesk", "Segoe UI", sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at top, #1a2330 0%, #0a0f14 45%, #070a0e 100%);
+      }
+
+      header {
+        padding: 32px 6vw 18px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .title {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .title h1 {
+        margin: 0;
+        font-size: clamp(24px, 4vw, 36px);
+        letter-spacing: 0.02em;
+      }
+
+      .title p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .pill {
+        padding: 8px 14px;
+        border-radius: 999px;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-weight: 600;
+        background: var(--bg-elev);
+        color: var(--muted);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .pill.live {
+        color: var(--accent);
+        border-color: rgba(77, 212, 176, 0.4);
+        box-shadow: 0 0 12px rgba(77, 212, 176, 0.25);
+      }
+
+      .grid {
+        padding: 0 6vw 40px;
+        display: grid;
+        gap: 18px;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      }
+
+      .panel {
+        background: linear-gradient(160deg, var(--bg-elev) 0%, var(--bg-elev-2) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 18px;
+        padding: 20px;
+        box-shadow: var(--shadow);
+        display: flex;
+        flex-direction: column;
+        min-height: 260px;
+      }
+
+      .panel h2 {
+        margin: 0 0 8px;
+        font-size: 18px;
+      }
+
+      .panel .count {
+        color: var(--muted);
+        font-size: 13px;
+        margin-bottom: 14px;
+      }
+
+      .list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        gap: 12px;
+      }
+
+      .card {
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: rgba(8, 12, 18, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        display: grid;
+        gap: 6px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+      }
+
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .badge {
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      /* Cores dinâmicas para o Status do Drone */
+      .badge.idle {
+        color: var(--accent);
+        background: rgba(77, 212, 176, 0.15);
+      }
+      .badge.busy {
+        color: var(--danger);
+        background: rgba(255, 90, 90, 0.15);
+      }
+      .badge.error { color: var(--danger); }
+      .badge.returning { color: var(--accent-3); }
+
+      .muted { color: var(--muted); font-size: 12px; }
+      .empty { color: var(--muted); font-size: 13px; padding: 18px 0; }
+      .footer { padding: 0 6vw 28px; color: var(--muted); font-size: 12px; }
+
+      @media (max-width: 720px) {
+        header { padding: 28px 6vw 12px; }
+        .panel { min-height: 220px; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="title">
+        <h1 id="dash-title">Carregando Setor...</h1>
+        <p>Visão em tempo real de requisições, drones e sensores</p>
+      </div>
+      <div class="pill live" id="status-pill">CONECTANDO</div>
+    </header>
+
+    <section class="grid">
+      <div class="panel" id="pending-panel">
+        <h2>Fila de Pendentes</h2>
+        <div class="count" id="pending-count">0 itens</div>
+        <ul class="list" id="pending-list"></ul>
+      </div>
+
+      <div class="panel" id="progress-panel">
+        <h2>Em Progresso</h2>
+        <div class="count" id="progress-count">0 itens</div>
+        <ul class="list" id="progress-list"></ul>
+      </div>
+
+      <div class="panel" id="drones-panel">
+        <h2>Drones Conectados</h2>
+        <div class="count" id="drones-count">0 itens</div>
+        <ul class="list" id="drones-list"></ul>
+      </div>
+
+      <div class="panel" id="sensors-panel">
+        <h2>Sensores Ativos</h2>
+        <div class="count" id="sensors-count">0 itens</div>
+        <ul class="list" id="sensors-list"></ul>
+      </div>
+    </section>
+
+    <div class="footer" id="footer">Aguardando dados...</div>
+
+    <script>
+      const stateUrl = "/api/state";
+      const pendingList = document.getElementById("pending-list");
+      const progressList = document.getElementById("progress-list");
+      const dronesList = document.getElementById("drones-list");
+      const sensorsList = document.getElementById("sensors-list"); // Nova lista
+      const pendingCount = document.getElementById("pending-count");
+      const progressCount = document.getElementById("progress-count");
+      const dronesCount = document.getElementById("drones-count");
+      const sensorsCount = document.getElementById("sensors-count"); // Novo contador
+      const statusPill = document.getElementById("status-pill");
+      const footer = document.getElementById("footer");
+      const dashTitle = document.getElementById("dash-title");
+
+      function badgeClass(status) {
+        const normalized = (status || "").toLowerCase();
+        if (normalized.includes("idle")) return "idle";
+        if (normalized.includes("busy")) return "busy";
+        if (normalized.includes("error")) return "error";
+        if (normalized.includes("return")) return "returning";
+        return "";
+      }
+
+      function formatCoord(coord) {
+        if (!coord) return "-";
+        return `${coord.latitude}, ${coord.longitude}`;
+      }
+
+      function formatAge(ts, now) {
+        if (!ts) return "nunca";
+        const diff = Math.max(0, now - ts);
+        if (diff < 60) return `há ${diff}s`;
+        const minutes = Math.floor(diff / 60);
+        return `há ${minutes}m`;
+      }
+
+      function renderRequisition(req) {
+        const item = document.createElement("li");
+        item.className = "card";
+        item.innerHTML = `
+          <div class="row">
+            <strong>${req.id}</strong>
+            <span class="badge" style="color: var(--text)">prio ${req.priority}</span>
+          </div>
+          <div class="muted">tipo: ${req.type || "-"}</div>
+          <div class="muted">coord: ${formatCoord(req.coord)}</div>
+          <div class="muted">lamport: ${req.lamport_time}</div>
+        `;
+        return item;
+      }
+
+      function renderDrone(drone, now, currentSector) {
+        const item = document.createElement("li");
+        item.className = "card";
+        
+        // Verifica se o drone pertence ao setor que este dashboard está monitorizando
+        const isLocal = drone.sector === currentSector;
+        const medal = isLocal ? '<span style="font-size: 14px; margin-left: 6px;" title="Neste Setor">📍</span>' : '';
+
+        item.innerHTML = `
+          <div class="row">
+            <strong>${drone.id}${medal}</strong>
+            <span class="badge ${badgeClass(drone.status)}">${drone.status}</span>
+          </div>
+          <div class="muted">missão: ${drone.mission || "-"}</div>
+          <div class="muted">bateria: ${drone.battery}%</div>
+          <div class="muted">último sinal: ${formatAge(drone.last_seen, now)}</div>
+          <div class="muted">broker: ${drone.broker || "-"}</div>
+        `;
+        return item;
+      }
+
+      function renderSensor(sensorId) {
+        const item = document.createElement("li");
+        item.className = "card";
+        item.innerHTML = `
+          <div class="row">
+            <strong>${sensorId}</strong>
+            <span class="badge idle">Online</span>
+          </div>
+          <div class="muted">Reportando incidentes</div>
+        `;
+        return item;
+      }
+
+      function renderList(container, items, renderer) {
+        container.innerHTML = "";
+        if (!items || items.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "empty";
+          empty.textContent = "Sem dados no momento";
+          container.appendChild(empty);
+          return;
+        }
+        items.forEach((item) => container.appendChild(renderer(item)));
+      }
+
+      async function refresh() {
+        try {
+          const response = await fetch(stateUrl, { cache: "no-store" });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          
+          const data = await response.json();
+          const now = data.generated_at || Math.floor(Date.now() / 1000);
+
+          // Atualiza Título
+          dashTitle.textContent = `Setor ${data.sector || "Desconhecido"}`;
+
+          // Atualiza Pill (Removendo a duplicação "leader | leader")
+          const raftStatus = (data.raft_state || "").toLowerCase() === "leader" ? "LÍDER" : "SEGUIDOR";
+          statusPill.textContent = raftStatus;
+
+          // Atualiza Contadores
+          pendingCount.textContent = `${data.pending.length} itens`;
+          progressCount.textContent = `${data.in_progress.length} itens`;
+          dronesCount.textContent = `${data.drones.length} itens`;
+          sensorsCount.textContent = `${(data.sensors || []).length} itens`;
+
+          // Renderiza Listas
+          renderList(pendingList, data.pending, renderRequisition);
+          renderList(progressList, data.in_progress, renderRequisition);
+          renderList(dronesList, data.drones, (drone) => renderDrone(drone, now, data.sector));
+          renderList(sensorsList, data.sensors || [], renderSensor);
+
+          footer.textContent = `Setor: ${data.sector || "-"} | Última atualização: ${new Date(now * 1000).toLocaleTimeString('pt-BR')}`;
+        } catch (err) {
+          statusPill.textContent = "OFFLINE";
+          statusPill.classList.remove("live");
+          footer.textContent = `Erro de conexão com o painel: ${err.message}`;
+        }
+      }
+
+      refresh();
+      setInterval(refresh, 2000);
+    </script>
+  </body>
+</html>

@@ -12,7 +12,7 @@ import (
 func startDispatcher() {
 	ticker := time.NewTicker(2 * time.Second)
 	watchdogTicker := time.NewTicker(10 * time.Second) // O Cão de Guarda roda a cada 10s
-	agingTicker := time.NewTicker(2 * time.Second)     // Aging a cada 2s
+	agingTicker := time.NewTicker(20 * time.Second)    // Aging a cada 20s
 
 	for {
 		select {

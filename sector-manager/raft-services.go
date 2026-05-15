@@ -242,7 +242,7 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 	drone.SetBusy(mission.RequisitionID)
 	fsm.DroneMap[mission.AssignedDrone] = drone
 
-	log.Printf("O setor do drone atual é: \n", drone.CurrentSector)
+	log.Printf("O setor do drone atual é: %s\n", drone.CurrentSector)
 
 	// A FSM NÃO publica mais no MQTT diretamente. Em vez disso, gera um evento.
 	// Só despachamos o evento se este nó do Raft representar o setor atual do drone.
@@ -319,8 +319,8 @@ func (fsm *RaftFSM) handleAGING() error {
 	fsm.Mu.Lock()
 	defer fsm.Mu.Unlock()
 
-	// Apply aging: requisições esperando > 10s ganham +1 prioridade
-	fsm.PendingReqsQueue.ApplyAging(time.Now().Unix(), 10, 1)
+	// Apply aging: requisições esperando > 20s ganham +1 prioridade
+	fsm.PendingReqsQueue.ApplyAging(time.Now().Unix(), 20, 1)
 
 	return nil
 }

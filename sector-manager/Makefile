@@ -14,10 +14,16 @@ NODE1_SIG_PORT ?= 11001
 NODE2_SIG_PORT ?= 11002
 NODE3_SIG_PORT ?= 11003
 
+NODE1_DASHBOARD_PORT ?= 8081
+NODE2_DASHBOARD_PORT ?= 8082
+NODE3_DASHBOARD_PORT ?= 8083
+
 # Agora o Broker roda embutido no manager de cada setor
 BROKER1_PORT ?= 1883
 BROKER2_PORT ?= 1884
 BROKER3_PORT ?= 1885
+
+
 
 USER_ID = $(shell id -u)
 GROUP_ID = $(shell id -g)
@@ -56,6 +62,7 @@ run-sectorA:
 		-host=$(HOST) \
 		-raft-port=$(NODE1_RAFT_PORT) \
 		-broker-port=$(BROKER1_PORT) \
+		-dashboard-port=$(NODE1_DASHBOARD_PORT) \
 		-dir=/data \
 		-peers=$(HOST):$(NODE2_SIG_PORT),$(HOST):$(NODE3_SIG_PORT) \
 		-bootstrap=true
@@ -68,6 +75,7 @@ run-sectorA-go:
 		-host=$(HOST) \
 		-raft-port=$(NODE1_RAFT_PORT) \
 		-broker-port=$(BROKER1_PORT) \
+		-dashboard-port=$(NODE1_DASHBOARD_PORT) \
 		-dir=$(DATA_BASE_DIR)/$(NODE1_ID) \
 		-peers=$(HOST):$(NODE2_SIG_PORT),$(HOST):$(NODE3_SIG_PORT) \
 		-bootstrap=true
@@ -85,6 +93,7 @@ run-sectorB:
 		-host=$(HOST) \
 		-raft-port=$(NODE2_RAFT_PORT) \
 		-broker-port=$(BROKER2_PORT) \
+		-dashboard-port=$(NODE2_DASHBOARD_PORT) \
 		-dir=/data \
 		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE3_SIG_PORT)
 
@@ -96,6 +105,7 @@ run-sectorB-go:
 		-host=$(HOST) \
 		-raft-port=$(NODE2_RAFT_PORT) \
 		-broker-port=$(BROKER2_PORT) \
+		-dashboard-port=$(NODE2_DASHBOARD_PORT) \
 		-dir=$(DATA_BASE_DIR)/$(NODE2_ID) \
 		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE3_SIG_PORT)
 
@@ -112,6 +122,7 @@ run-sectorC:
 		-host=$(HOST) \
 		-raft-port=$(NODE3_RAFT_PORT) \
 		-broker-port=$(BROKER3_PORT) \
+		-dashboard-port=$(NODE3_DASHBOARD_PORT) \
 		-dir=/data \
 		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE2_SIG_PORT)
 
@@ -124,6 +135,7 @@ run-sectorC-go:
 		-host=$(HOST) \
 		-raft-port=$(NODE3_RAFT_PORT) \
 		-broker-port=$(BROKER3_PORT) \
+		-dashboard-port=$(NODE3_DASHBOARD_PORT) \
 		-dir=$(DATA_BASE_DIR)/$(NODE3_ID) \
 		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE2_SIG_PORT)
 
@@ -155,6 +167,10 @@ run-node-prompt:
 	echo "BROKER_PORT [padrao: $(BROKER1_PORT)]:"; \
 	read _BROKER_PORT; \
 	_BROKER_PORT=$${_BROKER_PORT:-$(BROKER1_PORT)}; \
+	echo "Porta do dashboard HTTP"; \
+	echo "DASHBOARD_PORT [padrao: $(NODE1_DASHBOARD_PORT)]:"; \
+	read _DASHBOARD_PORT; \
+	_DASHBOARD_PORT=$${_DASHBOARD_PORT:-$(NODE1_DASHBOARD_PORT)}; \
 	_DIR="$(CURDIR)/dataRaft/$$_NODE_ID"; \
 	mkdir -p "$$_DIR"; \
 	PEERS_ARG=""; \
@@ -174,6 +190,7 @@ run-node-prompt:
 		-host=$$_HOST \
 		-raft-port=$$_RAFT_PORT \
 		-broker-port=$$_BROKER_PORT \
+		-dashboard-port=$$_DASHBOARD_PORT \
 		-dir=/data \
 		$$PEERS_ARG \
 		$$BOOT_ARG

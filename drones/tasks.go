@@ -9,13 +9,39 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
-func (app *DroneApp) CarryWater(command shared.DroneMission) {
-	fmt.Println("Carregando água para o local do incidente...")
-	bar := progressbar.Default(100)
+// Função auxiliar para desenhar a barra de progresso colorida e dinâmica
+func (app *DroneApp) runMissionProgress(taskName string, delayMs time.Duration) {
+	// Configura a barra com suporte a cores e um design mais "Militar/IoT"
+	bar := progressbar.NewOptions(100,
+		progressbar.OptionEnableColorCodes(true),
+		progressbar.OptionSetWidth(40),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "[yellow]█[reset]", // O preenchimento da barra
+			SaucerHead:    "[yellow]█[reset]", // A ponta da barra
+			SaucerPadding: " ",
+			BarStart:      "[",
+			BarEnd:        "]",
+		}),
+	)
+
 	for i := 0; i < 100; i++ {
+		// Muda a cor do texto dinamicamente com base na percentagem
+		if i < 33 {
+			bar.Describe(fmt.Sprintf("[red]%s...[reset]", taskName))
+		} else if i < 66 {
+			bar.Describe(fmt.Sprintf("[yellow]%s...[reset]", taskName))
+		} else {
+			bar.Describe(fmt.Sprintf("[green]%s...[reset]", taskName))
+		}
+
 		bar.Add(1)
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(delayMs * time.Millisecond)
 	}
+	fmt.Println() // Quebra de linha limpa no final da barra
+}
+
+func (app *DroneApp) CarryWater(command shared.DroneMission) {
+	app.runMissionProgress("Carregando água", 100)
 	app.drainBattery(2)
 	fmt.Println("Incêndio prevenido!")
 	payload, _ := app.makeResult(command)
@@ -23,12 +49,7 @@ func (app *DroneApp) CarryWater(command shared.DroneMission) {
 }
 
 func (app *DroneApp) DrainOil(command shared.DroneMission) {
-	fmt.Println("Drenando óleo...")
-	bar := progressbar.Default(100)
-	for i := 0; i < 100; i++ {
-		bar.Add(1)
-		time.Sleep(80 * time.Millisecond)
-	}
+	app.runMissionProgress("Drenando óleo", 80)
 	app.drainBattery(2)
 	fmt.Println("Vazamento contido!")
 	payload, _ := app.makeResult(command)
@@ -36,12 +57,7 @@ func (app *DroneApp) DrainOil(command shared.DroneMission) {
 }
 
 func (app *DroneApp) RetrieveGoods(command shared.DroneMission) {
-	fmt.Println("Recuperando mantimentos do naufrágio...")
-	bar := progressbar.Default(100)
-	for i := 0; i < 100; i++ {
-		bar.Add(1)
-		time.Sleep(60 * time.Millisecond)
-	}
+	app.runMissionProgress("Recuperando mantimentos", 60)
 	app.drainBattery(2)
 	fmt.Println("Mantimentos recuperados!")
 	payload, _ := app.makeResult(command)
@@ -49,17 +65,11 @@ func (app *DroneApp) RetrieveGoods(command shared.DroneMission) {
 }
 
 func (app *DroneApp) IdentifyObject(command shared.DroneMission) {
-	fmt.Println("Identificando objeto suspeito...")
-	bar := progressbar.Default(100)
-	for i := 0; i < 100; i++ {
-		bar.Add(1)
-		time.Sleep(80 * time.Millisecond)
-	}
+	app.runMissionProgress("Identificando objeto suspeito", 80)
 	app.drainBattery(1)
 
-	rand := rand.Intn(3)
-
-	switch rand {
+	randomObj := rand.Intn(3)
+	switch randomObj {
 	case 0:
 		fmt.Println("Objeto identificado como embarcação!")
 	case 1:
@@ -73,12 +83,7 @@ func (app *DroneApp) IdentifyObject(command shared.DroneMission) {
 }
 
 func (app *DroneApp) PerformInspection(command shared.DroneMission) {
-	fmt.Println("Inspecionando área...")
-	bar := progressbar.Default(100)
-	for i := 0; i < 100; i++ {
-		bar.Add(1)
-		time.Sleep(70 * time.Millisecond)
-	}
+	app.runMissionProgress("Inspecionando área", 70)
 	app.drainBattery(1)
 	fmt.Println("Inspeção concluída!")
 	payload, _ := app.makeResult(command)
@@ -86,17 +91,9 @@ func (app *DroneApp) PerformInspection(command shared.DroneMission) {
 }
 
 func (app *DroneApp) OptimizeRoute(command shared.DroneMission) {
-	fmt.Println("Organizando navios para tirar engarrafamento...")
-	bar := progressbar.Default(100)
-	for i := 0; i < 100; i++ {
-		bar.Add(1)
-		time.Sleep(60 * time.Millisecond)
-	}
-
+	app.runMissionProgress("Otimizando rotas navais", 60)
 	app.drainBattery(1)
-
 	fmt.Println("Rota otimizada!")
 	payload, _ := app.makeResult(command)
 	app.notifyDone(payload)
-
 }

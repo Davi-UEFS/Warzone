@@ -52,6 +52,7 @@ func main() {
 	hostFlag := flag.String("host", "127.0.0.1", "Host base para Raft e SIG")
 	raftPortFlag := flag.Int("raft-port", 10001, "Porta Raft")
 	brokerPortFlag := flag.Int("broker-port", 1883, "Porta do broker MQTT")
+	dashboardPortFlag := flag.Int("dashboard-port", 8080, "Porta do dashboard HTTP")
 	dataDirFlag := flag.String("dir", "data/node1", "Diretório de dados")
 	bootstrapFlag := flag.Bool("bootstrap", false, "Iniciar como líder")
 	peersFlag := flag.String("peers", "", "Endereços dos peers (SIG do líder). Separe por vírgula")
@@ -108,38 +109,34 @@ func main() {
 		leaderInfo := searchForLeaderInfo(peers, sigPort)
 
 		if leaderInfo.RaftAddr == "" {
-			fmt.Println("Não foi possível encontrar o líder")
-			return
-		}
+			fmt.Println("Não foi possível encontrar o líder.")
+		} else {
+			req := joinReq{
+				ID:   *nodeIDFlag,
+				Addr: raftAddr,
+			}
 
-		req := joinReq{
-			ID:   *nodeIDFlag,
-			Addr: raftAddr,
-		}
+			reqPayload, _ := json.Marshal(req)
 
-		reqPayload, err := json.Marshal(req)
-		if err != nil {
-			fmt.Printf("Erro ao serializar join request: %v\n", err)
-			return
-		}
+			cmd := shared.HeaderCommand{
+				Operation: JOIN,
+				Payload:   reqPayload,
+			}
 
-		cmd := shared.HeaderCommand{
-			Operation: JOIN,
-			Payload:   reqPayload,
-		}
+			if err := sendJoinRequest(leaderInfo.SigAddr, cmd); err != nil {
+				fmt.Printf("Erro ao enviar join request: %v\n", err)
+			} else {
+				fmt.Println("Join request enviado, aguardando replicação...")
+			}
 
-		if err := sendJoinRequest(leaderInfo.SigAddr, cmd); err != nil {
-			fmt.Printf("Erro ao enviar join request: %v\n", err)
-			return
 		}
-
-		fmt.Println("Join request enviado, aguardando replicação...")
 	}
 
 	fmt.Printf("NÓ %s EM EXECUÇÃO\n", *nodeIDFlag)
 	fmt.Printf("Raft: %s | Endereço de escuta: %s | Broker Embutido: :%d\n", raftAddr, sigAddr, *brokerPortFlag)
 
 	go startDispatcher()
+	go startDashboardServer(*dashboardPortFlag)
 
-	select {} // Trava a thread principal mantendo o Manager (e o Broker) vivos
+	select {}
 }
