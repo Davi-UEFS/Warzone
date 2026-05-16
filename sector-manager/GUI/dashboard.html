@@ -13,11 +13,11 @@
         --bg-elev: #121a23;
         --bg-elev-2: #16212d;
         --accent: #4dd4b0;     /* Verde (Idle) */
-        --accent-2: #ffb454;
+        --accent-2: #ffb454;   /* Laranja (Warning) */
         --accent-3: #4da3ff;
         --text: #e7eef6;
         --muted: #8ba2b8;
-        --danger: #ff5a5a;     /* Vermelho (Busy/Erro) */
+        --danger: #ff5a5a;     /* Vermelho (Busy/Urgent) */
         --shadow: 0 30px 80px rgba(8, 12, 18, 0.45);
       }
 
@@ -40,23 +40,9 @@
         justify-content: space-between;
       }
 
-      .title {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-      }
-
-      .title h1 {
-        margin: 0;
-        font-size: clamp(24px, 4vw, 36px);
-        letter-spacing: 0.02em;
-      }
-
-      .title p {
-        margin: 0;
-        color: var(--muted);
-        font-size: 14px;
-      }
+      .title { display: flex; flex-direction: column; gap: 6px; }
+      .title h1 { margin: 0; font-size: clamp(24px, 4vw, 36px); letter-spacing: 0.02em; }
+      .title p { margin: 0; color: var(--muted); font-size: 14px; }
 
       .pill {
         padding: 8px 14px;
@@ -69,7 +55,6 @@
         color: var(--muted);
         border: 1px solid rgba(255, 255, 255, 0.06);
       }
-
       .pill.live {
         color: var(--accent);
         border-color: rgba(77, 212, 176, 0.4);
@@ -94,24 +79,10 @@
         min-height: 260px;
       }
 
-      .panel h2 {
-        margin: 0 0 8px;
-        font-size: 18px;
-      }
+      .panel h2 { margin: 0 0 8px; font-size: 18px; }
+      .panel .count { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
 
-      .panel .count {
-        color: var(--muted);
-        font-size: 13px;
-        margin-bottom: 14px;
-      }
-
-      .list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        display: grid;
-        gap: 12px;
-      }
+      .list { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
 
       .card {
         padding: 12px 14px;
@@ -120,22 +91,45 @@
         border: 1px solid rgba(255, 255, 255, 0.05);
         display: grid;
         gap: 6px;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
       }
 
-      .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+      /* --- EFEITOS DE CORES BASES --- */
+      .card.idle {
+        border-color: rgba(77, 212, 176, 0.2);
+        background: linear-gradient(135deg, rgba(77, 212, 176, 0.05) 0%, rgba(8, 12, 18, 0.8) 100%);
+      }
+      .card.busy {
+        border-color: rgba(255, 90, 90, 0.2);
+        background: linear-gradient(135deg, rgba(255, 90, 90, 0.05) 0%, rgba(8, 12, 18, 0.8) 100%);
       }
 
-      .row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
+      /* --- ANIMAÇÕES DE ALERTA --- */
+
+      /* Animação para Drone perdendo sinal (Aviso Laranja) */
+      @keyframes pulse-warning {
+        0% { box-shadow: 0 0 0 0 rgba(255, 180, 84, 0.4); border-color: rgba(255, 180, 84, 0.8); }
+        70% { box-shadow: 0 0 0 10px rgba(255, 180, 84, 0); border-color: rgba(255, 180, 84, 0.3); }
+        100% { box-shadow: 0 0 0 0 rgba(255, 180, 84, 0); border-color: rgba(255, 180, 84, 0.8); }
+      }
+      .card.warning {
+        animation: pulse-warning 1s infinite;
+        background: linear-gradient(135deg, rgba(255, 180, 84, 0.15) 0%, rgba(8, 12, 18, 0.8) 100%) !important;
       }
 
+      /* Animação para Missão Resgatada (Alerta Vermelho Máximo) */
+      @keyframes pulse-urgent {
+        0% { box-shadow: 0 0 0 0 rgba(255, 90, 90, 0.5); border-color: rgba(255, 90, 90, 1); }
+        70% { box-shadow: 0 0 0 12px rgba(255, 90, 90, 0); border-color: rgba(255, 90, 90, 0.4); }
+        100% { box-shadow: 0 0 0 0 rgba(255, 90, 90, 0); border-color: rgba(255, 90, 90, 1); }
+      }
+      .card.urgent {
+        animation: pulse-urgent 1.2s infinite;
+        background: linear-gradient(135deg, rgba(255, 90, 90, 0.2) 0%, rgba(8, 12, 18, 0.8) 100%) !important;
+      }
+
+      .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+      
       .badge {
         padding: 4px 10px;
         border-radius: 999px;
@@ -145,27 +139,12 @@
         letter-spacing: 0.06em;
         background: rgba(255, 255, 255, 0.08);
       }
-
-      /* Cores dinâmicas para o Status do Drone */
-      .badge.idle {
-        color: var(--accent);
-        background: rgba(77, 212, 176, 0.15);
-      }
-      .badge.busy {
-        color: var(--danger);
-        background: rgba(255, 90, 90, 0.15);
-      }
-      .badge.error { color: var(--danger); }
-      .badge.returning { color: var(--accent-3); }
+      .badge.idle { color: var(--accent); background: rgba(77, 212, 176, 0.15); }
+      .badge.busy { color: var(--danger); background: rgba(255, 90, 90, 0.15); }
 
       .muted { color: var(--muted); font-size: 12px; }
       .empty { color: var(--muted); font-size: 13px; padding: 18px 0; }
       .footer { padding: 0 6vw 28px; color: var(--muted); font-size: 12px; }
-
-      @media (max-width: 720px) {
-        header { padding: 28px 6vw 12px; }
-        .panel { min-height: 220px; }
-      }
     </style>
   </head>
   <body>
@@ -210,11 +189,11 @@
       const pendingList = document.getElementById("pending-list");
       const progressList = document.getElementById("progress-list");
       const dronesList = document.getElementById("drones-list");
-      const sensorsList = document.getElementById("sensors-list"); // Nova lista
+      const sensorsList = document.getElementById("sensors-list");
       const pendingCount = document.getElementById("pending-count");
       const progressCount = document.getElementById("progress-count");
       const dronesCount = document.getElementById("drones-count");
-      const sensorsCount = document.getElementById("sensors-count"); // Novo contador
+      const sensorsCount = document.getElementById("sensors-count");
       const statusPill = document.getElementById("status-pill");
       const footer = document.getElementById("footer");
       const dashTitle = document.getElementById("dash-title");
@@ -223,8 +202,6 @@
         const normalized = (status || "").toLowerCase();
         if (normalized.includes("idle")) return "idle";
         if (normalized.includes("busy")) return "busy";
-        if (normalized.includes("error")) return "error";
-        if (normalized.includes("return")) return "returning";
         return "";
       }
 
@@ -241,13 +218,23 @@
         return `há ${minutes}m`;
       }
 
+      // Função de Renderização de MISSÕES
       function renderRequisition(req) {
         const item = document.createElement("li");
-        item.className = "card";
+        
+        // Verifica se a prioridade é enorme (sinal de que foi resgatada do drone morto)
+        const isRecovered = req.priority >= 1000;
+        
+        // Aplica a classe de "piscar em vermelho" se foi resgatada
+        item.className = isRecovered ? "card urgent" : "card";
+        
+        const prioText = isRecovered ? `🔥 RESGATADA` : `prio ${req.priority}`;
+        const prioColor = isRecovered ? `color: var(--danger); font-weight: bold;` : `color: var(--text);`;
+
         item.innerHTML = `
           <div class="row">
             <strong>${req.id}</strong>
-            <span class="badge" style="color: var(--text)">prio ${req.priority}</span>
+            <span class="badge" style="${prioColor}">${prioText}</span>
           </div>
           <div class="muted">tipo: ${req.type || "-"}</div>
           <div class="muted">coord: ${formatCoord(req.coord)}</div>
@@ -256,23 +243,37 @@
         return item;
       }
 
+      // Função de Renderização de DRONES
       function renderDrone(drone, now, currentSector) {
         const item = document.createElement("li");
-        item.className = "card";
         
-        // Verifica se o drone pertence ao setor que este dashboard está monitorizando
+        const statusType = badgeClass(drone.status);
+        let finalClass = `card ${statusType}`;
+        let alertBadge = "";
+        
+        // Calcula a quantos segundos o drone não envia sinal
+        const diff = Math.max(0, now - drone.last_seen);
+        
+        // Se já passou 10 segundos, liga o Alerta Laranja Piscante!
+        if (diff >= 10) {
+            finalClass += " warning";
+            alertBadge = `<span style="color: var(--accent-2); font-size: 11px; margin-left: 8px;">⚠️ SINAL FRACO</span>`;
+        }
+
+        item.className = finalClass;
+        
         const isLocal = drone.sector === currentSector;
         const medal = isLocal ? '<span style="font-size: 14px; margin-left: 6px;" title="Neste Setor">📍</span>' : '';
 
         item.innerHTML = `
           <div class="row">
-            <strong>${drone.id}${medal}</strong>
-            <span class="badge ${badgeClass(drone.status)}">${drone.status}</span>
+            <strong>${drone.id}${medal}${alertBadge}</strong>
+            <span class="badge ${statusType}">${drone.status}</span>
           </div>
           <div class="muted">missão: ${drone.mission || "-"}</div>
           <div class="muted">bateria: ${drone.battery}%</div>
-          <div class="muted">último sinal: ${formatAge(drone.last_seen, now)}</div>
-          <div class="muted">broker: ${drone.broker || "-"}</div>
+          <div class="muted" style="${diff >= 10 ? 'color: var(--accent-2); font-weight: 600;' : ''}">último sinal: ${formatAge(drone.last_seen, now)}</div>
+          <div class="muted">setor: ${drone.sector || "-"}</div>
         `;
         return item;
       }
@@ -310,20 +311,15 @@
           const data = await response.json();
           const now = data.generated_at || Math.floor(Date.now() / 1000);
 
-          // Atualiza Título
           dashTitle.textContent = `Setor ${data.sector || "Desconhecido"}`;
-
-          // Atualiza Pill (Removendo a duplicação "leader | leader")
           const raftStatus = (data.raft_state || "").toLowerCase() === "leader" ? "LÍDER" : "SEGUIDOR";
           statusPill.textContent = raftStatus;
 
-          // Atualiza Contadores
           pendingCount.textContent = `${data.pending.length} itens`;
           progressCount.textContent = `${data.in_progress.length} itens`;
           dronesCount.textContent = `${data.drones.length} itens`;
           sensorsCount.textContent = `${(data.sensors || []).length} itens`;
 
-          // Renderiza Listas
           renderList(pendingList, data.pending, renderRequisition);
           renderList(progressList, data.in_progress, renderRequisition);
           renderList(dronesList, data.drones, (drone) => renderDrone(drone, now, data.sector));
@@ -332,7 +328,6 @@
           footer.textContent = `Setor: ${data.sector || "-"} | Última atualização: ${new Date(now * 1000).toLocaleTimeString('pt-BR')}`;
         } catch (err) {
           statusPill.textContent = "OFFLINE";
-          statusPill.classList.remove("live");
           footer.textContent = `Erro de conexão com o painel: ${err.message}`;
         }
       }

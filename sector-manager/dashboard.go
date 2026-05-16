@@ -1,10 +1,10 @@
 package main
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"path/filepath"
 	"sort"
 	"time"
 
@@ -16,7 +16,7 @@ type DashboardState struct {
 	Pending     []shared.Requisition `json:"pending"`
 	InProgress  []shared.Requisition `json:"in_progress"`
 	Drones      []DashboardDrone     `json:"drones"`
-	Sensors     []string             `json:"sensors"` // Nova lista de sensores
+	Sensors     []string             `json:"sensors"`
 	GeneratedAt int64                `json:"generated_at"`
 	Sector      string               `json:"sector"`
 	Leader      bool                 `json:"leader"`
@@ -33,18 +33,8 @@ type DashboardDrone struct {
 	Sector   string             `json:"sector"`
 }
 
-func startDashboardServer(port int) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/api/state", dashboardStateHandler)
-	mux.HandleFunc("/", dashboardIndexHandler)
-
-	addr := fmt.Sprintf(":%d", port)
-	fmt.Printf("Dashboard disponível em http://localhost:%d\n", port)
-
-	if err := http.ListenAndServe(addr, mux); err != nil {
-		fmt.Printf("Erro no servidor do dashboard: %v\n", err)
-	}
-}
+//go:embed GUI/dashboard.html
+var dashboardHTML []byte
 
 func dashboardIndexHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/favicon.ico" {
@@ -57,8 +47,22 @@ func dashboardIndexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dashboardPath := filepath.Join("GUI", "dashboard.html")
-	http.ServeFile(w, r, dashboardPath)
+	// 3. REMOVA O http.ServeFile E USE O HTML EMBUTIDO!
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write(dashboardHTML)
+}
+
+func startDashboardServer(port int) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/state", dashboardStateHandler)
+	mux.HandleFunc("/", dashboardIndexHandler)
+
+	addr := fmt.Sprintf(":%d", port)
+	fmt.Printf("Dashboard disponível em http://localhost:%d\n", port)
+
+	if err := http.ListenAndServe(addr, mux); err != nil {
+		fmt.Printf("Erro no servidor do dashboard: %v\n", err)
+	}
 }
 
 func dashboardStateHandler(w http.ResponseWriter, r *http.Request) {
@@ -83,6 +87,19 @@ func buildDashboardState() DashboardState {
 		state.Leader = raftNode.State() == raft.Leader
 	}
 
+	// --- NOVA LÓGICA DE SENSORES ---
+	sensorsList := make([]string, 0)
+
+	// Varre o mapa global em tempo real
+	ConnectedSensors.Range(func(key, value interface{}) bool {
+		sensorsList = append(sensorsList, key.(string))
+		return true // Continua o loop
+	})
+
+	sort.Strings(sensorsList) // Mantém ordem alfabética no painel
+	state.Sensors = sensorsList
+	// -------------------------------
+
 	if sectorFSM == nil {
 		return state
 	}
@@ -92,17 +109,11 @@ func buildDashboardState() DashboardState {
 	pending := sectorFSM.PendingReqsQueue.ToSlice()
 	inProgress := make([]shared.Requisition, 0, len(sectorFSM.InProgressReqs))
 
-	// Mapa auxiliar para extrair Sensores únicos das ocorrências ativas
-	activeSensorsMap := make(map[string]bool)
-
 	for _, req := range sectorFSM.InProgressReqs {
 		inProgress = append(inProgress, req)
-		activeSensorsMap[shared.ExtractSensorID(req.ID)] = true
 	}
 
-	for _, req := range pending {
-		activeSensorsMap[shared.ExtractSensorID(req.ID)] = true
-	}
+	// (A velha lógica do activeSensorsMap foi APAGADA daqui, o código fica mais limpo)
 
 	drones := make([]DashboardDrone, 0, len(sectorFSM.DroneMap))
 	for _, drone := range sectorFSM.DroneMap {
@@ -120,12 +131,6 @@ func buildDashboardState() DashboardState {
 
 	sector := sectorFSM.Sector
 	sectorFSM.Mu.Unlock()
-
-	// Converte o mapa de sensores para um array simples de strings
-	sensorsList := make([]string, 0, len(activeSensorsMap))
-	for sID := range activeSensorsMap {
-		sensorsList = append(sensorsList, sID)
-	}
 
 	sort.Slice(pending, func(i, j int) bool {
 		if pending[i].Priority != pending[j].Priority {
@@ -145,12 +150,9 @@ func buildDashboardState() DashboardState {
 		return drones[i].ID < drones[j].ID
 	})
 
-	sort.Strings(sensorsList) // Mantém a lista de sensores organizada por ordem alfabética
-
 	state.Pending = pending
 	state.InProgress = inProgress
 	state.Drones = drones
-	state.Sensors = sensorsList
 	state.Sector = sector
 
 	return state

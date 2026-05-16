@@ -9,6 +9,10 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o sector-manager ./sector-manager
 # Estágio de execução
 FROM alpine:latest
 WORKDIR /root/
+
 COPY --from=builder /app/sector-manager .
+
+COPY --from=builder /app/sector-manager/GUI ./GUI
+
 # O ENTRYPOINT permite que passemos as flags via comando
 ENTRYPOINT ["./sector-manager"]

@@ -1,0 +1,4 @@
+# Ignorar os dados do banco de dados do Raft
+sector-manager/dataRaft/
+dataRaft/
+*.db
