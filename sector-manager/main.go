@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
+	raft "github.com/hashicorp/raft"
 )
 
 // ==========================================
@@ -90,11 +91,15 @@ func main() {
 		log.Fatalf("Erro ao iniciar Raft: %v\n", err)
 	}
 
+	for raftNode.State() != raft.Leader && raftNode.State() != raft.Follower {
+		fmt.Println("Aguardando Raft estabilizar...")
+	}
+
 	go startSignaling(raftNode, sigAddr)
 
 	// --- 3. INICIALIZAÇÃO DO CLIENTE MQTT LOCAL (PAHO) ---
-	// Este client conecta-se ao broker que acabou de ser criado na própria máquina
-	client, err := shared.MakeClient(brokerAddr, *nodeIDFlag+"-client", onConnect)
+
+	client, err := shared.MakeClient(brokerAddr, *nodeIDFlag+"-client", onConnect, false)
 	if err != nil {
 		log.Fatalf("Erro ao conectar Paho MQTT local: %v\n", err)
 	}
