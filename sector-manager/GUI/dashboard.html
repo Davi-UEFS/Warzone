@@ -12,12 +12,12 @@
         --bg: #0a0f14;
         --bg-elev: #121a23;
         --bg-elev-2: #16212d;
-        --accent: #4dd4b0;     /* Verde (Idle) */
-        --accent-2: #ffb454;   /* Laranja (Warning) */
+        --accent: #4dd4b0;
+        --accent-2: #ffb454;
         --accent-3: #4da3ff;
         --text: #e7eef6;
         --muted: #8ba2b8;
-        --danger: #ff5a5a;     /* Vermelho (Busy/Urgent) */
+        --danger: #ff5a5a;
         --shadow: 0 30px 80px rgba(8, 12, 18, 0.45);
       }
 
@@ -29,6 +29,7 @@
         font-family: "Space Grotesk", "Segoe UI", sans-serif;
         color: var(--text);
         background: radial-gradient(circle at top, #1a2330 0%, #0a0f14 45%, #070a0e 100%);
+        overflow-x: hidden;
       }
 
       header {
@@ -38,6 +39,7 @@
         gap: 16px;
         align-items: center;
         justify-content: space-between;
+        transition: filter 0.3s ease;
       }
 
       .title { display: flex; flex-direction: column; gap: 6px; }
@@ -60,12 +62,18 @@
         border-color: rgba(77, 212, 176, 0.4);
         box-shadow: 0 0 12px rgba(77, 212, 176, 0.25);
       }
+      .pill.offline {
+        color: var(--danger);
+        border-color: rgba(255, 90, 90, 0.4);
+        box-shadow: 0 0 12px rgba(255, 90, 90, 0.25);
+      }
 
       .grid {
         padding: 0 6vw 40px;
         display: grid;
         gap: 18px;
         grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        transition: filter 0.5s ease, opacity 0.5s ease;
       }
 
       .panel {
@@ -81,7 +89,6 @@
 
       .panel h2 { margin: 0 0 8px; font-size: 18px; }
       .panel .count { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
-
       .list { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
 
       .card {
@@ -94,7 +101,6 @@
         transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
       }
 
-      /* --- EFEITOS DE CORES BASES --- */
       .card.idle {
         border-color: rgba(77, 212, 176, 0.2);
         background: linear-gradient(135deg, rgba(77, 212, 176, 0.05) 0%, rgba(8, 12, 18, 0.8) 100%);
@@ -104,9 +110,6 @@
         background: linear-gradient(135deg, rgba(255, 90, 90, 0.05) 0%, rgba(8, 12, 18, 0.8) 100%);
       }
 
-      /* --- ANIMAÇÕES DE ALERTA --- */
-
-      /* Animação para Drone perdendo sinal (Aviso Laranja) */
       @keyframes pulse-warning {
         0% { box-shadow: 0 0 0 0 rgba(255, 180, 84, 0.4); border-color: rgba(255, 180, 84, 0.8); }
         70% { box-shadow: 0 0 0 10px rgba(255, 180, 84, 0); border-color: rgba(255, 180, 84, 0.3); }
@@ -117,7 +120,6 @@
         background: linear-gradient(135deg, rgba(255, 180, 84, 0.15) 0%, rgba(8, 12, 18, 0.8) 100%) !important;
       }
 
-      /* Animação para Missão Resgatada (Alerta Vermelho Máximo) */
       @keyframes pulse-urgent {
         0% { box-shadow: 0 0 0 0 rgba(255, 90, 90, 0.5); border-color: rgba(255, 90, 90, 1); }
         70% { box-shadow: 0 0 0 12px rgba(255, 90, 90, 0); border-color: rgba(255, 90, 90, 0.4); }
@@ -145,9 +147,89 @@
       .muted { color: var(--muted); font-size: 12px; }
       .empty { color: var(--muted); font-size: 13px; padding: 18px 0; }
       .footer { padding: 0 6vw 28px; color: var(--muted); font-size: 12px; }
+
+      /* =========================================
+         EFEITOS DE ESTADO OFFLINE (GLITCH & CRT)
+         ========================================= */
+      
+      #offline-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        pointer-events: none;
+        z-index: 1000;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: repeating-linear-gradient(
+          0deg,
+          rgba(0, 0, 0, 0.15),
+          rgba(0, 0, 0, 0.15) 2px,
+          transparent 2px,
+          transparent 4px
+        );
+      }
+
+      body.offline-mode #offline-overlay {
+        display: flex;
+      }
+
+      body.offline-mode .grid, body.offline-mode .panel {
+        filter: grayscale(100%) blur(4px) brightness(0.6);
+        opacity: 0.4;
+        pointer-events: none;
+        animation: flicker 0.15s infinite;
+      }
+
+      body.offline-mode header {
+        filter: grayscale(100%) brightness(0.6);
+      }
+
+      .glitch-text {
+        font-size: clamp(32px, 6vw, 64px);
+        color: var(--danger);
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        text-shadow: 2px 0 15px rgba(255, 90, 90, 0.7);
+        animation: glitch-anim 0.4s infinite;
+        margin: 0;
+      }
+
+      .offline-subtext {
+        color: var(--muted);
+        font-family: monospace;
+        font-size: 16px;
+        margin-top: 12px;
+        text-align: center;
+        background: rgba(0,0,0,0.5);
+        padding: 4px 12px;
+        border-radius: 4px;
+      }
+
+      @keyframes glitch-anim {
+        0% { transform: translate(0) }
+        20% { transform: translate(-4px, 2px) }
+        40% { transform: translate(4px, -2px) }
+        60% { transform: translate(-4px, -2px); text-shadow: -4px 0 20px rgba(255,90,90,1); }
+        80% { transform: translate(4px, 2px) }
+        100% { transform: translate(0) }
+      }
+
+      @keyframes flicker {
+        0% { opacity: 0.4; }
+        50% { opacity: 0.2; }
+        100% { opacity: 0.4; }
+      }
     </style>
   </head>
   <body>
+    
+    <div id="offline-overlay">
+      <h1 class="glitch-text">SINAL PERDIDO</h1>
+      <p class="offline-subtext">Conexão com o Setor interrompida. Tentando restabelecer...</p>
+    </div>
+
     <header>
       <div class="title">
         <h1 id="dash-title">Carregando Setor...</h1>
@@ -155,6 +237,12 @@
       </div>
       <div class="pill live" id="status-pill">CONECTANDO</div>
     </header>
+
+    <div class="panel" style="margin: 0 6vw 18px; min-height: 160px; background: #05080c; border-color: rgba(77, 212, 176, 0.2);">
+      <h2 style="color: var(--accent); font-family: monospace; font-size: 14px; margin-bottom: 12px; letter-spacing: 0.1em;">> TERMINAL DE COMANDOS TÁTICOS</h2>
+      <ul id="log-console" style="list-style: none; padding: 0; margin: 0; font-family: monospace; font-size: 13px; color: var(--accent); line-height: 1.6; max-height: 110px; overflow-y: hidden; text-shadow: 0 0 5px rgba(77, 212, 176, 0.4);">
+      </ul>
+    </div>
 
     <section class="grid">
       <div class="panel" id="pending-panel">
@@ -218,17 +306,12 @@
         return `há ${minutes}m`;
       }
 
-      // Função de Renderização de MISSÕES
       function renderRequisition(req) {
         const item = document.createElement("li");
-        
-        // Verifica se a prioridade é enorme (sinal de que foi resgatada do drone morto)
         const isRecovered = req.priority >= 1000;
-        
-        // Aplica a classe de "piscar em vermelho" se foi resgatada
         item.className = isRecovered ? "card urgent" : "card";
         
-        const prioText = isRecovered ? `🔥 RESGATADA` : `prio ${req.priority}`;
+        const prioText = isRecovered ? `RESGATADA` : `prio ${req.priority}`;
         const prioColor = isRecovered ? `color: var(--danger); font-weight: bold;` : `color: var(--text);`;
 
         item.innerHTML = `
@@ -243,7 +326,6 @@
         return item;
       }
 
-      // Função de Renderização de DRONES
       function renderDrone(drone, now, currentSector) {
         const item = document.createElement("li");
         
@@ -251,19 +333,16 @@
         let finalClass = `card ${statusType}`;
         let alertBadge = "";
         
-        // Calcula a quantos segundos o drone não envia sinal
         const diff = Math.max(0, now - drone.last_seen);
-        
-        // Se já passou 10 segundos, liga o Alerta Laranja Piscante!
         if (diff >= 10) {
             finalClass += " warning";
-            alertBadge = `<span style="color: var(--accent-2); font-size: 11px; margin-left: 8px;">⚠️ SINAL FRACO</span>`;
+            alertBadge = `<span style="color: var(--accent-2); font-size: 11px; margin-left: 8px;"> SINAL FRACO</span>`;
         }
 
         item.className = finalClass;
         
         const isLocal = drone.sector === currentSector;
-        const medal = isLocal ? '<span style="font-size: 14px; margin-left: 6px;" title="Neste Setor">📍</span>' : '';
+        const medal = isLocal ? '<span style="font-size: 14px; margin-left: 6px;" title="Neste Setor"> LOCAL</span>' : '';
 
         item.innerHTML = `
           <div class="row">
@@ -311,6 +390,11 @@
           const data = await response.json();
           const now = data.generated_at || Math.floor(Date.now() / 1000);
 
+          // Remove o modo offline caso ele estivesse ativado
+          document.body.classList.remove('offline-mode');
+          statusPill.classList.remove('offline');
+          statusPill.classList.add('live');
+
           dashTitle.textContent = `Setor ${data.sector || "Desconhecido"}`;
           const raftStatus = (data.raft_state || "").toLowerCase() === "leader" ? "LÍDER" : "SEGUIDOR";
           statusPill.textContent = raftStatus;
@@ -320,6 +404,27 @@
           dronesCount.textContent = `${data.drones.length} itens`;
           sensorsCount.textContent = `${(data.sensors || []).length} itens`;
 
+          const logConsole = document.getElementById("log-console");
+          logConsole.innerHTML = "";
+          
+          if (data.logs && data.logs.length > 0) {
+            data.logs.forEach(logText => {
+                const li = document.createElement("li");
+                // Se a mensagem contiver ALERTA, pintamos de vermelho
+                if (logText.includes("ALERTA")) {
+                    li.style.color = "var(--danger)";
+                    li.style.textShadow = "0 0 5px rgba(255, 90, 90, 0.6)";
+                }
+                li.textContent = `> ${logText}`;
+                logConsole.appendChild(li);
+            });
+          } else {
+            const li = document.createElement("li");
+            li.textContent = "> Sistema inicializado. Aguardando novos eventos...";
+            li.style.color = "var(--muted)";
+            logConsole.appendChild(li);
+          }
+
           renderList(pendingList, data.pending, renderRequisition);
           renderList(progressList, data.in_progress, renderRequisition);
           renderList(dronesList, data.drones, (drone) => renderDrone(drone, now, data.sector));
@@ -327,8 +432,14 @@
 
           footer.textContent = `Setor: ${data.sector || "-"} | Última atualização: ${new Date(now * 1000).toLocaleTimeString('pt-BR')}`;
         } catch (err) {
+          // ATIVA O MODO DE SINAL PERDIDO
+          document.body.classList.add('offline-mode');
+          
           statusPill.textContent = "OFFLINE";
-          footer.textContent = `Erro de conexão com o painel: ${err.message}`;
+          statusPill.classList.remove('live');
+          statusPill.classList.add('offline');
+          
+          footer.textContent = `Erro de conexão com o painel: O servidor local parou de responder.`;
         }
       }
 

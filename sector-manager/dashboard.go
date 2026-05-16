@@ -15,6 +15,7 @@ import (
 type DashboardState struct {
 	Pending     []shared.Requisition `json:"pending"`
 	InProgress  []shared.Requisition `json:"in_progress"`
+	Logs        []string             `json:"logs"`
 	Drones      []DashboardDrone     `json:"drones"`
 	Sensors     []string             `json:"sensors"`
 	GeneratedAt int64                `json:"generated_at"`
@@ -154,6 +155,9 @@ func buildDashboardState() DashboardState {
 	state.InProgress = inProgress
 	state.Drones = drones
 	state.Sector = sector
+	logCpy := make([]string, len(sectorFSM.ActionLogs))
+	copy(logCpy, sectorFSM.ActionLogs)
+	state.Logs = logCpy
 
 	return state
 }
