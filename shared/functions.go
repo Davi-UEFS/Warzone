@@ -22,14 +22,12 @@ func NormalizeBrokerAddr(addr string) string {
 	return "tcp://" + trimmed
 }
 
-func MakeClient(brokerIP, clientID string, onConnect func(mqtt.Client)) (mqtt.Client, error) {
+func MakeClient(brokerIP, clientID string, onConnect func(mqtt.Client), autoRec bool) (mqtt.Client, error) {
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(brokerIP)
 	opts.SetClientID(clientID)
-	// Use clean session false so that broker may keep session, and
-	// enable automatic reconnect attempts.
 	opts.SetCleanSession(false)
-	opts.AutoReconnect = false
+	opts.AutoReconnect = autoRec
 
 	if onConnect != nil {
 		opts.OnConnect = onConnect
