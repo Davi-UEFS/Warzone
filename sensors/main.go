@@ -88,7 +88,7 @@ func main() {
 	BROKER_IP, CLIENT_ID, SENSOR_TYPE := *broker, *sensorID, *sensorType
 	TOPIC := fmt.Sprintf("sensors/%s/incidents", CLIENT_ID)
 
-	client, _ := shared.MakeClient(BROKER_IP, CLIENT_ID, nil)
+	client, _ := shared.MakeClient(BROKER_IP, CLIENT_ID, nil, true)
 
 	trigger := false
 
