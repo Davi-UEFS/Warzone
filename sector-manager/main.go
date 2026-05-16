@@ -14,12 +14,7 @@ import (
 	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
-	raft "github.com/hashicorp/raft"
 )
-
-// ==========================================
-// 2. LÓGICA DO SECTOR MANAGER E RAFT
-// ==========================================
 
 func normalizePeerAddr(peer string, defaultPort int) string {
 	trimmed := strings.TrimSpace(peer)
@@ -35,19 +30,28 @@ func normalizePeerAddr(peer string, defaultPort int) string {
 }
 
 // Filtro para mensagens do Raft
-type MuteRaftDBWriter struct{}
+type RaftStatesWriter struct{}
 
-func (w *MuteRaftDBWriter) Write(p []byte) (n int, err error) {
+func (w *RaftStatesWriter) Write(p []byte) (n int, err error) {
 	msg := string(p)
-	if strings.Contains(msg, "Rollback failed: tx closed") {
-		return len(p), nil
+	if strings.Contains(msg, "entering leader state") {
+		return os.Stderr.Write([]byte("Atenção. Você agora é um líder!!\n"))
 	}
+	if strings.Contains(msg, "entering follower state") {
+		return os.Stderr.Write([]byte("Entrando no modo seguidor (Follower)\n"))
+	}
+	if strings.Contains(msg, "entering candidate state") {
+		return os.Stderr.Write([]byte("Tentando ganhar eleição...\n"))
+	}
+
+	if strings.Contains(msg, "Rollback failed: tx closed") {
+		return os.Stderr.Write(nil)
+	}
+
 	return os.Stderr.Write(p)
 }
 
 func main() {
-	// Filtro para logs irritantes
-	log.SetOutput(&MuteRaftDBWriter{})
 	// Flags de configuração
 	nodeIDFlag := flag.String("id", "node1", "ID único deste nó")
 	hostFlag := flag.String("host", "127.0.0.1", "Host base para Raft e SIG")
@@ -59,22 +63,20 @@ func main() {
 	peersFlag := flag.String("peers", "", "Endereços dos peers (SIG do líder). Separe por vírgula")
 	flag.Parse()
 
-	// --- 1. INICIALIZA O BROKER EMBUTIDO ---
-	startEmbeddedBroker(*brokerPortFlag)
-
-	// Aguarda um segundo para garantir que a porta TCP do broker foi aberta
-	time.Sleep(1 * time.Second)
-
 	// Endereços
 	sigPort = *raftPortFlag + 1000
 	raftAddr := net.JoinHostPort(*hostFlag, strconv.Itoa(*raftPortFlag))
 	sigAddr := net.JoinHostPort(*hostFlag, strconv.Itoa(sigPort))
 	peers = strings.Split(*peersFlag, ",")
 
-	// Como o broker é embutido, o manager local sempre se conecta no localhost na porta do broker
+	// Como o broker é embutido, o IP é sempre o localhost (LEMBRAR DE TIRAR A FLAG DE HOST DEPOIS)
 	brokerAddr := shared.NormalizeBrokerAddr(net.JoinHostPort("127.0.0.1", strconv.Itoa(*brokerPortFlag)))
 
-	// --- 2. INICIALIZAÇÃO DO RAFT ---
+	// --- INICIALIZAÇÃO DO RAFT ---
+
+	log.SetOutput(&RaftStatesWriter{})
+
+	// --- Inicializa FSM do Raft
 	sectorFSM = &RaftFSM{
 		Mu:               sync.Mutex{},
 		DroneMap:         make(map[string]shared.Drone),
@@ -82,22 +84,30 @@ func main() {
 		InProgressReqs:   map[string]shared.Requisition{},
 		EventsChan:       make(chan MissionPublishEvent, 4096),
 	}
+
 	// Inicializa heap da fila de requisições
 	heap.Init(&sectorFSM.PendingReqsQueue)
 
 	var err error
-	raftNode, err = setupRaft(*dataDirFlag, *nodeIDFlag, raftAddr, sectorFSM, *bootstrapFlag)
+	alreadyInDB := false
+
+	raftNode, alreadyInDB, err = setupRaft(*dataDirFlag, *nodeIDFlag, raftAddr, sectorFSM, *bootstrapFlag)
 	if err != nil {
 		log.Fatalf("Erro ao iniciar Raft: %v\n", err)
 	}
 
-	for raftNode.State() != raft.Leader && raftNode.State() != raft.Follower {
-		fmt.Println("Aguardando Raft estabilizar...")
-	}
+	fmt.Println("Aguardando Raft estabilizar...")
+	time.Sleep(2 * time.Second)
 
 	go startSignaling(raftNode, sigAddr)
 
-	// --- 3. INICIALIZAÇÃO DO CLIENTE MQTT LOCAL (PAHO) ---
+	// --- INICIALIZA O BROKER EMBUTIDO ---
+	startEmbeddedBroker(*brokerPortFlag)
+
+	// Aguarda um segundo para garantir que a porta TCP do broker foi aberta
+	time.Sleep(1 * time.Second)
+
+	// --- INICIALIZAÇÃO DO CLIENTE MQTT LOCAL (PAHO) ---
 
 	client, err := shared.MakeClient(brokerAddr, *nodeIDFlag+"-client", onConnect, false)
 	if err != nil {
@@ -109,31 +119,36 @@ func main() {
 	go goDrones(sectorFSM.EventsChan, client)
 
 	// --- 4. LÓGICA DE JOIN NO CLUSTER ---
-	if !*bootstrapFlag {
-		fmt.Println("Procurando líder na lista de peers...")
-		leaderInfo := searchForLeaderInfo(peers, sigPort)
 
-		if leaderInfo.RaftAddr == "" {
-			fmt.Println("Não foi possível encontrar o líder.")
-		} else {
-			req := joinReq{
-				ID:   *nodeIDFlag,
-				Addr: raftAddr,
-			}
+	if alreadyInDB {
+		fmt.Printf("\nEste nó é pre-existente. Foi carregado do DB do disco.\n")
+	} else {
+		if !*bootstrapFlag {
+			fmt.Println("Procurando líder na lista de peers...")
+			leaderInfo := searchForLeaderInfo(peers, sigPort)
 
-			reqPayload, _ := json.Marshal(req)
-
-			cmd := shared.HeaderCommand{
-				Operation: JOIN,
-				Payload:   reqPayload,
-			}
-
-			if err := sendJoinRequest(leaderInfo.SigAddr, cmd); err != nil {
-				fmt.Printf("Erro ao enviar join request: %v\n", err)
+			if leaderInfo.RaftAddr == "" {
+				fmt.Println("Não foi possível encontrar o líder.")
 			} else {
-				fmt.Println("Join request enviado, aguardando replicação...")
-			}
+				req := joinReq{
+					ID:   *nodeIDFlag,
+					Addr: raftAddr,
+				}
 
+				reqPayload, _ := json.Marshal(req)
+
+				cmd := shared.HeaderCommand{
+					Operation: JOIN,
+					Payload:   reqPayload,
+				}
+
+				if err := sendJoinRequest(leaderInfo.SigAddr, cmd); err != nil {
+					fmt.Printf("Erro ao enviar join request: %v\n", err)
+				} else {
+					fmt.Println("Join request enviado, aguardando replicação...")
+				}
+
+			}
 		}
 	}
 

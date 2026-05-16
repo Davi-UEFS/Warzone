@@ -26,6 +26,7 @@ type RaftFSM struct {
 	InProgressReqs   map[string]shared.Requisition
 	Sector           string
 	EventsChan       chan MissionPublishEvent
+	ActionLogs       []string // NOVO: Guarda os logs para o dashboard
 }
 
 type RaftSnapshot struct {
@@ -40,12 +41,22 @@ type MissionPublishEvent struct {
 	Payload []byte
 }
 
+// logAction adiciona uma mensagem formatada ao terminal do dashboard
+// Assuma que o Mutex (fsm.Mu) ja esta bloqueado pelas funcoes que a chamam.
+func (fsm *RaftFSM) logAction(msg string) {
+	formattedMsg := fmt.Sprintf("[%s] %s", time.Now().Format("15:04:05"), msg)
+	fsm.ActionLogs = append([]string{formattedMsg}, fsm.ActionLogs...)
+	if len(fsm.ActionLogs) > 10 {
+		fsm.ActionLogs = fsm.ActionLogs[:10]
+	}
+}
+
 func (fsm *RaftFSM) Apply(log *raft.Log) interface{} {
 	var cmd shared.HeaderCommand
 
 	if err := json.Unmarshal(log.Data, &cmd); err != nil {
-		fmt.Printf("Erro ao desserializar comando: %v.\n", err)
-		fmt.Printf("Log data: %s\n", string(log.Data))
+		fmt.Printf("\033[1;33mFSM:\033[0m Erro ao desserializar comando: %v.\n", err)
+		fmt.Printf("\033[1;33mFSM:\033[0m Log data: %s\n", string(log.Data))
 		return err
 	}
 
@@ -67,7 +78,7 @@ func (fsm *RaftFSM) Apply(log *raft.Log) interface{} {
 	case OP_AGING:
 		return fsm.handleAGING()
 	default:
-		fmt.Printf("Operação desconhecida: %s\n", cmd.Operation)
+		fmt.Printf("\033[1;33mFSM:\033[0m Operação desconhecida: %s\n", cmd.Operation)
 		return nil
 	}
 }
@@ -76,7 +87,7 @@ func (fsm *RaftFSM) handleADDRequisition(payload json.RawMessage) error {
 	var requisition shared.Requisition
 
 	if err := json.Unmarshal(payload, &requisition); err != nil {
-		fmt.Printf("Erro ao desserializar pacote: %v.\n", err)
+		fmt.Printf("\033[1;33mFSM:\033[0m Erro ao desserializar pacote: %v.\n", err)
 		return err
 	}
 
@@ -86,13 +97,13 @@ func (fsm *RaftFSM) handleADDRequisition(payload json.RawMessage) error {
 	// Evita duplicatas: checar tanto em Pending quanto em InProgress
 	for _, v := range fsm.PendingReqsQueue {
 		if v.ID == requisition.ID {
-			fmt.Printf("Requisição %s já existe na fila pendente.\n", v.ID)
+			fmt.Printf("\033[1;33mFSM:\033[0m Requisição \033[33m%s\033[1;33m já existe na fila pendente.\033[0m\n", v.ID)
 			return nil
 		}
 	}
 
 	if _, inProgress := fsm.InProgressReqs[requisition.ID]; inProgress {
-		fmt.Printf("Requisição %s já está em progresso.\n", requisition.ID)
+		fmt.Printf("\033[1;33mFSM:\033[0m Requisição \033[33m%s\033[1;33m já está em progresso.\033[0m\n", requisition.ID)
 		return nil
 	}
 
@@ -105,7 +116,7 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 	var doneInfo shared.DoneInfo
 
 	if err := json.Unmarshal(payload, &doneInfo); err != nil {
-		fmt.Printf("Erro ao desserializar pacote: %v.\n", err)
+		fmt.Printf("\033[1;33mFSM:\033[0m Erro ao desserializar pacote: %v.\n", err)
 		return err
 	}
 
@@ -121,7 +132,7 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 
 	if reqID == shared.NONE {
 		// Sem missão atribuída; nada a remover
-		fmt.Printf("Drone %s não possui missão atual.\n", doneInfo.DroneID)
+		fmt.Printf("\033[1;33mFSM:\033[0m Drone \033[33m%s\033[1;33m não possui missão atual.\033[0m\n", doneInfo.DroneID)
 		return nil
 	}
 
@@ -131,7 +142,10 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 		fsm.DroneMap[doneInfo.DroneID] = drone
 		delete(fsm.InProgressReqs, doneInfo.RequisitionID)
 
-		fmt.Printf("Requisição %s concluída pelo drone %s.\n", doneInfo.RequisitionID, doneInfo.DroneID)
+		fmt.Printf("\033[1;33mFSM:\033[0m Requisição \033[33m%s\033[1;33m concluída pelo drone \033[33m%s\033[1;33m.\033[0m\n", doneInfo.RequisitionID, doneInfo.DroneID)
+
+		// NOVO: Log de conclusao
+		fsm.logAction(fmt.Sprintf("INFO: Drone %s concluiu a missao %s com sucesso", doneInfo.DroneID, doneInfo.RequisitionID))
 	}
 
 	return nil
@@ -168,7 +182,7 @@ func (fsm *RaftFSM) handleREGDrone(payload json.RawMessage) error {
 		}
 	}
 
-	fmt.Printf("FSM: Novo drone registrado: %s (Broker: %s)\n", newDrone.ID, newDrone.CurrentBroker)
+	fmt.Printf("\033[1;33mFSM:\033[0m Novo drone registrado: \033[33m%s\033[0m\n", newDrone.ID)
 	fsm.DroneMap[newDrone.ID] = newDrone
 	fsm.Mu.Unlock()
 
@@ -187,9 +201,9 @@ func (fsm *RaftFSM) handleREGDrone(payload json.RawMessage) error {
 
 		select {
 		case fsm.EventsChan <- event:
-			fmt.Printf("FSM: Evento gerado para restaurar missão %s do drone %s.\n", missionToRestore.RequisitionID, newDrone.ID)
+			fmt.Printf("\033[1;33mFSM:\033[0m Evento gerado para restaurar missão \033[33m%s\033[1;33m do drone \033[33m%s\033[1;33m.\033[0m\n", missionToRestore.RequisitionID, newDrone.ID)
 		default:
-			fmt.Printf("Aviso: Canal de eventos cheio. Falha ao gerar evento de restauração para %s\n", newDrone.ID)
+			fmt.Printf("\033[1;33mFSM:\033[0m Aviso: Canal de eventos cheio. Falha ao gerar evento de restauração para \033[33m%s\033[1;33m\033[0m\n", newDrone.ID)
 		}
 	}
 
@@ -218,20 +232,20 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 	}
 
 	if targetReqIndex == -1 {
-		fmt.Printf("Abortando: Requisição %s não encontrada na fila.\n", mission.RequisitionID)
+		fmt.Printf("\033[1;33mFSM:\033[0m Abortando: Requisição \033[33m%s\033[1;33m não encontrada na fila.\033[0m\n", mission.RequisitionID)
 		return fmt.Errorf("requisição não encontrada")
 	}
 
 	// Já está em progresso?
 	if _, exists := fsm.InProgressReqs[mission.RequisitionID]; exists {
-		fmt.Printf("Requisição %s já está em progresso.\n", mission.RequisitionID)
+		fmt.Printf("\033[1;33mFSM:\033[0m Requisição \033[33m%s\033[1;33m já está em progresso.\033[0m\n", mission.RequisitionID)
 		return nil
 	}
 
 	// Verifica se o drone existe antes de alterar o estado da fila/inq.
 	drone, ok := fsm.DroneMap[mission.AssignedDrone]
 	if !ok {
-		fmt.Printf("Abortando: Drone %s não mapeado na FSM.\n", mission.AssignedDrone)
+		fmt.Printf("\033[1;33mFSM:\033[0m Abortando: Drone \033[33m%s\033[1;33m não mapeado na FSM.\033[0m\n", mission.AssignedDrone)
 		return fmt.Errorf("drone não encontrado")
 	}
 
@@ -242,7 +256,10 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 	drone.SetBusy(mission.RequisitionID)
 	fsm.DroneMap[mission.AssignedDrone] = drone
 
-	log.Printf("O setor do drone atual é: %s\n", drone.CurrentSector)
+	fmt.Printf("\033[1;33mFSM:\033[0m O setor do drone atual é: \033[33m%s\033[1;33m\033[0m\n", drone.CurrentSector)
+
+	// NOVO: Log de alocacao (chamado enquanto o Mutex ainda esta trancado)
+	fsm.logAction(fmt.Sprintf("START: Drone %s foi alocado para o incidente %s", mission.AssignedDrone, mission.RequisitionID))
 
 	// A FSM NÃO publica mais no MQTT diretamente. Em vez disso, gera um evento.
 	// Só despachamos o evento se este nó do Raft representar o setor atual do drone.
@@ -255,9 +272,9 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 
 		select {
 		case fsm.EventsChan <- event:
-			fmt.Printf("Sucesso: Evento de alocação (Incidente %s -> Drone %s) enviado ao canal.\n", mission.RequisitionID, mission.AssignedDrone)
+			fmt.Printf("\033[1;33mFSM:\033[0m Sucesso: Evento de alocação (Incidente \033[33m%s\033[1;33m -> Drone \033[33m%s\033[1;33m) enviado ao canal.\033[0m\n", mission.RequisitionID, mission.AssignedDrone)
 		default:
-			fmt.Printf("Aviso: Canal de eventos cheio. Falha ao gerar evento MQTT para drone %s\n", mission.AssignedDrone)
+			fmt.Printf("\033[1;33mFSM:\033[0m Aviso: Canal de eventos cheio. Falha ao gerar evento MQTT para drone \033[33m%s\033[1;33m\033[0m\n", mission.AssignedDrone)
 		}
 	}
 
@@ -286,13 +303,16 @@ func (fsm *RaftFSM) handleDEADDrone(payload json.RawMessage) error {
 			req.Priority += 1000
 			heap.Push(&fsm.PendingReqsQueue, req)
 			delete(fsm.InProgressReqs, reqID)
-			fmt.Printf("FSM: MISSÃO RESGATADA: Incidente %s voltou para a fila (Drone %s caiu)\n", reqID, droneID)
+			fmt.Printf("\033[1;33mFSM:\033[0m MISSÃO RESGATADA: Incidente \033[33m%s\033[1;33m voltou para a fila (Drone \033[33m%s\033[1;33m caiu)\033[0m\n", reqID, droneID)
+
+			// NOVO: Log de resgate de missao
+			fsm.logAction(fmt.Sprintf("ALERTA: Drone %s inoperante. Missao %s resgatada para a fila!", droneID, reqID))
 		}
 	}
 
 	// A LIMPEZA: Remove o registro do drone
 	delete(fsm.DroneMap, droneID)
-	fmt.Printf("FSM: DRONE REMOVIDO: %s foi declarado morto por falta de pulso.\n", droneID)
+	fmt.Printf("\033[1;33mFSM:\033[0m DRONE REMOVIDO: \033[33m%s\033[1;33m foi declarado morto por falta de pulso.\033[0m\n", droneID)
 
 	return nil
 }
@@ -332,7 +352,7 @@ func (fsm *RaftFSM) GetSector() string {
 }
 
 func (fsm *RaftFSM) Snapshot() (raft.FSMSnapshot, error) {
-	log.Println("GUARDANDO ESTADO")
+	fmt.Println("\033[1;33mFSM:\033[0m GUARDANDO ESTADO")
 	fsm.Mu.Lock()
 	defer fsm.Mu.Unlock()
 
@@ -370,7 +390,7 @@ func (snaphot *RaftSnapshot) Release() {
 }
 
 func (fsm *RaftFSM) Restore(rc io.ReadCloser) error {
-	log.Println("RESTAURANDO...")
+	fmt.Println("\033[1;33mFSM:\033[0m RESTAURANDO...")
 	var restored RaftSnapshot
 	if err := json.NewDecoder(rc).Decode(&restored); err != nil {
 		return fmt.Errorf("Erro ao decodificar snapshot: %v", err)
@@ -382,26 +402,41 @@ func (fsm *RaftFSM) Restore(rc io.ReadCloser) error {
 	fsm.InProgressReqs = restored.InProgress
 	fsm.Mu.Unlock()
 
-	log.Printf("FSM Restaurada: %d drones e %d incidentes carregados.\n",
+	fmt.Printf("\033[1;33mFSM:\033[0m Restaurada: %d drones e %d incidentes carregados.\n",
 		len(fsm.DroneMap), len(fsm.PendingReqsQueue))
 
 	return nil
 }
 
-func setupRaft(dir, id, raftAddr string, fsm *RaftFSM, bootstrap bool) (*raft.Raft, error) {
+func setupRaft(dir, id, raftAddr string, fsm *RaftFSM, bootstrap bool) (*raft.Raft, bool, error) {
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	config := raft.DefaultConfig()
 	config.LocalID = raft.ServerID(id)
-
-	filtered := &shared.FilteredWriter{
-		Output: os.Stderr,
+	raftWriter := &shared.FilteredWriter{
+		Output: &RaftStatesWriter{},
 		Filters: []string{
+			"raft: initial configuration",
+			"raft: updating configuration:",
+			"raft: election won:",
+			"raft: heartbeat timeout reached, starting election",
+			"raft: failed to make requestVote RPC",
+			"raft: pre-vote campaign failed, waiting for election timeout",
+			"raft: appendEntries rejected",
+			"added peer",
+			"raft: Election timeout reached, restarting election",
+			"raft: rejecting pre-vote request",
+			"raft: failed to contact:",
+			"raft: pre-vote successful",
+			"raft: failed to get previous log",
 			"dial tcp",
 			"failed to appendEntries to",
 			"failed to heartbeat to",
+			"Rollback failed: tx closed",
+			"raft: pipelining replication:",
+			"raft: aborting pipeline replication:",
 		},
 	}
 
@@ -409,19 +444,19 @@ func setupRaft(dir, id, raftAddr string, fsm *RaftFSM, bootstrap bool) (*raft.Ra
 
 	config.Logger = hclog.New(&hclog.LoggerOptions{
 		Name:   "raft",
-		Level:  hclog.Error, // Loga apenas erros para evitar poluição
-		Output: filtered,
+		Level:  hclog.Info,
+		Output: raftWriter,
 	})
 
 	// bind do socket
 	tcpAddr, err := net.ResolveTCPAddr("tcp", raftAddr)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	transport, err := raft.NewTCPTransport(raftAddr, tcpAddr, 3, 10*time.Second, os.Stderr)
+	transport, err := raft.NewTCPTransport(raftAddr, tcpAddr, 3, 10*time.Second, raftWriter)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	// Diagnostic: show which files/paths Raft will use for persistence
@@ -441,25 +476,31 @@ func setupRaft(dir, id, raftAddr string, fsm *RaftFSM, bootstrap bool) (*raft.Ra
 
 	logStore, err := raftboltdb.NewBoltStore(logPath)
 	if err != nil {
-		return nil, fmt.Errorf("Erro abrindo log store (%s): %w", logPath, err)
+		return nil, false, fmt.Errorf("Erro abrindo log store (%s): %w", logPath, err)
 	}
 
 	stableStore, err := raftboltdb.NewBoltStore(stablePath)
 	if err != nil {
-		return nil, fmt.Errorf("Erro abrindo stable store (%s): %w", stablePath, err)
+		return nil, false, fmt.Errorf("Erro abrindo stable store (%s): %w", stablePath, err)
 	}
 
-	snapshots, err := raft.NewFileSnapshotStore(dir, 3, os.Stderr)
+	snapshots, err := raft.NewFileSnapshotStore(dir, 3, raftWriter)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	raftNode, err := raft.NewRaft(config, fsm, logStore, stableStore, snapshots, transport)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	if bootstrap {
+	alreadyInDB, err := raft.HasExistingState(logStore, stableStore, snapshots)
+	if err != nil {
+		return nil, false, fmt.Errorf("erro checando estado: %v", err)
+	}
+
+	// Só faz bootstrap se for solicitado e se o nó ja não estiver no cluster (não está na database)
+	if bootstrap && !alreadyInDB {
 		cfg := raft.Configuration{
 			Servers: []raft.Server{{
 				ID:      config.LocalID,
@@ -467,9 +508,9 @@ func setupRaft(dir, id, raftAddr string, fsm *RaftFSM, bootstrap bool) (*raft.Ra
 			}},
 		}
 		if err := raftNode.BootstrapCluster(cfg).Error(); err != nil && err != raft.ErrCantBootstrap {
-			return nil, err
+			return nil, false, err
 		}
 	}
 
-	return raftNode, nil
+	return raftNode, alreadyInDB, nil
 }
