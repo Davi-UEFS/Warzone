@@ -3,7 +3,7 @@ SHELL := /bin/bash
 IMAGE_NAME ?= warzone-drone
 
 DRONE_ID ?= drone-01
-BROKERS ?= tcp://127.0.0.1:1883,tcp://127.0.0.1:1884,tcp://127.0.0.1:1883
+BROKERS ?= tcp://127.0.0.1:1883,tcp://127.0.0.1:1884,tcp://127.0.0.1:1885
 
 .PHONY: help build run run-prompt clean
 

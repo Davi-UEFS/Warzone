@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
@@ -80,7 +79,8 @@ func createIncidentID(SENSOR_ID string) string {
 
 var onAlertHandler = func(client mqtt.Client, msg mqtt.Message) {
 
-	log.Printf("Nova ocorrência: %s\n", string(msg.Payload()))
+	fmt.Println("Novo alerta chegou por MQTT")
+
 	alert := shared.Alert{}
 	if err := json.Unmarshal(msg.Payload(), &alert); err != nil {
 		fmt.Printf("Erro ao unmarshal payload: %v\n", err)
