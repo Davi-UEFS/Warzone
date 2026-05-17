@@ -126,6 +126,29 @@ func sendJoinRequest(sigAddr string, cmd shared.HeaderCommand) error {
 	return nil
 
 }
+
+func forwardCommand(sigAddr string, cmd shared.HeaderCommand) error {
+	conn, err := net.DialTimeout("tcp", sigAddr, 5*time.Second)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	json.NewEncoder(conn).Encode(cmd)
+
+	var response string
+	if err := json.NewDecoder(conn).Decode(&response); err != nil {
+		return err
+	}
+
+	if response != SUCCESS {
+		return fmt.Errorf("Resposta inesperada: %s", response)
+	}
+
+	return nil
+
+}
+
 func handleJoinRequest(raftNode *raft.Raft, payload json.RawMessage) error {
 
 	var req joinReq
@@ -142,72 +165,6 @@ func handleJoinRequest(raftNode *raft.Raft, payload json.RawMessage) error {
 	}
 
 	fmt.Printf("Nó %s integrado com sucesso!\n", req.ID)
-
-	return nil
-
-}
-
-func forwardAlert(sigAddr string, cmd shared.HeaderCommand) error {
-	conn, err := net.DialTimeout("tcp", sigAddr, 5*time.Second)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	json.NewEncoder(conn).Encode(cmd)
-
-	var response string
-	if err := json.NewDecoder(conn).Decode(&response); err != nil {
-		return err
-	}
-
-	if response != SUCCESS {
-		return fmt.Errorf("Resposta inesperada: %s", response)
-	}
-
-	return nil
-
-}
-
-func forwardDone(sigAddr string, cmd shared.HeaderCommand) error {
-	conn, err := net.DialTimeout("tcp", sigAddr, 5*time.Second)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	json.NewEncoder(conn).Encode(cmd)
-
-	var response string
-	if err := json.NewDecoder(conn).Decode(&response); err != nil {
-		return err
-	}
-
-	if response != SUCCESS {
-		return fmt.Errorf("Resposta inesperada: %s", response)
-	}
-
-	return nil
-
-}
-
-func forwardRegisterDrone(sigAddr string, cmd shared.HeaderCommand) error {
-	conn, err := net.DialTimeout("tcp", sigAddr, 5*time.Second)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	json.NewEncoder(conn).Encode(cmd)
-
-	var response string
-	if err := json.NewDecoder(conn).Decode(&response); err != nil {
-		return err
-	}
-
-	if response != SUCCESS {
-		return fmt.Errorf("Resposta inesperada: %s", response)
-	}
 
 	return nil
 
@@ -342,17 +299,6 @@ func handleForwardingHeartbeat(raftNode *raft.Raft, payload json.RawMessage) {
 	}
 	cmdBytes, _ := json.Marshal(cmd)
 	raftNode.Apply(cmdBytes, 1*time.Second)
-}
-
-// A função do cliente TCP (coloque junto do forwardAlert, forwardDone, etc):
-func forwardHeartbeat(sigAddr string, cmd shared.HeaderCommand) error {
-	conn, err := net.DialTimeout("tcp", sigAddr, 1*time.Second)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	json.NewEncoder(conn).Encode(cmd)
-	return nil
 }
 
 func getSigAddr(raftLeader string) string {

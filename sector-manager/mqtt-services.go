@@ -44,7 +44,7 @@ var onDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 		fmt.Println("Sou seguidor, encaminhando resultado para o líder via TCP...")
 
 		leaderInfo := searchForLeaderInfo(peers, sigPort)
-		if err := forwardDone(leaderInfo.SigAddr, shared.HeaderCommand{
+		if err := forwardCommand(leaderInfo.SigAddr, shared.HeaderCommand{
 			Operation: FORWARD_DONE,
 			Payload:   msg.Payload(),
 		}); err != nil {
@@ -104,7 +104,7 @@ var onAlertHandler = func(client mqtt.Client, msg mqtt.Message) {
 			return
 		}
 
-		if err := forwardAlert(leaderInfo.SigAddr, shared.HeaderCommand{
+		if err := forwardCommand(leaderInfo.SigAddr, shared.HeaderCommand{
 			Operation: FORWARD_ALR,
 			Payload:   forwardPayload,
 		}); err != nil {
@@ -166,7 +166,7 @@ var onNewDroneHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 		leaderInfo := searchForLeaderInfo(peers, sigPort)
 
-		if err := forwardRegisterDrone(leaderInfo.SigAddr, shared.HeaderCommand{
+		if err := forwardCommand(leaderInfo.SigAddr, shared.HeaderCommand{
 			Operation: FORWARD_REG,
 			Payload:   payload,
 		}); err != nil {
@@ -202,7 +202,7 @@ var onHeartbeatHandler = func(client mqtt.Client, msg mqtt.Message) {
 	if raftNode.State() != raft.Leader {
 		// Encaminha para o líder via TCP
 		leaderInfo := searchForLeaderInfo(peers, sigPort)
-		if err := forwardHeartbeat(leaderInfo.SigAddr, shared.HeaderCommand{
+		if err := forwardCommand(leaderInfo.SigAddr, shared.HeaderCommand{
 			Operation: FORWARD_HB,
 			Payload:   msg.Payload(),
 		}); err != nil {
