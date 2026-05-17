@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
@@ -169,7 +170,7 @@ var onNewDroneHandler = func(client mqtt.Client, msg mqtt.Message) {
 			Operation: FORWARD_REG,
 			Payload:   payload,
 		}); err != nil {
-			fmt.Printf("Erro ao encaminhar registro de drone: %v\n", err)
+			tellRegError(drone.ID, "Sem líder no momento. Aguarde...")
 		}
 
 		return
@@ -187,7 +188,8 @@ var onNewDroneHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 	future := raftNode.Apply(cmdBytes, 5*time.Second)
 	if err := future.Error(); err != nil {
-		fmt.Printf("Erro ao aplicar comando REGDRONE: %v\n", err)
+		log.Printf("Erro ao aplicar comando REGDRONE: %v\n", err)
+		tellRegError(drone.ID, "Erro interno do Raft. Tente registrar novamente.")
 		return
 	}
 
@@ -196,6 +198,7 @@ var onNewDroneHandler = func(client mqtt.Client, msg mqtt.Message) {
 }
 
 var onHeartbeatHandler = func(client mqtt.Client, msg mqtt.Message) {
+
 	if raftNode.State() != raft.Leader {
 		// Encaminha para o líder via TCP
 		leaderInfo := searchForLeaderInfo(peers, sigPort)
@@ -212,14 +215,14 @@ var onHeartbeatHandler = func(client mqtt.Client, msg mqtt.Message) {
 	cmd := shared.HeaderCommand{
 		Operation:   OP_HEARTBEAT,
 		Payload:     msg.Payload(),
-		LamportTime: LClock.GetTime(), // Heartbeat não precisa incrementar o clock estritamente, mas mantemos o padrão
+		LamportTime: LClock.GetTime(),
 	}
 
 	cmdBytes, _ := json.Marshal(cmd)
-	raftNode.Apply(cmdBytes, 1*time.Second) // Timeout bem curto, pois é menos prioritário
+	raftNode.Apply(cmdBytes, 1*time.Second)
 }
 
-func goDrones(eventsChan chan MissionPublishEvent, client mqtt.Client) {
+func publishToDrones(eventsChan chan MissionPublishEvent, client mqtt.Client) {
 	for {
 		event := <-eventsChan
 		token := client.Publish(event.Topic, event.Qos, false, event.Payload)
@@ -228,5 +231,22 @@ func goDrones(eventsChan chan MissionPublishEvent, client mqtt.Client) {
 		} else {
 			fmt.Printf("Evento publicado para drone no tópico %s\n", event.Topic)
 		}
+	}
+}
+
+func tellRegError(droneID string, errMsg string) {
+	errorMessage := shared.RegErrorMessage{
+		DroneID: droneID,
+		Error:   errMsg,
+	}
+
+	payload, _ := json.Marshal(errorMessage)
+
+	// TODO: PENSAR NUMA LOGICA MELHOR DEPOIS. USAR GLOBAL É PEBA.
+	token := globalClient.Publish("drones/"+droneID+"/reg_error", 1, false, payload)
+	if token.Wait() && token.Error() != nil {
+		fmt.Printf("Erro ao publicar mensagem de erro de registro para drone %s: %v\n", droneID, token.Error())
+	} else {
+		fmt.Printf("Mensagem de erro de registro publicada para drone %s\n", droneID)
 	}
 }

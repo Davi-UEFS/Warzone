@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/Davi-UEFS/Warzone/shared"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	raft "github.com/hashicorp/raft"
 )
 
@@ -48,8 +49,9 @@ var LClock = shared.LamportClock{
 }
 
 var (
-	peers      []string
-	sigPort    int
-	raftNode   *raft.Raft
-	brokerAddr string
+	peers        []string
+	sigPort      int
+	globalClient mqtt.Client
+	raftNode     *raft.Raft
+	brokerAddr   string
 )

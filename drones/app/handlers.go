@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -14,6 +15,25 @@ import (
 func (app *DroneApp) missionHandler(client mqtt.Client, msg mqtt.Message) {
 	fmt.Println("Missão recebida!")
 	app.PayloadChannel <- msg.Payload()
+}
+
+func (app *DroneApp) regErrorHandler(client mqtt.Client, msg mqtt.Message) {
+	var errorMsg shared.RegErrorMessage
+	if err := json.Unmarshal(msg.Payload(), &errorMsg); err != nil {
+		fmt.Printf("Erro ao desserializar mensagem de erro de registro: %v\n", err)
+		return
+	}
+
+	fmt.Printf("Erro de registro recebido: %s\n", errorMsg.Error)
+
+	fmt.Println("Aguardando 3 segundos a eleição do Raft terminar...")
+
+	go func() {
+		time.Sleep(3 * time.Second)
+		fmt.Println("Reenviando pedido de registro...")
+
+		app.register(client)
+	}()
 }
 
 // handleAction consome missões e executa a ação correspondente.

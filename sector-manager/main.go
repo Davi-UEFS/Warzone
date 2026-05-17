@@ -109,14 +109,14 @@ func main() {
 
 	// --- INICIALIZAÇÃO DO CLIENTE MQTT LOCAL (PAHO) ---
 
-	client, err := shared.MakeClient(brokerAddr, *nodeIDFlag+"-client", onConnect, false)
+	globalClient, err = shared.MakeClient(brokerAddr, *nodeIDFlag+"-client", onConnect, false)
 	if err != nil {
 		log.Fatalf("Erro ao conectar Paho MQTT local: %v\n", err)
 	}
 
 	sectorFSM.Sector = *nodeIDFlag
 
-	go goDrones(sectorFSM.EventsChan, client)
+	go publishToDrones(sectorFSM.EventsChan, globalClient)
 
 	// --- 4. LÓGICA DE JOIN NO CLUSTER ---
 

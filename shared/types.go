@@ -81,6 +81,11 @@ type DoneInfo struct {
 	LCTime        int    `json:"lc_time"`
 }
 
+type RegErrorMessage struct {
+	DroneID string `json:"drone_id"`
+	Error   string `json:"error"`
+}
+
 type Alert struct {
 	SensorID    string     `json:"sensor_id"`
 	Coordinate  Coordinate `json:"coordinate"`

@@ -24,6 +24,7 @@ type DroneApp struct {
 
 	missionTopic     string
 	missionDoneTopic string
+	regErrorTopic    string
 
 	// Mutex + flag para impedir reconnect concorrente.
 	ReconnectMu  sync.Mutex
@@ -48,6 +49,7 @@ func NewDroneApp(id string, brokers []string) *DroneApp {
 		PayloadChannel:   make(chan []byte, 4096),
 		missionTopic:     fmt.Sprintf("drones/%s/mission", id),
 		missionDoneTopic: fmt.Sprintf("drones/%s/done", id),
+		regErrorTopic:    fmt.Sprintf("drones/%s/reg_error", id),
 	}
 }
 
@@ -78,21 +80,22 @@ func (app *DroneApp) startHeartbeat() {
 
 // onConnect é chamado pelo client MQTT toda vez que a conexão é bem-sucedida.
 func (app *DroneApp) onConnect(client mqtt.Client) {
-	fmt.Printf("[Drone %s] Conectado ao broker %s.\n", app.ID, app.Brokers[app.CurrentIdx])
+	fmt.Printf("Conectado ao broker %s.\n", app.Brokers[app.CurrentIdx])
 
 	app.Info.CurrentBroker = app.Brokers[app.CurrentIdx]
 	client.Subscribe(app.missionTopic, 1, app.missionHandler)
-	app.register()
+	client.Subscribe(app.regErrorTopic, 1, app.regErrorHandler)
+	app.register(client)
 }
 
 // onLost é chamado quando o broker cai ou a conexão é perdida.
 func (app *DroneApp) onLost(client mqtt.Client, err error) {
-	fmt.Printf("[Drone %s] Conexão perdida: %v. Iniciando failover...\n", app.ID, err)
+	fmt.Printf("Conexão perdida: %v. Iniciando failover...\n", err)
 	go app.connectWithFailover()
 }
 
 // register publica no tópico de registro a informação atual do drone.
-func (app *DroneApp) register() {
+func (app *DroneApp) register(client mqtt.Client) {
 	app.LClock.Tick()
 
 	payload, err := json.Marshal(app.Info)
@@ -101,7 +104,7 @@ func (app *DroneApp) register() {
 		return
 	}
 
-	token := app.Client.Publish("drones/register", 1, true, payload)
+	token := client.Publish("drones/register", 1, true, payload)
 	if token.Wait() && token.Error() != nil {
 		fmt.Printf("Falha ao enviar registro: %v\n", token.Error())
 	} else {
