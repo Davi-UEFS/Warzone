@@ -131,7 +131,7 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 	reqID := doneInfo.RequisitionID
 
 	if reqID == shared.NONE {
-		// Sem missão atribuída; nada a remover
+		// Sem missão atribuída
 		fmt.Printf("\033[1;33mFSM:\033[0m Drone \033[33m%s\033[1;33m não possui missão atual.\033[0m\n", doneInfo.DroneID)
 		return nil
 	}
@@ -144,7 +144,6 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 
 		fmt.Printf("\033[1;33mFSM:\033[0m Requisição \033[33m%s\033[1;33m concluída pelo drone \033[33m%s\033[1;33m.\033[0m\n", doneInfo.RequisitionID, doneInfo.DroneID)
 
-		// NOVO: Log de conclusao
 		fsm.logAction(fmt.Sprintf("INFO: Drone %s concluiu a missao %s com sucesso", doneInfo.DroneID, doneInfo.RequisitionID))
 	}
 
@@ -256,8 +255,6 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 	drone.SetBusy(mission.RequisitionID)
 	fsm.DroneMap[mission.AssignedDrone] = drone
 
-	fmt.Printf("\033[1;33mFSM:\033[0m O setor do drone atual é: \033[33m%s\033[1;33m\033[0m\n", drone.CurrentSector)
-
 	// NOVO: Log de alocacao (chamado enquanto o Mutex ainda esta trancado)
 	fsm.logAction(fmt.Sprintf("START: Drone %s foi alocado para o incidente %s", mission.AssignedDrone, mission.RequisitionID))
 
@@ -295,11 +292,11 @@ func (fsm *RaftFSM) handleDEADDrone(payload json.RawMessage) error {
 		return nil // O drone já foi removido ou nunca existiu
 	}
 
-	// O RESGATE: Se o drone morreu com uma missão na mão, devolvemos a missão à fila
+	// Se o drone morreu com uma missão na mão, devolvo a missão pra fila
 	reqID := drone.CurrentMission
-	if reqID != shared.NONE { // CORREÇÃO: Tem que ser != (diferente de NONE) para indicar que existe missão
+	if reqID != shared.NONE {
 		if req, exists := fsm.InProgressReqs[reqID]; exists {
-			// Reinsere na fila com prioridade elevada para ser despachada primeiro
+			// Reinsere na fila com prioridade maxima para ser despachada primeiro
 			req.Priority += 1000
 			heap.Push(&fsm.PendingReqsQueue, req)
 			delete(fsm.InProgressReqs, reqID)
@@ -424,6 +421,7 @@ func setupRaft(dir, id, raftAddr string, fsm *RaftFSM, bootstrap bool) (*raft.Ra
 			"raft: heartbeat timeout reached, starting election",
 			"raft: failed to make requestVote RPC",
 			"raft: pre-vote campaign failed, waiting for election timeout",
+			"no known peers",
 			"raft: appendEntries rejected",
 			"added peer",
 			"raft: Election timeout reached, restarting election",

@@ -9,27 +9,22 @@ import (
 )
 
 // newDroneMQTTClient cria um cliente MQTT já configurado.
-func newDroneMQTTClient(clientID string, brokers []string, onConnect func(mqtt.Client), onLost func(mqtt.Client, error)) (mqtt.Client, error) {
+func newDroneMQTTClient(clientID string, broker string, onConnect func(mqtt.Client), onLost func(mqtt.Client, error)) (mqtt.Client, error) {
 	if clientID == "" {
 		return nil, fmt.Errorf("clientID vazio")
 	}
-	if len(brokers) == 0 {
-		return nil, fmt.Errorf("nenhum broker informado")
+	if broker == "" {
+		return nil, fmt.Errorf("broker vazio")
 	}
 
 	opts := mqtt.NewClientOptions()
 	opts.SetClientID(clientID)
 	opts.SetCleanSession(true)
 	opts.SetAutoReconnect(false)
-	opts.SetConnectRetry(false)
-	opts.SetKeepAlive(10 * time.Second)
-	opts.SetPingTimeout(5 * time.Second)
 
-	for _, broker := range brokers {
-		broker = shared.NormalizeBrokerAddr(broker)
-		if broker != "" {
-			opts.AddBroker(broker)
-		}
+	broker = shared.NormalizeBrokerAddr(broker)
+	if broker != "" {
+		opts.AddBroker(broker)
 	}
 
 	opts.OnConnect = onConnect
@@ -69,7 +64,7 @@ func (app *DroneApp) connectWithFailover() error {
 			app.Client.Disconnect(250)
 		}
 
-		client, err := newDroneMQTTClient(app.ID, []string{broker}, app.onConnect, app.onLost)
+		client, err := newDroneMQTTClient(app.ID, broker, app.onConnect, app.onLost)
 		if err != nil {
 			fmt.Printf("Erro ao criar client: %v\n", err)
 		} else {
