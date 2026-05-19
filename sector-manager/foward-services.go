@@ -99,7 +99,7 @@ func handleConnection(conn net.Conn, raftNode *raft.Raft) {
 		json.NewEncoder(conn).Encode(SUCCESS)
 
 	default:
-		fmt.Printf("Operação desconhecida recebida via sinalização: %s\n", cmd.Operation)
+		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Operação desconhecida recebida via sinalização: %s\n", cmd.Operation)
 		json.NewEncoder(conn).Encode("Operação desconhecida")
 	}
 
@@ -154,17 +154,17 @@ func handleJoinRequest(raftNode *raft.Raft, payload json.RawMessage) error {
 	var req joinReq
 
 	if err := json.Unmarshal(payload, &req); err != nil {
-		fmt.Printf("Erro ao desserializar join request: %v\n", err)
+		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao desserializar join request: %v\n", err)
 		return err
 	}
 
 	future := raftNode.AddVoter(raft.ServerID(req.ID), raft.ServerAddress(req.Addr), 0, 0)
 	if err := future.Error(); err != nil {
-		fmt.Printf("Falha ao adicionar nó %s ao consenso: %v\n", req.ID, err)
+		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Falha ao adicionar nó %s ao consenso: %v\n", req.ID, err)
 		return err
 	}
 
-	fmt.Printf("Nó %s integrado com sucesso!\n", req.ID)
+	fmt.Printf("\033[1;94m[LOCAL]:\033[0m Nó %s integrado com sucesso!\n", req.ID)
 
 	return nil
 
@@ -174,7 +174,7 @@ func handleForwardingAlert(raftNode *raft.Raft, payload json.RawMessage) error {
 
 	var fwd forwardedAlert
 	if err := json.Unmarshal(payload, &fwd); err != nil {
-		fmt.Printf("Erro ao desserializar alerta: %v\n", err)
+		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao desserializar alerta: %v\n", err)
 		return err
 	}
 
@@ -186,6 +186,11 @@ func handleForwardingAlert(raftNode *raft.Raft, payload json.RawMessage) error {
 
 	LClock.CompareAndUpdate(alert.LamportTime)
 	LClock.Tick()
+
+	// TODO: DEBUG_MODE_LAMPORT_TICK
+	if DebugMode {
+		fmt.Printf("\n\033[1;36m[DEBUG-LAMPORT]\033[0m TICK (+1): Relógio = %d | Ação: Encaminhamento via TCP\n", LClock.GetTime())
+	}
 
 	reqID := createIncidentID(alert.SensorID)
 
@@ -212,11 +217,11 @@ func handleForwardingAlert(raftNode *raft.Raft, payload json.RawMessage) error {
 	future := raftNode.Apply(cmdBytes, 5*time.Second)
 
 	if err := future.Error(); err != nil {
-		fmt.Println("Falha ao adicionar requisição ao consenso: ", err)
+		fmt.Println("\033[1;94m[LOCAL]:\033[0m Falha ao adicionar requisição ao consenso: ", err)
 		return err
 	}
 
-	fmt.Printf("Requisição criada para o sensor %s: %s\n", alert.SensorID, reqID)
+	fmt.Printf("\033[1;94m[LOCAL]:\033[0m Requisição criada para o sensor %s: %s\n", alert.SensorID, reqID)
 
 	return nil
 
@@ -226,12 +231,17 @@ func handleForwardingDone(raftNode *raft.Raft, payload json.RawMessage) error {
 	var result shared.DoneInfo
 
 	if err := json.Unmarshal(payload, &result); err != nil {
-		fmt.Printf("Erro ao unmarshal payload: %v\n", err)
+		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao unmarshal payload: %v\n", err)
 		return err
 	}
 
 	LClock.CompareAndUpdate(result.LCTime)
 	LClock.Tick()
+
+	// TODO: DEBUG_MODE_LAMPORT_TICK
+	if DebugMode {
+		fmt.Printf("\n\033[1;36m[DEBUG-LAMPORT]\033[0m TICK (+1): Relógio = %d | Ação: Done de drone recebido por TCP\n", LClock.GetTime())
+	}
 
 	// Preciso fazer isso pq RawMessage nao e considerado []byte.
 	newPayload, _ := json.Marshal(result)
@@ -247,10 +257,10 @@ func handleForwardingDone(raftNode *raft.Raft, payload json.RawMessage) error {
 	future := raftNode.Apply(cmdBytes, 5*time.Second)
 
 	if err := future.Error(); err != nil {
-		return fmt.Errorf("Erro ao aplicar comando no Raft: %v\n", err)
+		return fmt.Errorf("\033[1;94m[LOCAL]:\033[0m Erro ao aplicar comando no Raft: %v\n", err)
 	}
 
-	fmt.Printf("Drone %s liberado da missão %s\n", result.DroneID, result.RequisitionID)
+	fmt.Printf("\033[1;94m[LOCAL]:\033[0m Drone %s liberado da missão %s\n", result.DroneID, result.RequisitionID)
 	return nil
 
 }
@@ -259,11 +269,16 @@ func handleForwardingRegisterDrone(raftNode *raft.Raft, payload json.RawMessage)
 	var drone shared.Drone
 
 	if err := json.Unmarshal(payload, &drone); err != nil {
-		fmt.Printf("Erro ao unmarshal payload: %v\n", err)
+		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao unmarshal payload: %v\n", err)
 		return err
 	}
 
 	LClock.Tick()
+
+	// TODO: DEBUG_MODE_LAMPORT_TICK
+	if DebugMode {
+		fmt.Printf("\n\033[1;36m[DEBUG-LAMPORT]\033[0m TICK (+1): Relógio = %d | Ação: Novo Registro de Drone Recebido por TCP\n", LClock.GetTime())
+	}
 
 	// Preciso fazer isso pq RawMessage nao e considerado []byte.
 	newPayload, _ := json.Marshal(drone)
@@ -279,10 +294,10 @@ func handleForwardingRegisterDrone(raftNode *raft.Raft, payload json.RawMessage)
 	future := raftNode.Apply(cmdBytes, 5*time.Second)
 
 	if err := future.Error(); err != nil {
-		return fmt.Errorf("Erro ao aplicar comando no Raft: %v\n", err)
+		return fmt.Errorf("\033[1;94m[LOCAL]:\033[0m Erro ao aplicar comando no Raft: %v\n", err)
 	}
 
-	fmt.Printf("Drone %s registrado com sucesso\n", drone.ID)
+	fmt.Printf("\033[1;94m[LOCAL]:\033[0m Drone %s registrado com sucesso\n", drone.ID)
 	return nil
 }
 

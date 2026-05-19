@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -87,6 +88,31 @@ func (app *DroneApp) connectWithFailover() error {
 			time.Sleep(2 * time.Second)
 		}
 	}
+}
+
+// missionHandler coloca o payload no canal interno para processamento posterior.
+func (app *DroneApp) missionHandler(client mqtt.Client, msg mqtt.Message) {
+	fmt.Println("Missão recebida!")
+	app.PayloadChannel <- msg.Payload()
+}
+
+func (app *DroneApp) regErrorHandler(client mqtt.Client, msg mqtt.Message) {
+	var errorMsg shared.RegErrorMessage
+	if err := json.Unmarshal(msg.Payload(), &errorMsg); err != nil {
+		fmt.Printf("Erro ao desserializar mensagem de erro de registro: %v\n", err)
+		return
+	}
+
+	fmt.Printf("Erro de registro recebido: %s\n", errorMsg.Error)
+
+	fmt.Println("Aguardando 3 segundos a eleição do Raft terminar...")
+
+	go func() {
+		time.Sleep(3 * time.Second)
+		fmt.Println("Reenviando pedido de registro...")
+
+		app.register(client)
+	}()
 }
 
 // notifyDone publica no tópico de conclusão da missão.

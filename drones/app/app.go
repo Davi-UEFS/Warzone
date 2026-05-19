@@ -25,6 +25,7 @@ type DroneApp struct {
 	missionTopic     string
 	missionDoneTopic string
 	regErrorTopic    string
+	DebugMode        bool
 
 	// Mutex + flag para impedir reconnect concorrente.
 	ReconnectMu  sync.Mutex
@@ -32,7 +33,7 @@ type DroneApp struct {
 }
 
 // NewDroneApp monta o estado inicial do drone.
-func NewDroneApp(id string, brokers []string) *DroneApp {
+func NewDroneApp(id string, brokers []string, debugMode bool) *DroneApp {
 	return &DroneApp{
 		ID:      id,
 		Brokers: brokers,
@@ -50,6 +51,7 @@ func NewDroneApp(id string, brokers []string) *DroneApp {
 		missionTopic:     fmt.Sprintf("drones/%s/mission", id),
 		missionDoneTopic: fmt.Sprintf("drones/%s/done", id),
 		regErrorTopic:    fmt.Sprintf("drones/%s/reg_error", id),
+		DebugMode:        debugMode,
 	}
 }
 
@@ -97,6 +99,13 @@ func (app *DroneApp) onLost(client mqtt.Client, err error) {
 // register publica no tópico de registro a informação atual do drone.
 func (app *DroneApp) register(client mqtt.Client) {
 	app.LClock.Tick()
+
+	// TODO: DEBUG_MODE_LAMPORT_TICK
+	if app.DebugMode {
+		fmt.Printf("\n\033[1;36m[DEBUG-LAMPORT]\033[0m TICK (+1): Relógio = %d | Ação: Pedido de Registro de Drone\n", app.LClock.GetTime())
+	}
+
+	// ... resto do código (payload, etc)
 
 	payload, err := json.Marshal(app.Info)
 	if err != nil {

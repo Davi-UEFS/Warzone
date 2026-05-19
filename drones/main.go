@@ -14,12 +14,13 @@ import (
 func main() {
 	idFlag := flag.String("id", "drone-01", "ID do drone")
 	brokersFlag := flag.String("brokers", "tcp://localhost:1883,tcp://localhost:1884", "Lista de brokers separados por vírgula")
+	debugFlag := flag.Bool("debug", false, "Ativar modo de depuração")
 	flag.Parse()
 
 	droneID := *idFlag
 	brokers := strings.Split(*brokersFlag, ",")
 
-	app := droneapp.NewDroneApp(droneID, brokers)
+	app := droneapp.NewDroneApp(droneID, brokers, *debugFlag)
 	go app.Run()
 
 	stop := make(chan os.Signal, 1)

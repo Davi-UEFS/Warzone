@@ -55,8 +55,8 @@ func (fsm *RaftFSM) Apply(log *raft.Log) interface{} {
 	var cmd shared.HeaderCommand
 
 	if err := json.Unmarshal(log.Data, &cmd); err != nil {
-		fmt.Printf("\033[1;33mFSM:\033[0m Erro ao desserializar comando: %v.\n", err)
-		fmt.Printf("\033[1;33mFSM:\033[0m Log data: %s\n", string(log.Data))
+		fmt.Printf("\033[1;33m[FSM]:\033[0m Erro ao desserializar comando: %v.\n", err)
+		fmt.Printf("\033[1;33m[FSM]:\033[0m Log data: %s\n", string(log.Data))
 		return err
 	}
 
@@ -78,7 +78,7 @@ func (fsm *RaftFSM) Apply(log *raft.Log) interface{} {
 	case OP_AGING:
 		return fsm.handleAGING()
 	default:
-		fmt.Printf("\033[1;33mFSM:\033[0m Operação desconhecida: %s\n", cmd.Operation)
+		fmt.Printf("\033[1;33m[FSM]:\033[0m Operação desconhecida: %s\n", cmd.Operation)
 		return nil
 	}
 }
@@ -87,7 +87,7 @@ func (fsm *RaftFSM) handleADDRequisition(payload json.RawMessage) error {
 	var requisition shared.Requisition
 
 	if err := json.Unmarshal(payload, &requisition); err != nil {
-		fmt.Printf("\033[1;33mFSM:\033[0m Erro ao desserializar pacote: %v.\n", err)
+		fmt.Printf("\033[1;33m[FSM]:\033[0m Erro ao desserializar pacote: %v.\n", err)
 		return err
 	}
 
@@ -97,13 +97,13 @@ func (fsm *RaftFSM) handleADDRequisition(payload json.RawMessage) error {
 	// Evita duplicatas: checar tanto em Pending quanto em InProgress
 	for _, v := range fsm.PendingReqsQueue {
 		if v.ID == requisition.ID {
-			fmt.Printf("\033[1;33mFSM:\033[0m Requisição \033[33m%s\033[1;33m já existe na fila pendente.\033[0m\n", v.ID)
+			fmt.Printf("\033[1;33m[FSM]:\033[0m Requisição \033[33m%s\033[1;33m já existe na fila pendente.\033[0m\n", v.ID)
 			return nil
 		}
 	}
 
 	if _, inProgress := fsm.InProgressReqs[requisition.ID]; inProgress {
-		fmt.Printf("\033[1;33mFSM:\033[0m Requisição \033[33m%s\033[1;33m já está em progresso.\033[0m\n", requisition.ID)
+		fmt.Printf("\033[1;33m[FSM]:\033[0m Requisição \033[33m%s\033[1;33m já está em progresso.\033[0m\n", requisition.ID)
 		return nil
 	}
 
@@ -116,7 +116,7 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 	var doneInfo shared.DoneInfo
 
 	if err := json.Unmarshal(payload, &doneInfo); err != nil {
-		fmt.Printf("\033[1;33mFSM:\033[0m Erro ao desserializar pacote: %v.\n", err)
+		fmt.Printf("\033[1;33m[FSM]:\033[0m Erro ao desserializar pacote: %v.\n", err)
 		return err
 	}
 
@@ -132,17 +132,23 @@ func (fsm *RaftFSM) handleRMVRequisition(payload json.RawMessage) error {
 
 	if reqID == shared.NONE {
 		// Sem missão atribuída
-		fmt.Printf("\033[1;33mFSM:\033[0m Drone \033[33m%s\033[1;33m não possui missão atual.\033[0m\n", doneInfo.DroneID)
+		fmt.Printf("\033[1;33m[FSM]:\033[0m Drone \033[33m%s\033[1;33m não possui missão atual.\033[0m\n", doneInfo.DroneID)
 		return nil
 	}
 
 	if _, exist := fsm.InProgressReqs[reqID]; exist {
 		LClock.Tick()
+
+		// TODO: DEBUG_MODE_LAMPORT_TICK
+		if DebugMode {
+			fmt.Printf("\n\033[1;36m[DEBUG-LAMPORT]\033[0m TICK (+1): Relógio = %d | Ação: Removendo Requisição e Liberando Drone na FSM\n", LClock.GetTime())
+		}
+
 		drone.SetIdle()
 		fsm.DroneMap[doneInfo.DroneID] = drone
 		delete(fsm.InProgressReqs, doneInfo.RequisitionID)
 
-		fmt.Printf("\033[1;33mFSM:\033[0m Requisição \033[33m%s\033[1;33m concluída pelo drone \033[33m%s\033[1;33m.\033[0m\n", doneInfo.RequisitionID, doneInfo.DroneID)
+		fmt.Printf("\033[1;33m[FSM]:\033[0m Requisição \033[33m%s\033[1;33m concluída pelo drone \033[33m%s\033[1;33m.\033[0m\n", doneInfo.RequisitionID, doneInfo.DroneID)
 
 		fsm.logAction(fmt.Sprintf("INFO: Drone %s concluiu a missao %s com sucesso", doneInfo.DroneID, doneInfo.RequisitionID))
 	}
@@ -181,7 +187,7 @@ func (fsm *RaftFSM) handleREGDrone(payload json.RawMessage) error {
 		}
 	}
 
-	fmt.Printf("\033[1;33mFSM:\033[0m Novo drone registrado: \033[33m%s\033[0m\n", newDrone.ID)
+	fmt.Printf("\033[1;33m[FSM]:\033[0m Novo drone registrado: \033[33m%s\033[0m\n", newDrone.ID)
 	fsm.DroneMap[newDrone.ID] = newDrone
 	fsm.Mu.Unlock()
 
@@ -200,9 +206,9 @@ func (fsm *RaftFSM) handleREGDrone(payload json.RawMessage) error {
 
 		select {
 		case fsm.EventsChan <- event:
-			fmt.Printf("\033[1;33mFSM:\033[0m Evento gerado para restaurar missão \033[33m%s\033[1;33m do drone \033[33m%s\033[1;33m.\033[0m\n", missionToRestore.RequisitionID, newDrone.ID)
+			fmt.Printf("\033[1;33m[FSM]:\033[0m Evento gerado para restaurar missão \033[33m%s\033[1;33m do drone \033[33m%s\033[1;33m.\033[0m\n", missionToRestore.RequisitionID, newDrone.ID)
 		default:
-			fmt.Printf("\033[1;33mFSM:\033[0m Aviso: Canal de eventos cheio. Falha ao gerar evento de restauração para \033[33m%s\033[1;33m\033[0m\n", newDrone.ID)
+			fmt.Printf("\033[1;33m[FSM]:\033[0m Aviso: Canal de eventos cheio. Falha ao gerar evento de restauração para \033[33m%s\033[1;33m\033[0m\n", newDrone.ID)
 		}
 	}
 
@@ -231,20 +237,20 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 	}
 
 	if targetReqIndex == -1 {
-		fmt.Printf("\033[1;33mFSM:\033[0m Abortando: Requisição \033[33m%s\033[1;33m não encontrada na fila.\033[0m\n", mission.RequisitionID)
+		fmt.Printf("\033[1;33m[FSM]:\033[0m Abortando: Requisição \033[33m%s\033[1;33m não encontrada na fila.\033[0m\n", mission.RequisitionID)
 		return fmt.Errorf("requisição não encontrada")
 	}
 
 	// Já está em progresso?
 	if _, exists := fsm.InProgressReqs[mission.RequisitionID]; exists {
-		fmt.Printf("\033[1;33mFSM:\033[0m Requisição \033[33m%s\033[1;33m já está em progresso.\033[0m\n", mission.RequisitionID)
+		fmt.Printf("\033[1;33m[FSM]:\033[0m Requisição \033[33m%s\033[1;33m já está em progresso.\033[0m\n", mission.RequisitionID)
 		return nil
 	}
 
 	// Verifica se o drone existe antes de alterar o estado da fila/inq.
 	drone, ok := fsm.DroneMap[mission.AssignedDrone]
 	if !ok {
-		fmt.Printf("\033[1;33mFSM:\033[0m Abortando: Drone \033[33m%s\033[1;33m não mapeado na FSM.\033[0m\n", mission.AssignedDrone)
+		fmt.Printf("\033[1;33m[FSM]:\033[0m Abortando: Drone \033[33m%s\033[1;33m não mapeado na FSM.\033[0m\n", mission.AssignedDrone)
 		return fmt.Errorf("drone não encontrado")
 	}
 
@@ -269,9 +275,9 @@ func (fsm *RaftFSM) handleASSIGNDrone(payload json.RawMessage) error {
 
 		select {
 		case fsm.EventsChan <- event:
-			fmt.Printf("\033[1;33mFSM:\033[0m Sucesso: Evento de alocação (Incidente \033[33m%s\033[1;33m -> Drone \033[33m%s\033[1;33m) enviado ao canal.\033[0m\n", mission.RequisitionID, mission.AssignedDrone)
+			fmt.Printf("\033[1;33m[FSM]:\033[0m Sucesso: Evento de alocação (Incidente \033[33m%s\033[1;33m -> Drone \033[33m%s\033[1;33m) enviado ao canal.\033[0m\n", mission.RequisitionID, mission.AssignedDrone)
 		default:
-			fmt.Printf("\033[1;33mFSM:\033[0m Aviso: Canal de eventos cheio. Falha ao gerar evento MQTT para drone \033[33m%s\033[1;33m\033[0m\n", mission.AssignedDrone)
+			fmt.Printf("\033[1;33m[FSM]:\033[0m Aviso: Canal de eventos cheio. Falha ao gerar evento MQTT para drone \033[33m%s\033[1;33m\033[0m\n", mission.AssignedDrone)
 		}
 	}
 
@@ -300,7 +306,7 @@ func (fsm *RaftFSM) handleDEADDrone(payload json.RawMessage) error {
 			req.Priority += 1000
 			heap.Push(&fsm.PendingReqsQueue, req)
 			delete(fsm.InProgressReqs, reqID)
-			fmt.Printf("\033[1;33mFSM:\033[0m MISSÃO RESGATADA: Incidente \033[33m%s\033[1;33m voltou para a fila (Drone \033[33m%s\033[1;33m caiu)\033[0m\n", reqID, droneID)
+			fmt.Printf("\033[1;33m[FSM]:\033[0m MISSÃO RESGATADA: Incidente \033[33m%s\033[1;33m voltou para a fila (Drone \033[33m%s\033[1;33m caiu)\033[0m\n", reqID, droneID)
 
 			// NOVO: Log de resgate de missao
 			fsm.logAction(fmt.Sprintf("ALERTA: Drone %s inoperante. Missao %s resgatada para a fila!", droneID, reqID))
@@ -309,7 +315,7 @@ func (fsm *RaftFSM) handleDEADDrone(payload json.RawMessage) error {
 
 	// A LIMPEZA: Remove o registro do drone
 	delete(fsm.DroneMap, droneID)
-	fmt.Printf("\033[1;33mFSM:\033[0m DRONE REMOVIDO: \033[33m%s\033[1;33m foi declarado morto por falta de pulso.\033[0m\n", droneID)
+	fmt.Printf("\033[1;33m[FSM]:\033[0m DRONE REMOVIDO: \033[33m%s\033[1;33m foi declarado morto por falta de pulso.\033[0m\n", droneID)
 
 	return nil
 }
@@ -349,7 +355,7 @@ func (fsm *RaftFSM) GetSector() string {
 }
 
 func (fsm *RaftFSM) Snapshot() (raft.FSMSnapshot, error) {
-	fmt.Println("\033[1;33mFSM:\033[0m GUARDANDO ESTADO")
+	fmt.Println("\033[1;33m[FSM]:\033[0m GUARDANDO ESTADO")
 	fsm.Mu.Lock()
 	defer fsm.Mu.Unlock()
 
@@ -387,7 +393,7 @@ func (snaphot *RaftSnapshot) Release() {
 }
 
 func (fsm *RaftFSM) Restore(rc io.ReadCloser) error {
-	fmt.Println("\033[1;33mFSM:\033[0m RESTAURANDO...")
+	fmt.Println("\033[1;33m[FSM]:\033[0m RESTAURANDO...")
 	var restored RaftSnapshot
 	if err := json.NewDecoder(rc).Decode(&restored); err != nil {
 		return fmt.Errorf("Erro ao decodificar snapshot: %v", err)
@@ -399,7 +405,7 @@ func (fsm *RaftFSM) Restore(rc io.ReadCloser) error {
 	fsm.InProgressReqs = restored.InProgress
 	fsm.Mu.Unlock()
 
-	fmt.Printf("\033[1;33mFSM:\033[0m Restaurada: %d drones e %d incidentes carregados.\n",
+	fmt.Printf("\033[1;33m[FSM]:\033[0m Restaurada: %d drones e %d incidentes carregados.\n",
 		len(fsm.DroneMap), len(fsm.PendingReqsQueue))
 
 	return nil
@@ -438,7 +444,7 @@ func setupRaft(dir, id, raftAddr string, fsm *RaftFSM, bootstrap bool) (*raft.Ra
 		},
 	}
 
-	log.Printf("Endereço Raft: %s\n", raftAddr)
+	log.Printf("\033[1;94m[LOCAL]:\033[0m Endereço Raft: %s\n", raftAddr)
 
 	config.Logger = hclog.New(&hclog.LoggerOptions{
 		Name:   "raft",
@@ -460,16 +466,16 @@ func setupRaft(dir, id, raftAddr string, fsm *RaftFSM, bootstrap bool) (*raft.Ra
 	// Diagnostic: show which files/paths Raft will use for persistence
 	logPath := filepath.Join(dir, "log.db")
 	stablePath := filepath.Join(dir, "stable.db")
-	fmt.Printf("Raft data dir: %s\n", dir)
+	fmt.Printf("\033[1;94m[LOCAL]:\033[0m Raft data dir: %s\n", dir)
 	if fi, err := os.Stat(logPath); err == nil {
-		fmt.Printf("Encontrado log.db - Tamanho = %d bytes\n", fi.Size())
+		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Encontrado log.db - Tamanho = %d bytes\n", fi.Size())
 	} else {
-		fmt.Println("log.db não encontrado (será criado)")
+		fmt.Println("\033[1;94m[LOCAL]:\033[0m log.db não encontrado (será criado)")
 	}
 	if fi, err := os.Stat(stablePath); err == nil {
-		fmt.Printf("Encontrado stable.db - Tamanho = %d bytes\n", fi.Size())
+		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Encontrado stable.db - Tamanho = %d bytes\n", fi.Size())
 	} else {
-		fmt.Println("stable.db não encontrado (será criado)")
+		fmt.Println("\033[1;94m[LOCAL]:\033[0m stable.db não encontrado (será criado)")
 	}
 
 	logStore, err := raftboltdb.NewBoltStore(logPath)

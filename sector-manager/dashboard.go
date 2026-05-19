@@ -59,10 +59,10 @@ func startDashboardServer(port int) {
 	mux.HandleFunc("/", dashboardIndexHandler)
 
 	addr := fmt.Sprintf(":%d", port)
-	fmt.Printf("Dashboard disponível em http://localhost:%d\n", port)
+	fmt.Printf("\033[1;94m[LOCAL]:\033[0m Dashboard disponível em http://localhost:%d\n", port)
 
 	if err := http.ListenAndServe(addr, mux); err != nil {
-		fmt.Printf("Erro no servidor do dashboard: %v\n", err)
+		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro no servidor do dashboard: %v\n", err)
 	}
 }
 

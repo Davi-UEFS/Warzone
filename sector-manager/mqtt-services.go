@@ -22,8 +22,8 @@ type forwardedAlert struct {
 }
 
 var onConnect = func(client mqtt.Client) {
-	fmt.Println("Conectado ao broker local")
-	fmt.Println("Se inscrevendo nos tópicos...")
+	fmt.Println("\033[1;94m[LOCAL]:\033[0m Conectado ao broker local")
+	fmt.Println("\033[1;94m[LOCAL]:\033[0m Se inscrevendo nos tópicos...")
 
 	client.Subscribe("sensors/+/incidents", 1, onAlertHandler)
 	client.Subscribe("drones/+/done", 1, onDoneHandler)
@@ -36,25 +36,30 @@ var onDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 	var result shared.DoneInfo
 
 	if err := json.Unmarshal(msg.Payload(), &result); err != nil {
-		fmt.Printf("Erro ao unmarshal payload: %v\n", err)
+		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao unmarshal payload: %v\n", err)
 		return
 	}
 
 	if raftNode.State() != raft.Leader {
-		fmt.Println("Sou seguidor, encaminhando resultado para o líder via TCP...")
+		fmt.Println("\033[1;94m[LOCAL]:\033[0m Sou seguidor, encaminhando resultado para o líder via TCP...")
 
 		leaderInfo := searchForLeaderInfo(peers, sigPort)
 		if err := forwardCommand(leaderInfo.SigAddr, shared.HeaderCommand{
 			Operation: FORWARD_DONE,
 			Payload:   msg.Payload(),
 		}); err != nil {
-			fmt.Printf("Erro ao encaminhar resultado: %v\n", err)
+			fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao encaminhar resultado: %v\n", err)
 		}
 		return
 	}
 
 	LClock.CompareAndUpdate(result.LCTime)
 	LClock.Tick()
+
+	// TODO: DEBUG_MODE_LAMPORT_TICK
+	if DebugMode {
+		fmt.Printf("\n\033[1;36m[DEBUG-LAMPORT]\033[0m TICK (+1): Relógio = %d | Ação: Done recebido do drone (MQTT)\n", LClock.GetTime())
+	}
 
 	cmd := shared.HeaderCommand{
 		Operation:   OP_RMVREQ,
@@ -67,31 +72,31 @@ var onDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 	future := raftNode.Apply(cmdBytes, 5*time.Second)
 
 	if err := future.Error(); err != nil {
-		fmt.Printf("Erro ao aplicar comando no Raft: %v\n", err)
+		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao aplicar comando no Raft: %v\n", err)
 	} else {
-		fmt.Printf("Drone %s liberado da missão %s\n", result.DroneID, result.RequisitionID)
+		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Drone %s liberado da missão %s\n", result.DroneID, result.RequisitionID)
 	}
 }
 
 func createIncidentID(SENSOR_ID string) string {
 	shortTime := time.Now().Unix() % 10000 // Para evitar IDs muito longos
-	return fmt.Sprintf("inc/%s/%d", SENSOR_ID, shortTime)
+	return fmt.Sprintf("inc|%s|%d", SENSOR_ID, shortTime)
 }
 
 var onAlertHandler = func(client mqtt.Client, msg mqtt.Message) {
 
-	fmt.Println("Novo alerta chegou por MQTT")
+	fmt.Println("\033[1;94m[LOCAL]:\033[0m Novo alerta chegou por MQTT")
 
 	alert := shared.Alert{}
 	if err := json.Unmarshal(msg.Payload(), &alert); err != nil {
-		fmt.Printf("Erro ao unmarshal payload: %v\n", err)
+		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao unmarshal payload: %v\n", err)
 		return
 	}
 
 	LClock.CompareAndUpdate(alert.LamportTime)
 
 	if raftNode.State() != raft.Leader {
-		fmt.Println("Sou seguidor, encaminhando alerta para o líder via TCP...")
+		fmt.Println("\033[1;94m[LOCAL]:\033[0m Sou seguidor, encaminhando alerta para o líder via TCP...")
 
 		leaderInfo := searchForLeaderInfo(peers, sigPort)
 
@@ -100,7 +105,7 @@ var onAlertHandler = func(client mqtt.Client, msg mqtt.Message) {
 			OriginSector: sectorFSM.GetSector(),
 		})
 		if err != nil {
-			fmt.Printf("Erro ao serializar forward alert: %v\n", err)
+			fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao serializar forward alert: %v\n", err)
 			return
 		}
 
@@ -108,13 +113,18 @@ var onAlertHandler = func(client mqtt.Client, msg mqtt.Message) {
 			Operation: FORWARD_ALR,
 			Payload:   forwardPayload,
 		}); err != nil {
-			fmt.Printf("Erro ao encaminhar alerta: %v\n", err)
+			fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao encaminhar alerta: %v\n", err)
 		}
 
 		return
 	}
 
 	LClock.Tick()
+
+	// TODO: DEBUG_MODE_LAMPORT_TICK
+	if DebugMode {
+		fmt.Printf("\n\033[1;36m[DEBUG-LAMPORT]\033[0m TICK (+1): Relógio = %d | Ação: Novo Alerta Recebido (MQTT)\n", LClock.GetTime())
+	}
 
 	reqID := createIncidentID(alert.SensorID)
 
@@ -138,13 +148,30 @@ var onAlertHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 	cmdBytes, _ := json.Marshal(cmd)
 
-	future := raftNode.Apply(cmdBytes, 5*time.Second)
-	if err := future.Error(); err != nil {
-		fmt.Printf("Erro ao aplicar comando ADDI: %v\n", err)
+	// ----------------------------------------------------
+	// Simulação de latência para o sensor "sensor-lento"
+	// Esta seção não é necessária para o funcionamento.
+	// Simula um atraso na rede para testar a resiliência do sistema e a sincronização de Lamport.
+	// ----------------------------------------------------
+	if DebugMode && alert.SensorID == "sensor-lento" {
+		log.Printf("[DEBUG-LAMPORT] Interceptado alerta do %s. Retardando envio ao Raft por 10 segundos...\n", alert.SensorID)
+
+		go func(cmdBytesToApply []byte, reqID string) {
+			time.Sleep(10 * time.Second)
+			log.Printf("[DEBUG-LAMPORT] Tempo esgotado! Injetando %s no Raft.\n", reqID)
+			raftNode.Apply(cmdBytesToApply, 5*time.Second)
+		}(cmdBytes, requisition.ID)
+
 		return
 	}
 
-	fmt.Println("Incidente replicado com sucesso no cluster")
+	future := raftNode.Apply(cmdBytes, 5*time.Second)
+	if err := future.Error(); err != nil {
+		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao aplicar comando ADDI: %v\n", err)
+		return
+	}
+
+	fmt.Println("\033[1;94m[LOCAL]:\033[0m Incidente replicado com sucesso no cluster")
 
 }
 
@@ -153,7 +180,7 @@ var onNewDroneHandler = func(client mqtt.Client, msg mqtt.Message) {
 	var drone shared.Drone
 
 	if err := json.Unmarshal(msg.Payload(), &drone); err != nil {
-		fmt.Printf("Erro ao unmarshal payload: %v\n", err)
+		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao unmarshal payload: %v\n", err)
 		return
 	}
 
@@ -162,7 +189,7 @@ var onNewDroneHandler = func(client mqtt.Client, msg mqtt.Message) {
 	payload, _ := json.Marshal(drone)
 
 	if raftNode.State() != raft.Leader {
-		fmt.Println("Sou seguidor, encaminhando registro de drone para o líder via TCP...")
+		fmt.Println("\033[1;94m[LOCAL]:\033[0m Sou seguidor, encaminhando registro de drone para o líder via TCP...")
 
 		leaderInfo := searchForLeaderInfo(peers, sigPort)
 
@@ -178,6 +205,11 @@ var onNewDroneHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 	LClock.Tick()
 
+	// TODO: DEBUG_MODE_LAMPORT_TICK
+	if DebugMode {
+		fmt.Printf("\n\033[1;36m[DEBUG-LAMPORT]\033[0m TICK (+1): Relógio = %d | Ação: Novo Registro de Drone Recebido (MQTT)\n", LClock.GetTime())
+	}
+
 	cmd := shared.HeaderCommand{
 		Operation:   OP_REGDRONE,
 		Payload:     payload,
@@ -188,12 +220,12 @@ var onNewDroneHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 	future := raftNode.Apply(cmdBytes, 5*time.Second)
 	if err := future.Error(); err != nil {
-		log.Printf("Erro ao aplicar comando REGDRONE: %v\n", err)
+		log.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao aplicar comando REGDRONE: %v\n", err)
 		tellRegError(drone.ID, "Erro interno do Raft. Tente registrar novamente.")
 		return
 	}
 
-	fmt.Println("Novo drone registrado com sucesso no cluster")
+	fmt.Println("\033[1;94m[LOCAL]:\033[0m Novo drone registrado com sucesso no cluster")
 
 }
 
@@ -227,9 +259,9 @@ func publishToDrones(eventsChan chan MissionPublishEvent, client mqtt.Client) {
 		event := <-eventsChan
 		token := client.Publish(event.Topic, event.Qos, false, event.Payload)
 		if token.Wait() && token.Error() != nil {
-			fmt.Printf("Erro ao publicar evento para drone: %v\n", token.Error())
+			fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao publicar evento para drone: %v\n", token.Error())
 		} else {
-			fmt.Printf("Evento publicado para drone no tópico %s\n", event.Topic)
+			fmt.Printf("\033[1;94m[LOCAL]:\033[0m Evento publicado para drone no tópico %s\n", event.Topic)
 		}
 	}
 }
@@ -245,8 +277,8 @@ func tellRegError(droneID string, errMsg string) {
 	// TODO: PENSAR NUMA LOGICA MELHOR DEPOIS. USAR GLOBAL É PEBA.
 	token := globalClient.Publish("drones/"+droneID+"/reg_error", 1, false, payload)
 	if token.Wait() && token.Error() != nil {
-		fmt.Printf("Erro ao publicar mensagem de erro de registro para drone %s: %v\n", droneID, token.Error())
+		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao publicar mensagem de erro de registro para drone %s: %v\n", droneID, token.Error())
 	} else {
-		fmt.Printf("Mensagem de erro de registro publicada para drone %s\n", droneID)
+		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Mensagem de erro de registro publicada para drone %s\n", droneID)
 	}
 }

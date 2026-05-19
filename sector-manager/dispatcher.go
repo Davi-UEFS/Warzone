@@ -66,6 +66,11 @@ func processRequisitions() {
 func dispatch(raftNode *raft.Raft, droneID string, req shared.Requisition) {
 	LClock.Tick()
 
+	// TODO: DEBUG_MODE_LAMPORT_TICK
+	if DebugMode {
+		fmt.Printf("\n\033[1;36m[DEBUG-LAMPORT]\033[0m TICK (+1): Relógio = %d | Ação: Despachando Missão para Drone\n", LClock.GetTime())
+	}
+
 	mission := shared.DroneMission{
 		RequisitionID: req.ID,
 		AssignedDrone: droneID,
@@ -87,13 +92,18 @@ func dispatch(raftNode *raft.Raft, droneID string, req shared.Requisition) {
 	future := raftNode.Apply(cmdBytes, 5*time.Second)
 
 	if err := future.Error(); err != nil {
-		fmt.Printf("Erro ao aplicar comando ASSIGN no Raft: %v\n", err)
+		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao aplicar comando ASSIGN no Raft: %v\n", err)
 	}
 }
 
 // applyAging envia comando OP_AGING via Raft para envelhecer requisições
 func applyAging() {
 	LClock.Tick()
+
+	// TODO: DEBUG_MODE_LAMPORT_TICK
+	if DebugMode {
+		fmt.Printf("\n\033[1;36m[DEBUG-LAMPORT]\033[0m TICK (+1): Relógio = %d | Ação: Aplicando Aging na Fila de Prioridades\n", LClock.GetTime())
+	}
 
 	sectorFSM.Mu.Lock()
 	if len(sectorFSM.PendingReqsQueue) == 0 {
@@ -113,14 +123,14 @@ func applyAging() {
 	cmdBytes, err := json.Marshal(cmd)
 
 	if err != nil {
-		fmt.Printf("Erro ao serializar comando AGING: %v\n", err)
+		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao serializar comando AGING: %v\n", err)
 		return
 	}
 
 	future := raftNode.Apply(cmdBytes, 5*time.Second)
 
 	if err := future.Error(); err != nil {
-		fmt.Printf("Erro ao aplicar comando AGING no Raft: %v\n", err)
+		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao aplicar comando AGING no Raft: %v\n", err)
 	}
 }
 
@@ -131,17 +141,24 @@ func checkDeadDrones() {
 	sectorFSM.Mu.Lock()
 	var deadDrones []string
 
-	// Procura drones que não mandam o heartbeat há mais de 15 segundos
+	// Procura drones que não mandam o heartbeat há mais de 20 segundos
 	for id, drone := range sectorFSM.DroneMap {
-		if now-drone.LastSeen > 15 {
+		if now-drone.LastSeen > 20 {
 			deadDrones = append(deadDrones, id)
 		}
 	}
+
 	sectorFSM.Mu.Unlock()
 
 	// Para cada drone inativo, avisa o Raft para matá-lo e resgatar a missão
 	for _, id := range deadDrones {
 		LClock.Tick()
+
+		// TODO: DEBUG_MODE_LAMPORT_TICK
+		if DebugMode {
+			fmt.Printf("\n\033[1;36m[DEBUG-LAMPORT]\033[0m TICK (+1): Relógio = %d | Ação: Declarando Drone Morto (Watchdog)\n", LClock.GetTime())
+		}
+
 		payload, _ := json.Marshal(id)
 
 		cmd := shared.HeaderCommand{
