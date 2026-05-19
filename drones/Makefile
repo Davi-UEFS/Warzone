@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-IMAGE_NAME ?= warzone-drone
+IMAGE_NAME ?= daviuefs/drones
 
 DRONE_ID ?= drone-01
 BROKERS ?= tcp://127.0.0.1:1883,tcp://127.0.0.1:1884,tcp://127.0.0.1:1885
@@ -17,6 +17,10 @@ help:
 build:
 	@echo "Compilando imagem Docker do drone..."
 	docker build -t $(IMAGE_NAME) -f dockerfile ..
+
+pull:
+	@echo "Baixando imagem do Docker Hub..."
+	docker pull $(IMAGE_NAME):latest
 
 run:
 	docker run -it --rm \

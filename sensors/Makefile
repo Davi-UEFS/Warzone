@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-IMAGE_NAME ?= warzone-sensor
+IMAGE_NAME ?= daviuefs/sensors
 
 SENSOR_ID ?= sensor-01
 SENSOR_TYPE ?= 4
@@ -21,6 +21,10 @@ help:
 build:
 	@echo "Compilando imagem Docker do sensor..."
 	docker build -t $(IMAGE_NAME) -f dockerfile ..
+
+pull:
+	@echo "Baixando imagem do Docker Hub..."
+	docker pull $(IMAGE_NAME):latest
 
 run:
 	docker run -it --rm \

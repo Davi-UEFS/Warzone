@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-IMAGE_NAME = sector-manager
+IMAGE_NAME = daviuefs/sector-manager
 HOST ?= 127.0.0.1
 NODE1_ID ?= setorA
 NODE2_ID ?= setorB
@@ -48,6 +48,10 @@ help:
 build:
 	@echo "Compilando imagem Docker dos nodes..."
 	docker build -t $(IMAGE_NAME) -f dockerfile ..
+
+pull:
+	@echo "Baixando imagem do Docker Hub..."
+	docker pull $(IMAGE_NAME):latest
 
 run-all: 
 	@echo "Para ver os logs corretamente, execute run-sectorA, run-sectorB e run-sectorC em terminais separados!"
