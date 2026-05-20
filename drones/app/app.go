@@ -24,6 +24,7 @@ type DroneApp struct {
 
 	missionTopic     string
 	missionDoneTopic string
+	heartbeatTopic   string
 	regErrorTopic    string
 	DebugMode        bool
 
@@ -50,6 +51,7 @@ func NewDroneApp(id string, brokers []string, debugMode bool) *DroneApp {
 		PayloadChannel:   make(chan []byte, 4096),
 		missionTopic:     fmt.Sprintf("drones/%s/mission", id),
 		missionDoneTopic: fmt.Sprintf("drones/%s/done", id),
+		heartbeatTopic:   fmt.Sprintf("drones/%s/heartbeat", id),
 		regErrorTopic:    fmt.Sprintf("drones/%s/reg_error", id),
 		DebugMode:        debugMode,
 	}
@@ -133,8 +135,7 @@ func (app *DroneApp) sendHeartbeat() {
 		return
 	}
 
-	topic := fmt.Sprintf("drones/%s/heartbeat", app.ID)
-	token := app.Client.Publish(topic, 1, false, payload)
+	token := app.Client.Publish(app.heartbeatTopic, 1, false, payload)
 	if token.Wait() && token.Error() != nil {
 		fmt.Printf("Erro ao enviar heartbeat: %v\n", token.Error())
 	}
