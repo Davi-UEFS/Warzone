@@ -10,17 +10,22 @@ import (
 )
 
 func startDispatcher() {
-	ticker := time.NewTicker(2 * time.Second)
 	watchdogTicker := time.NewTicker(10 * time.Second) // O Cão de Guarda roda a cada 10s
 	agingTicker := time.NewTicker(20 * time.Second)    // Aging a cada 20s
 
-	for {
-		select {
-		case <-ticker.C:
+	go func() {
+		for {
 			// Apenas o Líder despacha novas missões
 			if raftNode.State() == raft.Leader {
 				processRequisitions()
 			}
+		}
+	}()
+
+	for {
+
+		select {
+
 		case <-watchdogTicker.C:
 			// Apenas o Líder caça os drones caídos
 			if raftNode.State() == raft.Leader {
@@ -43,7 +48,6 @@ func processRequisitions() {
 		return
 	}
 
-	//TODO: Talvez seja melhor pedir para o Raft me dar um drone inves de iterar aqui.
 	var freeDroneID string
 
 	for id, drone := range sectorFSM.DroneMap {
