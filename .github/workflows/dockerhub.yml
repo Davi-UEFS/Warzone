@@ -18,6 +18,8 @@ jobs:
             path: drones
           - name: sensors
             path: sensors
+          - name: test-client
+            path: test-client
 
     steps:
       - name: Checkout
