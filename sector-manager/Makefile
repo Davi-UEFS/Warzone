@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-IMAGE_NAME = sector-manager
+IMAGE_NAME = daviuefs/sector-manager
 HOST ?= 127.0.0.1
 NODE1_ID ?= setorA
 NODE2_ID ?= setorB
@@ -23,28 +23,35 @@ BROKER1_PORT ?= 1883
 BROKER2_PORT ?= 1884
 BROKER3_PORT ?= 1885
 
-
-
 USER_ID = $(shell id -u)
 GROUP_ID = $(shell id -g)
 DATA_BASE_DIR ?= $(shell pwd)/dataRaft
 
-.PHONY: build run-all run-sectorA run-sectorB run-sectorC run-node-prompt clean help
+# NOVO: Variável para receber flags extras pelo terminal
+FLAGS ?=
+
+.PHONY: build run-all run-sectorA run-sectorA-go run-sectorB run-sectorB-go run-sectorC run-sectorC-go run-node-prompt clean help
 
 help:
 	@echo "Targets:"
 	@echo "  build           - Builda a imagem dos nodes (Manager + Broker Embutido)"
-	@echo "  run-sectorA     - Sobe o nó A (Líder inicial)"
+	@echo "  run-sectorA     - Sobe o nó A (Líder inicial) via Docker"
+	@echo "  run-sectorA-go  - Sobe o nó A (Líder inicial) via Go nativo"
 	@echo "  run-sectorB     - Sobe o nó B"
 	@echo "  run-sectorC     - Sobe o nó C"
 	@echo "  run-node-prompt - Sobe 1 node com configuracao interativa"
 	@echo "  clean           - Remove containers e dados"
 	@echo ""
 	@echo "DICA: Abra 3 terminais e rode run-sectorA, run-sectorB e run-sectorC separadamente."
+	@echo "USO DE FLAGS: make run-sectorA-go FLAGS=\"-debug\""
 
 build:
 	@echo "Compilando imagem Docker dos nodes..."
 	docker build -t $(IMAGE_NAME) -f dockerfile ..
+
+pull:
+	@echo "Baixando imagem do Docker Hub..."
+	docker pull $(IMAGE_NAME):latest
 
 run-all: 
 	@echo "Para ver os logs corretamente, execute run-sectorA, run-sectorB e run-sectorC em terminais separados!"
@@ -65,7 +72,8 @@ run-sectorA:
 		-dashboard-port=$(NODE1_DASHBOARD_PORT) \
 		-dir=/data \
 		-peers=$(HOST):$(NODE2_SIG_PORT),$(HOST):$(NODE3_SIG_PORT) \
-		-bootstrap=true
+		-bootstrap=true \
+		$(FLAGS)
 
 run-sectorA-go:
 	@mkdir -p $(DATA_BASE_DIR)/$(NODE1_ID)
@@ -78,7 +86,8 @@ run-sectorA-go:
 		-dashboard-port=$(NODE1_DASHBOARD_PORT) \
 		-dir=$(DATA_BASE_DIR)/$(NODE1_ID) \
 		-peers=$(HOST):$(NODE2_SIG_PORT),$(HOST):$(NODE3_SIG_PORT) \
-		-bootstrap=true
+		-bootstrap=true \
+		$(FLAGS)
 
 run-sectorB:
 	@mkdir -p $(DATA_BASE_DIR)/$(NODE2_ID)
@@ -95,7 +104,8 @@ run-sectorB:
 		-broker-port=$(BROKER2_PORT) \
 		-dashboard-port=$(NODE2_DASHBOARD_PORT) \
 		-dir=/data \
-		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE3_SIG_PORT)
+		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE3_SIG_PORT) \
+		$(FLAGS)
 
 run-sectorB-go:
 	@mkdir -p $(DATA_BASE_DIR)/$(NODE2_ID)
@@ -107,7 +117,8 @@ run-sectorB-go:
 		-broker-port=$(BROKER2_PORT) \
 		-dashboard-port=$(NODE2_DASHBOARD_PORT) \
 		-dir=$(DATA_BASE_DIR)/$(NODE2_ID) \
-		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE3_SIG_PORT)
+		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE3_SIG_PORT) \
+		$(FLAGS)
 
 run-sectorC:
 	@mkdir -p $(DATA_BASE_DIR)/$(NODE3_ID)
@@ -124,8 +135,8 @@ run-sectorC:
 		-broker-port=$(BROKER3_PORT) \
 		-dashboard-port=$(NODE3_DASHBOARD_PORT) \
 		-dir=/data \
-		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE2_SIG_PORT)
-
+		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE2_SIG_PORT) \
+		$(FLAGS)
 
 run-sectorC-go:
 	@mkdir -p $(DATA_BASE_DIR)/$(NODE3_ID)
@@ -137,7 +148,8 @@ run-sectorC-go:
 		-broker-port=$(BROKER3_PORT) \
 		-dashboard-port=$(NODE3_DASHBOARD_PORT) \
 		-dir=$(DATA_BASE_DIR)/$(NODE3_ID) \
-		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE2_SIG_PORT)
+		-peers=$(HOST):$(NODE1_SIG_PORT),$(HOST):$(NODE2_SIG_PORT) \
+		$(FLAGS)
 
 run-node-prompt:
 	@echo "Configuracao interativa (host)"
@@ -193,7 +205,8 @@ run-node-prompt:
 		-dashboard-port=$$_DASHBOARD_PORT \
 		-dir=/data \
 		$$PEERS_ARG \
-		$$BOOT_ARG
+		$$BOOT_ARG \
+		$(FLAGS)
 
 clean:
 	@echo "Limpando containers e dados dos nodes..."

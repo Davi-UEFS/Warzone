@@ -46,7 +46,7 @@ func (h *SensorTrackerHook) OnConnect(cl *mqtt.Client, pk packets.Packet) error 
 	// Assumimos que o ID do cliente MQTT dos sensores começa com "sensor" (ex: "sensor-01")
 	if strings.HasPrefix(cl.ID, "sensor") {
 		ConnectedSensors.Store(cl.ID, true)
-		fmt.Printf("Sensor Local Conectado: %s\n", cl.ID)
+		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Sensor Local Conectado: %s\n", cl.ID)
 	}
 	return nil
 }
@@ -55,7 +55,7 @@ func (h *SensorTrackerHook) OnConnect(cl *mqtt.Client, pk packets.Packet) error 
 func (h *SensorTrackerHook) OnDisconnect(cl *mqtt.Client, err error, expire bool) {
 	if strings.HasPrefix(cl.ID, "sensor") {
 		ConnectedSensors.Delete(cl.ID)
-		fmt.Printf("Sensor Local Desconectado: %s\n", cl.ID)
+		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Sensor Local Desconectado: %s\n", cl.ID)
 	}
 }
 
@@ -91,5 +91,5 @@ func startEmbeddedBroker(port int) {
 		}
 	}()
 
-	log.Printf("Broker MQTT  iniciado na porta: %d", port)
+	log.Printf("\033[1;94m[LOCAL]:\033[0m Broker MQTT  iniciado na porta: %d", port)
 }

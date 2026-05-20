@@ -1,23 +1,30 @@
 SHELL := /bin/bash
 
-IMAGE_NAME ?= warzone-sensor
+IMAGE_NAME ?= daviuefs/sensors
 
 SENSOR_ID ?= sensor-01
 SENSOR_TYPE ?= 4
 BROKER_ADDR ?= tcp://127.0.0.1:1883
 
-.PHONY: help build run run-prompt clean
+.PHONY: help build run run-go run-lento run-lento-go run-prompt clean
 
 help:
 	@echo "Targets:"
-	@echo "  build       - Build da imagem Docker do sensor"
-	@echo "  run         - Sobe um sensor com os valores padrao"
-	@echo "  run-prompt  - Sobe um sensor com configuracao interativa"
-	@echo "  clean       - Remove o container do sensor"
+	@echo "  build         - Build da imagem Docker do sensor"
+	@echo "  run           - Sobe um sensor com os valores padrao via Docker"
+	@echo "  run-go        - Sobe um sensor com os valores padrao nativamente"
+	@echo "  run-lento     - Sobe o sensor especial de latencia via Docker"
+	@echo "  run-lento-go  - Sobe o sensor especial de latencia nativamente"
+	@echo "  run-prompt    - Sobe um sensor com configuracao interativa"
+	@echo "  clean         - Remove o container do sensor"
 
 build:
 	@echo "Compilando imagem Docker do sensor..."
 	docker build -t $(IMAGE_NAME) -f dockerfile ..
+
+pull:
+	@echo "Baixando imagem do Docker Hub..."
+	docker pull $(IMAGE_NAME):latest
 
 run:
 	docker run -it --rm \
@@ -32,6 +39,23 @@ run-go:
 	@echo "Iniciando sensor $(SENSOR_ID) sem Docker..."
 	go run . \
 		-id=$(SENSOR_ID) \
+		-type=$(SENSOR_TYPE) \
+		-broker=$(BROKER_ADDR)
+
+run-lento:
+	@echo "Iniciando SENSOR LENTO (Teste de Latencia) via Docker..."
+	docker run -it --rm \
+		--name sensor-lento \
+		--network host \
+		$(IMAGE_NAME) \
+		-id=sensor-lento \
+		-type=$(SENSOR_TYPE) \
+		-broker=$(BROKER_ADDR)
+
+run-lento-go:
+	@echo "Iniciando SENSOR LENTO (Teste de Latencia) sem Docker..."
+	go run . \
+		-id=sensor-lento \
 		-type=$(SENSOR_TYPE) \
 		-broker=$(BROKER_ADDR)
 
@@ -71,5 +95,5 @@ run-prompt:
 
 clean:
 	@echo "Limpando container do sensor..."
-	-@docker stop $(SENSOR_ID) 2>/dev/null || true
-	-@docker rm $(SENSOR_ID) 2>/dev/null || true
+	-@docker stop $(SENSOR_ID) sensor-lento 2>/dev/null || true
+	-@docker rm $(SENSOR_ID) sensor-lento 2>/dev/null || true

@@ -2,3 +2,5 @@
 sector-manager/dataRaft/
 dataRaft/
 *.db
+
+Makefile

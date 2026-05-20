@@ -61,8 +61,10 @@ func main() {
 	dataDirFlag := flag.String("dir", "data/node1", "Diretório de dados")
 	bootstrapFlag := flag.Bool("bootstrap", false, "Iniciar como líder")
 	peersFlag := flag.String("peers", "", "Endereços dos peers (SIG do líder). Separe por vírgula")
+	debugFlag := flag.Bool("debug", false, "Ativa simulações de latência, aging e logs de Lamport")
 	flag.Parse()
 
+	DebugMode = *debugFlag
 	// Endereços
 	sigPort = *raftPortFlag + 1000
 	raftAddr := net.JoinHostPort(*hostFlag, strconv.Itoa(*raftPortFlag))
@@ -75,6 +77,12 @@ func main() {
 	// --- INICIALIZAÇÃO DO RAFT ---
 
 	log.SetOutput(&RaftStatesWriter{})
+
+	LClock = shared.LamportClock{
+		Time:  0,
+		Mu:    sync.Mutex{},
+		Debug: DebugMode,
+	}
 
 	// --- Inicializa FSM do Raft
 	sectorFSM = &RaftFSM{

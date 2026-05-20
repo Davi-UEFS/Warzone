@@ -2,6 +2,7 @@ package shared
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"strings"
 	"sync"
@@ -120,8 +121,9 @@ type Coordinate struct {
 }
 
 type LamportClock struct {
-	Time int
-	Mu   sync.Mutex
+	Time  int
+	Mu    sync.Mutex
+	Debug bool
 }
 
 func (lc *LamportClock) Tick() {
@@ -138,10 +140,16 @@ func (lc *LamportClock) GetTime() int {
 
 func (lc *LamportClock) CompareAndUpdate(received int) {
 	lc.Mu.Lock()
+	oldTime := lc.Time
 	if lc.Time < received {
 		lc.Time = received
 	}
 	lc.Time++
+
+	if lc.Debug && (oldTime != lc.Time-1 || received > oldTime) {
+		fmt.Printf("\n\033[1;36m[DEBUG-LAMPORT]\033[0m Sincronizacao: Local(%d) | Recebido(%d) -> Novo(%d)\n", oldTime, received, lc.Time)
+	}
+
 	lc.Mu.Unlock()
 }
 

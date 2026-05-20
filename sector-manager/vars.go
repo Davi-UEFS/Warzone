@@ -1,8 +1,6 @@
 package main
 
 import (
-	"sync"
-
 	"github.com/Davi-UEFS/Warzone/shared"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	raft "github.com/hashicorp/raft"
@@ -41,17 +39,13 @@ var PRIOTIRIES = map[string]int{
 	shared.BOTTLENECK:     2,
 }
 
-var sectorFSM *RaftFSM
-
-var LClock = shared.LamportClock{
-	Time: 0,
-	Mu:   sync.Mutex{},
-}
-
 var (
+	sectorFSM    *RaftFSM
+	LClock       shared.LamportClock
 	peers        []string
 	sigPort      int
 	globalClient mqtt.Client
 	raftNode     *raft.Raft
 	brokerAddr   string
+	DebugMode    bool
 )

@@ -2,6 +2,7 @@ package main
 
 import (
 	"container/heap"
+	"fmt"
 
 	"github.com/Davi-UEFS/Warzone/shared"
 )
@@ -54,7 +55,17 @@ func (h *ReqHeap) ApplyAging(currentTime int64, thresholdSeconds int64, boostAmo
 	for i := range *h {
 		age := currentTime - (*h)[i].CreatedAt
 		if age > thresholdSeconds {
+			oldPriority := (*h)[i].Priority
 			(*h)[i].Priority += boostAmount
+
+			// ----------------------------------------------------
+			// Modo de debug para mostrar o aging em ação.
+			// Esta seção não é necessária para o funcionamento.
+			// ----------------------------------------------------
+			if DebugMode {
+				fmt.Printf("\n\033[1;35m[DEBUG-AGING]\033[0m Missão %s envelheceu (%ds). Boost: %d -> %d\n",
+					(*h)[i].ID, age, oldPriority, (*h)[i].Priority)
+			}
 		}
 	}
 	heap.Init(h)
