@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/Davi-UEFS/Warzone/shared"
 )
@@ -17,13 +16,16 @@ func (app *DroneApp) handleAction(ctx context.Context) {
 			return
 		case payload := <-app.PayloadChannel:
 			var command shared.DroneMission
-			log.Println("Payload recebido para processamento")
 
 			if err := json.Unmarshal(payload, &command); err != nil {
 				fmt.Printf("Erro ao desserializar pacote: %v\n", err)
 				continue
 			}
 
+			app.Info.CurrentMission = command.RequisitionID
+			app.Info.Status = shared.DRONE_BUSY
+
+			app.PrintDashboard(fmt.Sprintf("ALERTA: Nova missão recebida! (Tipo: %s)", command.Type))
 			switch command.Type {
 			case shared.FIRE:
 				app.CarryWater(command)
@@ -40,6 +42,7 @@ func (app *DroneApp) handleAction(ctx context.Context) {
 			default:
 				fmt.Printf("Tipo de missão desconhecido: %s\n", command.Type)
 			}
+			app.PrintDashboard("Missão finalizada! Drone liberado e retornando ao estado IDLE.")
 		}
 	}
 }

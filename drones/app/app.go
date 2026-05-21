@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -90,6 +91,7 @@ func (app *DroneApp) onConnect(client mqtt.Client) {
 	client.Subscribe(app.missionTopic, 1, app.missionHandler)
 	client.Subscribe(app.regErrorTopic, 1, app.regErrorHandler)
 	app.register(client)
+	app.PrintDashboard("Conectado ao Broker com sucesso. Aguardando patrulhamento...")
 }
 
 // onLost é chamado quando o broker cai ou a conexão é perdida.
@@ -138,5 +140,46 @@ func (app *DroneApp) sendHeartbeat() {
 	token := app.Client.Publish(app.heartbeatTopic, 1, false, payload)
 	if token.Wait() && token.Error() != nil {
 		fmt.Printf("Erro ao enviar heartbeat: %v\n", token.Error())
+	}
+}
+
+// Helper para padronizar o tamanho das strings no painel para que a borda fique reta
+func pad(s string, l int) string {
+	if len(s) >= l {
+		return s[:l]
+	}
+	return s + strings.Repeat(" ", l-len(s))
+}
+
+// PrintDashboard desenha a interface do drone no terminal
+func (app *DroneApp) PrintDashboard(action string) {
+	mission := app.Info.CurrentMission
+	if mission == shared.NONE {
+		mission = "Nenhuma (Aguardando)"
+	}
+
+	statusColor := "\033[1;32m" // Verde
+	if app.Info.Status == shared.DRONE_BUSY {
+		statusColor = "\033[1;31m" // Vermelho
+	}
+
+	brokerAddr := "Desconectado"
+	if app.CurrentIdx >= 0 && app.CurrentIdx < len(app.Brokers) {
+		brokerAddr = app.Brokers[app.CurrentIdx]
+	}
+
+	// Desenha o bloco visual
+	fmt.Println("\n\033[1;34m╔══════════════════════════════════════════════════════════════╗\033[0m")
+	fmt.Printf("\033[1;34m║\033[0m   \033[1;37mDRONE ID    :\033[0m %s \033[1;34m║\033[0m\n", pad(app.ID, 40))
+	fmt.Println("\033[1;34m╠══════════════════════════════════════════════════════════════╣\033[0m")
+	fmt.Printf("\033[1;34m║\033[0m   \033[1;36mBroker Atual:\033[0m %s \033[1;34m║\033[0m\n", pad(brokerAddr, 40))
+	fmt.Printf("\033[1;34m║\033[0m   \033[1;32mBateria     :\033[0m %s \033[1;34m║\033[0m\n", pad(fmt.Sprintf("%d%%", app.Info.BatteryLevel), 40))
+	fmt.Printf("\033[1;34m║\033[0m   \033[1;33mStatus      :\033[0m %s%s\033[0m \033[1;34m║\033[0m\n", statusColor, pad(string(app.Info.Status), 40))
+	fmt.Printf("\033[1;34m║\033[0m   \033[1;35mMissão Atual:\033[0m %s \033[1;34m║\033[0m\n", pad(mission, 40))
+	fmt.Println("\033[1;34m╚══════════════════════════════════════════════════════════════╝\033[0m")
+
+	// Imprime a ação atual que disparou a atualização do painel
+	if action != "" {
+		fmt.Printf("\033[1;37m>> %s\033[0m\n\n", action)
 	}
 }
