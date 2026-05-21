@@ -16,6 +16,8 @@ import (
 	"github.com/Davi-UEFS/Warzone/shared"
 )
 
+// normalizePeerAddr garante que o endereço do peer esteja no formato "host:port".
+// Se o peer já tiver uma porta, retorna como está. Caso contrário, adiciona a porta padrão.
 func normalizePeerAddr(peer string, defaultPort int) string {
 	trimmed := strings.TrimSpace(peer)
 	if trimmed == "" {
@@ -32,6 +34,7 @@ func normalizePeerAddr(peer string, defaultPort int) string {
 // Filtro para mensagens do Raft
 type RaftStatesWriter struct{}
 
+// Filtra mensagens de log do Raft e imprime mensagens customizadas para o usuário.
 func (w *RaftStatesWriter) Write(p []byte) (n int, err error) {
 	msg := string(p)
 	if strings.Contains(msg, "entering leader state") {

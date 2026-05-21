@@ -25,15 +25,20 @@ import (
 // 1. Mapa Global Thread-Safe para guardar os sensores que estão fisicamente conectados
 var ConnectedSensors sync.Map
 
-// 2. Estrutura do nosso Intercetor (Hook) Customizado
+// Hook personalizado utilizado para identificar quando um sensor se conecta ao MQTT.
+// O hook implementa os métodos ID(), Provides(), OnConnect() e OnDisconnect() conforme 
+// exigido pela interface de hooks do MochiMQTT.
 type SensorTrackerHook struct {
 	mqtt.HookBase
 }
 
+// Define o ID para o Hook
 func (h *SensorTrackerHook) ID() string {
 	return "sensor-tracker"
 }
 
+// Define os eventos no qual o Hook se interessa.
+// Neste caso, são o OnConnect e onDisconnect
 func (h *SensorTrackerHook) Provides(b byte) bool {
 	return bytes.Contains([]byte{
 		mqtt.OnConnect,
@@ -41,9 +46,9 @@ func (h *SensorTrackerHook) Provides(b byte) bool {
 	}, []byte{b})
 }
 
-// Quando um cliente termina o handshake MQTT com sucesso
+// Quando um cliente termina o handshake MQTT com sucesso, verifica se seu ID contém "sensor".
+// Se sim, guarda no mapa e imprime na tela.
 func (h *SensorTrackerHook) OnConnect(cl *mqtt.Client, pk packets.Packet) error {
-	// Assumimos que o ID do cliente MQTT dos sensores começa com "sensor" (ex: "sensor-01")
 	if strings.HasPrefix(cl.ID, "sensor") {
 		ConnectedSensors.Store(cl.ID, true)
 		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Sensor Local Conectado: %s\n", cl.ID)
@@ -51,7 +56,8 @@ func (h *SensorTrackerHook) OnConnect(cl *mqtt.Client, pk packets.Packet) error 
 	return nil
 }
 
-// Quando a conexão TCP cai ou o cliente envia um pacote DISCONNECT
+// Quando a conexão TCP cai ou o cliente envia um pacote DISCONNECT, verifica se seu ID contém "sensor".
+// Se sim, guarda no mapa e imprime na tela.
 func (h *SensorTrackerHook) OnDisconnect(cl *mqtt.Client, err error, expire bool) {
 	if strings.HasPrefix(cl.ID, "sensor") {
 		ConnectedSensors.Delete(cl.ID)
@@ -59,7 +65,9 @@ func (h *SensorTrackerHook) OnDisconnect(cl *mqtt.Client, err error, expire bool
 	}
 }
 
-// startEmbeddedBroker inicia o broker na mesma thread do Manager
+// startEmbeddedBroker inicia o broker embutido do setor.
+// Params:
+// port: A porta utilizada pelo broker MQTT
 func startEmbeddedBroker(port int) {
 	quietLogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.LevelWarn, // Só vai imprimir se for WARN ou ERROR

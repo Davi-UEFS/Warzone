@@ -12,6 +12,7 @@ import (
 	raft "github.com/hashicorp/raft"
 )
 
+// DashboardState contém os campos de interesse do setor para visualização em HTML.
 type DashboardState struct {
 	Pending     []shared.Requisition `json:"pending"`
 	InProgress  []shared.Requisition `json:"in_progress"`
@@ -24,6 +25,7 @@ type DashboardState struct {
 	RaftState   string               `json:"raft_state"`
 }
 
+// DashboardDrone contém os campos do drone para visualização em HTML.
 type DashboardDrone struct {
 	ID       string             `json:"id"`
 	Status   shared.DroneStatus `json:"status"`
@@ -37,6 +39,13 @@ type DashboardDrone struct {
 //go:embed GUI/dashboard.html
 var dashboardHTML []byte
 
+// dashboardIndexHandler serve a página HTML do dashboard.
+//
+// Browsers normalmente fazem uma requisição automática para "/favicon.ico".
+// Para evitar erro 404, responde 204 (No Content).
+//
+// O r.URL.Path é verificado manualmente e retorna 404 para caminhos desconhecidos.
+// O HTML é servido a partir de um arquivo embutido no binário via go:embed (variável dashboardHTML).
 func dashboardIndexHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/favicon.ico" {
 		w.WriteHeader(http.StatusNoContent)
@@ -53,6 +62,13 @@ func dashboardIndexHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(dashboardHTML)
 }
 
+// startDashboardServer inicia o servidor HTTP do dashboard e registra as rotas.
+// Rotas usadas:
+//   - GET /api/state  -> dashboardStateHandler (API em JSON)
+//   - GET / e /dashboard (e fallback "/") -> dashboardIndexHandler (HTML)
+//
+// Params:
+// port: A porta usada pelo HTTP.
 func startDashboardServer(port int) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/state", dashboardStateHandler)
@@ -66,6 +82,7 @@ func startDashboardServer(port int) {
 	}
 }
 
+// dashboardStateHandler expõe o estado atual do setor em JSON para o dashboard.
 func dashboardStateHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -78,6 +95,7 @@ func dashboardStateHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(state)
 }
 
+// buildDashboardState monta uma visão consolidada do setor para consumo do dashboard.
 func buildDashboardState() DashboardState {
 	state := DashboardState{
 		GeneratedAt: time.Now().Unix(),
@@ -88,18 +106,14 @@ func buildDashboardState() DashboardState {
 		state.Leader = raftNode.State() == raft.Leader
 	}
 
-	// --- NOVA LÓGICA DE SENSORES ---
 	sensorsList := make([]string, 0)
-
-	// Varre o mapa global em tempo real
 	ConnectedSensors.Range(func(key, value interface{}) bool {
 		sensorsList = append(sensorsList, key.(string))
-		return true // Continua o loop
+		return true
 	})
 
-	sort.Strings(sensorsList) // Mantém ordem alfabética no painel
+	sort.Strings(sensorsList)
 	state.Sensors = sensorsList
-	// -------------------------------
 
 	if sectorFSM == nil {
 		return state
@@ -113,8 +127,6 @@ func buildDashboardState() DashboardState {
 	for _, req := range sectorFSM.InProgressReqs {
 		inProgress = append(inProgress, req)
 	}
-
-	// (A velha lógica do activeSensorsMap foi APAGADA daqui, o código fica mais limpo)
 
 	drones := make([]DashboardDrone, 0, len(sectorFSM.DroneMap))
 	for _, drone := range sectorFSM.DroneMap {

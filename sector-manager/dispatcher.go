@@ -9,13 +9,17 @@ import (
 	raft "github.com/hashicorp/raft"
 )
 
+// startDispatcher inicia as rotinas de despacho de missões, aging e watchdog.
+//
+//	Apenas o líder executa as ações.
 func startDispatcher() {
-	watchdogTicker := time.NewTicker(10 * time.Second) // O Cão de Guarda roda a cada 10s
-	agingTicker := time.NewTicker(20 * time.Second)    // Aging a cada 20s
+	watchdogTicker := time.NewTicker(5 * time.Second) // O Cão de Guarda roda a cada 5s
+	agingTicker := time.NewTicker(20 * time.Second)   // Aging a cada 20s
 
 	go func() {
 		for {
 			// Apenas o Líder despacha novas missões
+			// Não utiliza ticker porque quer despachar assim que chegar uma nova requisição
 			if raftNode.State() == raft.Leader {
 				processRequisitions()
 			}
@@ -40,6 +44,9 @@ func startDispatcher() {
 	}
 }
 
+// processRequisitions verifica se há requisições pendentes e drones livres para despachar missões.
+// Se encontrar um drone IDLE, despacha a missão no topo da fila de prioridades para ele.
+// Deve ser chamado em loop para garantir que novas requisições sejam processadas assim que chegarem.
 func processRequisitions() {
 	sectorFSM.Mu.Lock()
 
@@ -67,6 +74,15 @@ func processRequisitions() {
 	}
 }
 
+// dispatch cria e envia a missão para o drone escolhido via Raft, garantindo que a ação seja replicada e consistente entre os nós.
+// O comando OP_ASSIGN é processado pela FSM para atualizar o mapa de drones.
+//
+// Incrementa o relógio de Lamport.
+//
+// Params:
+//   - raftNode: instância do Raft para enviar o comando
+//   - droneID: ID do drone que receberá a missão
+//   - req: requisição que será transformada em missão e enviada para o drone
 func dispatch(raftNode *raft.Raft, droneID string, req shared.Requisition) {
 	LClock.Tick()
 
@@ -100,19 +116,21 @@ func dispatch(raftNode *raft.Raft, droneID string, req shared.Requisition) {
 	}
 }
 
-// applyAging envia comando OP_AGING via Raft para envelhecer requisições
+// applyAging envia comando OP_AGING via Raft para envelhecer requisições.
+//
+// Incrementa o relógio de Lamport se houver requisições pendentes para envelhecer.
 func applyAging() {
-	LClock.Tick()
-
-	// TODO: DEBUG_MODE_LAMPORT_TICK
-	if DebugMode {
-		fmt.Printf("\n\033[1;36m[DEBUG-LAMPORT]\033[0m TICK (+1): Relógio = %d | Ação: Aplicando Aging na Fila de Prioridades\n", LClock.GetTime())
-	}
 
 	sectorFSM.Mu.Lock()
 	if len(sectorFSM.PendingReqsQueue) == 0 {
 		sectorFSM.Mu.Unlock()
 		return
+	}
+	LClock.Tick()
+
+	// TODO: DEBUG_MODE_LAMPORT_TICK
+	if DebugMode {
+		fmt.Printf("\n\033[1;36m[DEBUG-LAMPORT]\033[0m TICK (+1): Relógio = %d | Ação: Aplicando Aging na Fila de Prioridades\n", LClock.GetTime())
 	}
 	sectorFSM.Mu.Unlock()
 
@@ -138,7 +156,10 @@ func applyAging() {
 	}
 }
 
-// --- LÓGICA DO WATCHDOG (CÃO DE GUARDA) ---
+// checkDeadDrones verifica se há drones que não enviaram heartbeat há mais de 20 segundos e os declara como mortos,
+// enviando um comando OP_DEADDRONE via Raft para que a FSM possa resgatar a missão e liberar o drone.
+//
+// Incrementa relógio de Lamport se houver drones mortos para declarar.
 func checkDeadDrones() {
 	now := time.Now().Unix()
 

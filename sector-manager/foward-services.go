@@ -11,6 +11,11 @@ import (
 	raft "github.com/hashicorp/raft"
 )
 
+// startSignaling inicia o servidor TCP para receber mensagens de outros setores.
+//
+// Params:
+//   - raftNode: O nó Raft local, necessário para processar as mensagens recebidas e aplicar as mudanças no consenso.
+//   - port: A porta TCP onde o servidor irá escutar por conexões.
 func startSignaling(raftNode *raft.Raft, port string) {
 	ln, _ := net.Listen("tcp", port)
 	defer ln.Close()
@@ -23,6 +28,9 @@ func startSignaling(raftNode *raft.Raft, port string) {
 	}
 }
 
+// handleConnection processa uma conexão TCP recebida, decodificando o comando e executando a ação correspondente.
+//
+// O comando é esperado no formato JSON e deve conter um campo "Operation" que indica o tipo de operação a ser realizada.
 func handleConnection(conn net.Conn, raftNode *raft.Raft) {
 	defer conn.Close()
 
@@ -34,6 +42,7 @@ func handleConnection(conn net.Conn, raftNode *raft.Raft) {
 
 	switch cmd.Operation {
 	case QUERY:
+		// Qualquer nó pode responder a essa consulta, pois é apenas para obter o líder atual.
 		leader := string(raftNode.Leader())
 		leaderInfo := LeaderInfo{
 			RaftAddr: leader,
@@ -105,6 +114,13 @@ func handleConnection(conn net.Conn, raftNode *raft.Raft) {
 
 }
 
+// sendJoinRequest envia uma solicitação de join para o líder do cluster, contendo o ID e endereço do novo nó.
+// Params:
+//   - sigAddr: endereço TCP de escuta do líder para onde a solicitação deve ser enviada.
+//   - cmd: comando de QUERY a ser enviado.
+//
+// Returns:
+//   - error: erro ocorrido durante o processo, ou nil se a solicitação foi bem-sucedida.
 func sendJoinRequest(sigAddr string, cmd shared.HeaderCommand) error {
 	conn, err := net.DialTimeout("tcp", sigAddr, 5*time.Second)
 	if err != nil {
@@ -127,6 +143,17 @@ func sendJoinRequest(sigAddr string, cmd shared.HeaderCommand) error {
 
 }
 
+// forwardCommand é uma função genérica para encaminhar comandos de operações que devem
+// ser processados pelo líder do cluster.
+//
+// Ela é utilizada para operações como FORWARD_ALR, FORWARD_DONE, FORWARD_REG e FORWARD_HB.
+//
+// Params:
+//   - sigAddr: endereço TCP de escuta do líder para onde a solicitação deve ser enviada.
+//   - cmd: comando contendo a operação e payload a ser encaminhado.
+//
+// Returns:
+//   - error: erro ocorrido durante o processo, ou nil se a solicitação foi bem-sucedida.
 func forwardCommand(sigAddr string, cmd shared.HeaderCommand) error {
 	conn, err := net.DialTimeout("tcp", sigAddr, 5*time.Second)
 	if err != nil {
@@ -149,6 +176,14 @@ func forwardCommand(sigAddr string, cmd shared.HeaderCommand) error {
 
 }
 
+// handleJoinRequest processa uma solicitação de join recebida pelo líder, adicionando o novo nó ao cluster Raft.
+//
+// Params:
+//   - raftNode: instância do Raft para adicionar o novo nó.
+//   - payload: dados da solicitação de join, contendo o ID e endereço do novo nó.
+//
+// Returns:
+//   - error: erro ocorrido durante o processo, ou nil se o nó foi adicionado com sucesso.
 func handleJoinRequest(raftNode *raft.Raft, payload json.RawMessage) error {
 
 	var req joinReq
@@ -170,6 +205,18 @@ func handleJoinRequest(raftNode *raft.Raft, payload json.RawMessage) error {
 
 }
 
+// handleForwardingAlert processa um alerta encaminhado por outro setor.
+//
+// Cria uma nova requisição no sistema.
+//
+// Atualiza o relógio de Lamport.
+//
+// Params:
+//   - raftNode: instância do Raft para aplicar o comando de criação da requisição no consenso.
+//   - payload: dados do alerta encaminhado, contendo informações como sensor, tipo de alerta, coordenadas e tempo de Lamport. O payload vem com o ID do setor de origem.
+//
+// Returns:
+//   - error: erro ocorrido durante o processo, ou nil se a requisição foi criada com sucesso.
 func handleForwardingAlert(raftNode *raft.Raft, payload json.RawMessage) error {
 
 	var fwd forwardedAlert
@@ -227,6 +274,18 @@ func handleForwardingAlert(raftNode *raft.Raft, payload json.RawMessage) error {
 
 }
 
+// handleForwardingDone processa uma notificação de missão concluída encaminhada por outro setor.
+//
+// Remove a requisição do sistema e libera o drone associado via Raft utilizando o comando RMVREQ.
+//
+// Atualiza o relógio de Lamport.
+//
+// Params:
+//   - raftNode: instância do Raft para aplicar o comando de remoção da requisição no consenso.
+//   - payload: dados da notificação de missão concluída, contendo informações como ID do drone, ID da requisição, tempo de Lamport, etc.
+//
+// Returns:
+//   - error: erro ocorrido durante o processo, ou nil se a requisição foi removida e o drone liberado com sucesso.
 func handleForwardingDone(raftNode *raft.Raft, payload json.RawMessage) error {
 	var result shared.DoneInfo
 
@@ -265,6 +324,18 @@ func handleForwardingDone(raftNode *raft.Raft, payload json.RawMessage) error {
 
 }
 
+// handleForwardingRegisterDrone processa uma notificação de registro de drone encaminhada por outro setor.
+//
+// Registra o drone no sistema via Raft utilizando o comando REGDRONE.
+//
+// Atualiza o relógio de Lamport.
+//
+// Params:
+//   - raftNode: instância do Raft para aplicar o comando de registro do drone no consenso.
+//   - payload: dados da notificação de registro de drone, contendo informações como ID do drone, coordenadas, etc.
+//
+// Returns:
+//   - error: erro ocorrido durante o processo, ou nil se o drone foi registrado com sucesso.
 func handleForwardingRegisterDrone(raftNode *raft.Raft, payload json.RawMessage) error {
 	var drone shared.Drone
 
@@ -301,7 +372,13 @@ func handleForwardingRegisterDrone(raftNode *raft.Raft, payload json.RawMessage)
 	return nil
 }
 
-// A função de disparo no líder (coloque junto das outras de forward):
+// handleForwardingHeartbeat processa um heartbeat de drone encaminhado por outro setor.
+//
+// Atualiza o status do drone no sistema via Raft utilizando o comando OP_HEARTBEAT.
+//
+// Params:
+//   - raftNode: instância do Raft para aplicar o comando de heartbeat no consenso.
+//   - payload: dados do heartbeat, contendo informações como ID do drone, coordenadas, tempo de Lamport, etc.
 func handleForwardingHeartbeat(raftNode *raft.Raft, payload json.RawMessage) {
 
 	// Preciso fazer isso pq RawMessage nao e considerado []byte.
@@ -316,6 +393,15 @@ func handleForwardingHeartbeat(raftNode *raft.Raft, payload json.RawMessage) {
 	raftNode.Apply(cmdBytes, 1*time.Second)
 }
 
+// getSigAddr calcula o endereço de sinalização a partir do endereço Raft do líder.
+//
+// O endereço de sinalização é obtido incrementando a porta do endereço Raft em 1000.
+//
+// Params:
+//   - raftLeader: endereço Raft do líder no formato "host:port".
+//
+// Returns:
+//   - string: endereço de sinalização correspondente ao líder, no formato "host:(port+1000)".
 func getSigAddr(raftLeader string) string {
 
 	host, portStr, err := net.SplitHostPort(raftLeader)
@@ -329,11 +415,24 @@ func getSigAddr(raftLeader string) string {
 
 }
 
+// LeaderInfo contém o endereço do líder do cluster e seu endereço de escuta para sinalização.
 type LeaderInfo struct {
 	RaftAddr string `json:"raft_addr"`
 	SigAddr  string `json:"sig_addr"`
 }
 
+// searchForLeaderInfo consulta os peers conhecidos para obter as informações do líder atual do cluster.
+//
+// Envia uma solicitação QUERY para cada peer e espera pela resposta contendo o endereço do líder e seu endereço de sinalização.
+//
+// Esta função não precisa de sigPort se os peers já vierem com o endereço completo.
+//
+// Params:
+//   - peers: lista de endereços dos peers para consultar.
+//   - sigPort: porta base de sinalização, usada para calcular o endereço de sinalização do líder a partir do endereço Raft.
+//
+// Returns:
+//   - LeaderInfo: informações do líder atual do cluster, incluindo endereço Raft e endereço de sinalização. Retorna um LeaderInfo vazio se nenhum líder for encontrado.
 func searchForLeaderInfo(peers []string, sigPort int) LeaderInfo {
 	for _, peer := range peers {
 		addr := normalizePeerAddr(peer, sigPort)

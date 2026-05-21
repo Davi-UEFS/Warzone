@@ -22,8 +22,7 @@ func (app *DroneApp) handleAction(ctx context.Context) {
 				continue
 			}
 
-			app.Info.CurrentMission = command.RequisitionID
-			app.Info.Status = shared.DRONE_BUSY
+			app.Info.SetBusy(command.RequisitionID)
 
 			app.PrintDashboard(fmt.Sprintf("ALERTA: Nova missão recebida! (Tipo: %s)", command.Type))
 			switch command.Type {
@@ -47,7 +46,14 @@ func (app *DroneApp) handleAction(ctx context.Context) {
 	}
 }
 
-// makeResult monta o payload de resposta ao término da missão.
+// makeResult monta o payload de resposta ao terminar a missão.
+//
+// Params:
+//   - command: missão que foi executada, usada para extrair informações e atualizar o relógio de Lamport.
+//
+// Returns:
+//   - []byte: Payload JSON contendo as informações do resultado da missão, pronto para ser enviado ao broker.
+//   - error: Erro caso haja falha na serialização do resultado.
 func (app *DroneApp) makeResult(command shared.DroneMission) ([]byte, error) {
 	app.LClock.CompareAndUpdate(command.LamportTime)
 
@@ -59,6 +65,10 @@ func (app *DroneApp) makeResult(command shared.DroneMission) ([]byte, error) {
 	return json.Marshal(result)
 }
 
+// drainBattery simula o uso de bateria do drone.
+//
+// Params:
+//   - value: quantidade de bateria a ser drenada. Se o nível de bateria cair abaixo de 0, o drone recarrega automaticamente.
 func (app *DroneApp) drainBattery(value int) {
 	app.Info.BatteryLevel -= value
 	if app.Info.BatteryLevel < 0 {

@@ -12,7 +12,11 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
-// DroneApp concentra o estado e o comportamento do drone.
+// DroneApp comporta todos os metadados do Drone.
+//
+// Info é a struct do Drone que o setor enxerga.
+//
+// Todo o resto são metadados para controlar a aplicação.
 type DroneApp struct {
 	ID             string
 	Info           shared.Drone
@@ -35,6 +39,14 @@ type DroneApp struct {
 }
 
 // NewDroneApp monta o estado inicial do drone.
+//
+// Params:
+//   - id: ID único do drone (ex: "drone1").
+//   - brokers: Lista de brokers para failover (ex: ["broker1:1883", "broker2:1883"]).
+//   - debugMode: Flag para ativar modo de depuração.
+//
+// Returns:
+//   - Ponteiro para a struct DroneApp inicializada.
 func NewDroneApp(id string, brokers []string, debugMode bool) *DroneApp {
 	return &DroneApp{
 		ID:      id,
@@ -72,6 +84,7 @@ func (app *DroneApp) Run() {
 	select {}
 }
 
+// startHeartbeat é a rotina que envia os pulsos para o setor.
 func (app *DroneApp) startHeartbeat() {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
@@ -84,6 +97,9 @@ func (app *DroneApp) startHeartbeat() {
 }
 
 // onConnect é chamado pelo client MQTT toda vez que a conexão é bem-sucedida.
+//
+// Se conecta aos tópicos MQTT e atualiza o broker atual do cliente.
+// Também envia o pedido de registro ao setor.
 func (app *DroneApp) onConnect(client mqtt.Client) {
 	fmt.Printf("Conectado ao broker %s.\n", app.Brokers[app.CurrentIdx])
 
@@ -95,6 +111,8 @@ func (app *DroneApp) onConnect(client mqtt.Client) {
 }
 
 // onLost é chamado quando o broker cai ou a conexão é perdida.
+//
+// Inicia o processo de failover para tentar se conectar ao próximo broker da lista.
 func (app *DroneApp) onLost(client mqtt.Client, err error) {
 	fmt.Printf("Conexão perdida: %v. Iniciando failover...\n", err)
 	go app.connectWithFailover()
@@ -108,8 +126,6 @@ func (app *DroneApp) register(client mqtt.Client) {
 	if app.DebugMode {
 		fmt.Printf("\n\033[1;36m[DEBUG-LAMPORT]\033[0m TICK (+1): Relógio = %d | Ação: Pedido de Registro de Drone\n", app.LClock.GetTime())
 	}
-
-	// ... resto do código (payload, etc)
 
 	payload, err := json.Marshal(app.Info)
 	if err != nil {
@@ -125,6 +141,7 @@ func (app *DroneApp) register(client mqtt.Client) {
 	}
 }
 
+// sendHeartbeat envia no tópico o ID e Bateria atuais do drone.
 func (app *DroneApp) sendHeartbeat() {
 	data := shared.DroneHeartbeat{
 		ID:           app.ID,
@@ -170,12 +187,12 @@ func (app *DroneApp) PrintDashboard(action string) {
 
 	// Desenha o bloco visual
 	fmt.Println("\n\033[1;34m╔══════════════════════════════════════════════════════════════╗\033[0m")
-	fmt.Printf("\033[1;34m║\033[0m   \033[1;37mDRONE ID    :\033[0m %s \033[1;34m║\033[0m\n", pad(app.ID, 40))
+	fmt.Printf("\033[1;34m║\033[0m   \033[1;37mDRONE ID    :\033[0m %s \033[1;34m    ║\033[0m\n", pad(app.ID, 40))
 	fmt.Println("\033[1;34m╠══════════════════════════════════════════════════════════════╣\033[0m")
-	fmt.Printf("\033[1;34m║\033[0m   \033[1;36mBroker Atual:\033[0m %s \033[1;34m║\033[0m\n", pad(brokerAddr, 40))
-	fmt.Printf("\033[1;34m║\033[0m   \033[1;32mBateria     :\033[0m %s \033[1;34m║\033[0m\n", pad(fmt.Sprintf("%d%%", app.Info.BatteryLevel), 40))
-	fmt.Printf("\033[1;34m║\033[0m   \033[1;33mStatus      :\033[0m %s%s\033[0m \033[1;34m║\033[0m\n", statusColor, pad(string(app.Info.Status), 40))
-	fmt.Printf("\033[1;34m║\033[0m   \033[1;35mMissão Atual:\033[0m %s \033[1;34m║\033[0m\n", pad(mission, 40))
+	fmt.Printf("\033[1;34m║\033[0m   \033[1;36mBroker Atual:\033[0m %s \033[1;34m    ║\033[0m\n", pad(brokerAddr, 40))
+	fmt.Printf("\033[1;34m║\033[0m   \033[1;32mBateria     :\033[0m %s \033[1;34m    ║\033[0m\n", pad(fmt.Sprintf("%d%%", app.Info.BatteryLevel), 40))
+	fmt.Printf("\033[1;34m║\033[0m   \033[1;33mStatus      :\033[0m %s%s\033[0m \033[1;34m    ║\033[0m\n", statusColor, pad(string(app.Info.Status), 40))
+	fmt.Printf("\033[1;34m║\033[0m   \033[1;35mMissão Atual:\033[0m %s \033[1;34m    ║\033[0m\n", pad(mission, 40))
 	fmt.Println("\033[1;34m╚══════════════════════════════════════════════════════════════╝\033[0m")
 
 	// Imprime a ação atual que disparou a atualização do painel

@@ -10,12 +10,11 @@ import (
 )
 
 // runMissionProgress desenha uma barra de progresso para a missão atual.
-func (app *DroneApp) runMissionProgress(taskName string, requisitionID string, delayMs time.Duration) {
-	fmt.Printf("Requisição atual: \033[32m%s\033[0m\n", requisitionID)
+func (app *DroneApp) runMissionProgress(taskName string, delayMs time.Duration) {
 
 	bar := progressbar.NewOptions(100,
 		progressbar.OptionEnableColorCodes(true),
-		progressbar.OptionSetWidth(40),
+		progressbar.OptionSetWidth(30),
 		progressbar.OptionSetTheme(progressbar.Theme{
 			Saucer:        "[yellow]█[reset]",
 			SaucerHead:    "[yellow]█[reset]",
@@ -41,31 +40,34 @@ func (app *DroneApp) runMissionProgress(taskName string, requisitionID string, d
 }
 
 func (app *DroneApp) CarryWater(command shared.DroneMission) {
-	app.runMissionProgress("Carregando água", command.RequisitionID, 100)
+	app.runMissionProgress("Carregando água", 100)
 	app.drainBattery(2)
 	fmt.Println("Incêndio prevenido!")
+	app.Info.SetIdle()
 	payload, _ := app.makeResult(command)
 	app.notifyDone(payload)
 }
 
 func (app *DroneApp) DrainOil(command shared.DroneMission) {
-	app.runMissionProgress("Drenando óleo", command.RequisitionID, 80)
+	app.runMissionProgress("Drenando óleo", 80)
 	app.drainBattery(2)
 	fmt.Println("Vazamento contido!")
+	app.Info.SetIdle()
 	payload, _ := app.makeResult(command)
 	app.notifyDone(payload)
 }
 
 func (app *DroneApp) RetrieveGoods(command shared.DroneMission) {
-	app.runMissionProgress("Recuperando mantimentos", command.RequisitionID, 60)
+	app.runMissionProgress("Recuperando mantimentos", 60)
 	app.drainBattery(2)
 	fmt.Println("Mantimentos recuperados!")
+	app.Info.SetIdle()
 	payload, _ := app.makeResult(command)
 	app.notifyDone(payload)
 }
 
 func (app *DroneApp) IdentifyObject(command shared.DroneMission) {
-	app.runMissionProgress("Identificando objeto suspeito", command.RequisitionID, 80)
+	app.runMissionProgress("Identificando objeto suspeito", 80)
 	app.drainBattery(1)
 
 	randomObj := rand.Intn(3)
@@ -77,23 +79,25 @@ func (app *DroneApp) IdentifyObject(command shared.DroneMission) {
 	case 2:
 		fmt.Println("Objeto identificado como submarino!")
 	}
-
+	app.Info.SetIdle()
 	payload, _ := app.makeResult(command)
 	app.notifyDone(payload)
 }
 
 func (app *DroneApp) PerformInspection(command shared.DroneMission) {
-	app.runMissionProgress("Inspecionando área", command.RequisitionID, 70)
+	app.runMissionProgress("Inspecionando área", 70)
 	app.drainBattery(1)
 	fmt.Println("Inspeção concluída!")
+	app.Info.SetIdle()
 	payload, _ := app.makeResult(command)
 	app.notifyDone(payload)
 }
 
 func (app *DroneApp) OptimizeRoute(command shared.DroneMission) {
-	app.runMissionProgress("Otimizando rotas navais", command.RequisitionID, 60)
+	app.runMissionProgress("Otimizando rotas navais", 60)
 	app.drainBattery(1)
 	fmt.Println("Rota otimizada!")
+	app.Info.SetIdle()
 	payload, _ := app.makeResult(command)
 	app.notifyDone(payload)
 }

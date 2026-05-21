@@ -10,6 +10,15 @@ import (
 )
 
 // newDroneMQTTClient cria um cliente MQTT já configurado.
+//
+// Params:
+// clientID: O nome do cliente MQTT
+// broker: O broker MQTT
+// onConnect: A função/handler chamada ao conectar.
+// onLost: A função/handler chamada ao perder a conexão.
+//
+// Returns:
+// O cliente MQTT criado e erro.
 func newDroneMQTTClient(clientID string, broker string, onConnect func(mqtt.Client), onLost func(mqtt.Client, error)) (mqtt.Client, error) {
 	if clientID == "" {
 		return nil, fmt.Errorf("clientID vazio")
@@ -34,7 +43,11 @@ func newDroneMQTTClient(clientID string, broker string, onConnect func(mqtt.Clie
 	return mqtt.NewClient(opts), nil
 }
 
-// connectWithFailover tenta conectar no broker atual e gira pelos demais se falhar.
+// connectWithFailover tenta conectar em um dos brokers informados.
+// Utiliza round-robin para ciclar tentativas.
+//
+// Returns:
+// Erro se a lista de brokers estiver vazia
 func (app *DroneApp) connectWithFailover() error {
 	if len(app.Brokers) == 0 {
 		return fmt.Errorf("lista de brokers vazia")
@@ -96,6 +109,8 @@ func (app *DroneApp) missionHandler(client mqtt.Client, msg mqtt.Message) {
 	app.PayloadChannel <- msg.Payload()
 }
 
+// regErrorHandler escuta a resposta do setor acerca do registro enviado.
+// Tenta novamente após 3 segundos.
 func (app *DroneApp) regErrorHandler(client mqtt.Client, msg mqtt.Message) {
 	var errorMsg shared.RegErrorMessage
 	if err := json.Unmarshal(msg.Payload(), &errorMsg); err != nil {
@@ -116,6 +131,9 @@ func (app *DroneApp) regErrorHandler(client mqtt.Client, msg mqtt.Message) {
 }
 
 // notifyDone publica no tópico de conclusão da missão.
+//
+// Params:
+// payload: O dado a ser enviado por MQTT.
 func (app *DroneApp) notifyDone(payload []byte) {
 	for {
 		if app.Client != nil && app.Client.IsConnected() {

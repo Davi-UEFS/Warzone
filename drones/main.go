@@ -10,7 +10,8 @@ import (
 
 	droneapp "github.com/Davi-UEFS/Warzone/drones/app"
 )
-
+// Configura as flags, cria o DroneApp e chama Run()
+// Aguarda a interrupção do processo no terminal.
 func main() {
 	idFlag := flag.String("id", "drone-01", "ID do drone")
 	brokersFlag := flag.String("brokers", "tcp://localhost:1883,tcp://localhost:1884", "Lista de brokers separados por vírgula")
