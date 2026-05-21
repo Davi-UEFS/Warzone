@@ -59,12 +59,10 @@ func main() {
 		case 3:
 			enviarSensorLento(client)
 		case 4:
-			simularCondicaoDeCorrida(brokerInput)
-		case 5:
 			testeEstresseSensores(client, reader)
-		case 6:
+		case 5:
 			testeEstresseDronesAutonomos(client, reader, brokerInput)
-		case 7:
+		case 6:
 			fmt.Println("Saindo do simulador. Até logo!")
 			return
 		default:
@@ -80,10 +78,9 @@ func showMenu() {
 	fmt.Println("1- Enviar alerta único (Manual)")
 	fmt.Println("2- Enviar alertas em lote (Sequencial)")
 	fmt.Println("3- Enviar sensor lento (Gatilho de Latência 10s)")
-	fmt.Println("4- Forçar Condição de Corrida (Takeover de Sessão Concorrente)")
-	fmt.Println("5- Teste de estresse (Inundação de Alertas de Sensores)")
-	fmt.Println("6- Injetar enxame de Drones Autônomos (Processam e Liberam Missões)")
-	fmt.Println("7- Sair")
+	fmt.Println("4- Teste de estresse (Inundação de Alertas de Sensores)")
+	fmt.Println("5- Injetar enxame de Drones Autônomos (Processam e Liberam Missões)")
+	fmt.Println("6- Sair")
 }
 
 // 1. ENVIAR ALERTA MANUAL
@@ -145,28 +142,7 @@ func enviarSensorLento(client mqtt.Client) {
 	fmt.Println("\033[1;33m[GATILHO]\033[0m Alerta do 'sensor-lento' publicado! O Manager configurado com -debug vai retê-lo por 10s.")
 }
 
-// 4. CONDIÇÃO DE CORRIDA
-func simularCondicaoDeCorrida(brokerTarget string) {
-	fmt.Printf("\n\033[1;33mSimulando ataque de condição de corrida em %s...\033[0m\n", brokerTarget)
-	var wg sync.WaitGroup
-	for i := 1; i <= 10; i++ {
-		wg.Add(1)
-		go func(id int) {
-			defer wg.Done()
-			opts := mqtt.NewClientOptions().AddBroker(brokerTarget).SetClientID("drone-01")
-			c := mqtt.NewClient(opts)
-			if token := c.Connect(); token.Wait() && token.Error() == nil {
-				fmt.Printf("[Thread-%d] Conectou e roubou a sessão do ID 'drone-01'!\n", id)
-				c.Publish("drones/drone-01/heartbeat", 1, false, []byte(`{"id":"drone-01","battery_level":99}`)).Wait()
-				time.Sleep(100 * time.Millisecond)
-				c.Disconnect(250)
-			}
-		}(i)
-	}
-	wg.Wait()
-}
-
-// 5. TESTE DE ESTRESSE (SENSORS)
+// 4. TESTE DE ESTRESSE (SENSORS)
 func testeEstresseSensores(client mqtt.Client, reader *bufio.Reader) {
 	fmt.Print("Quantos alertas simultâneos no ataque de estresse? ")
 	qtdStr, _ := reader.ReadString('\n')
@@ -194,7 +170,7 @@ func testeEstresseSensores(client mqtt.Client, reader *bufio.Reader) {
 	fmt.Printf("\033[1;32m[TESTE CONCLUÍDO]\033[0m %d mensagens processadas em %v\n", qtd, time.Since(start))
 }
 
-// 6. INJETAR DRONES FUNCIONAIS AUTÔNOMOS (Cria Drones vivos com ciclo de vida completo)
+// 5. INJETAR DRONES FUNCIONAIS AUTÔNOMOS (Cria Drones vivos com ciclo de vida completo)
 func testeEstresseDronesAutonomos(client mqtt.Client, reader *bufio.Reader, brokerTarget string) {
 	fmt.Print("Quantos drones deseja injetar? ")
 	qtdStr, _ := reader.ReadString('\n')
