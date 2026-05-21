@@ -54,6 +54,7 @@ func handleConnection(conn net.Conn, raftNode *raft.Raft) {
 	case JOIN:
 		if raftNode.State() != raft.Leader {
 			json.NewEncoder(conn).Encode(ERR_NOT_LEADER)
+			// Não faz nada se não for líder, apenas responde com erro.
 			return
 		}
 
@@ -66,6 +67,7 @@ func handleConnection(conn net.Conn, raftNode *raft.Raft) {
 	case FORWARD_ALR:
 		if raftNode.State() != raft.Leader {
 			json.NewEncoder(conn).Encode(ERR_NOT_LEADER)
+			// Não faz nada se não for líder, apenas responde com erro.
 			return
 		}
 
@@ -78,6 +80,7 @@ func handleConnection(conn net.Conn, raftNode *raft.Raft) {
 	case FORWARD_DONE:
 		if raftNode.State() != raft.Leader {
 			json.NewEncoder(conn).Encode(ERR_NOT_LEADER)
+			// Não faz nada se não for líder, apenas responde com erro.
 			return
 		}
 
@@ -90,6 +93,7 @@ func handleConnection(conn net.Conn, raftNode *raft.Raft) {
 	case FORWARD_REG:
 		if raftNode.State() != raft.Leader {
 			json.NewEncoder(conn).Encode(ERR_NOT_LEADER)
+			// Não faz nada se não for líder, apenas responde com erro.
 			return
 		}
 
@@ -102,6 +106,7 @@ func handleConnection(conn net.Conn, raftNode *raft.Raft) {
 	case FORWARD_HB:
 		if raftNode.State() != raft.Leader {
 			json.NewEncoder(conn).Encode(ERR_NOT_LEADER)
+			// Não faz nada se não for líder, apenas responde com erro.
 			return
 		}
 		handleForwardingHeartbeat(raftNode, cmd.Payload)
@@ -413,6 +418,53 @@ func getSigAddr(raftLeader string) string {
 
 	return net.JoinHostPort(host, strconv.Itoa(port+1000))
 
+}
+
+// dispatchForwarding tenta enviar o comando para o líder. Se falhar,
+// avisa o usuário e inicia uma rotina em background que tenta mais 3 vezes,
+// dando tempo para o cluster Raft eleger um novo líder.
+func dispatchForwarding(cmd shared.HeaderCommand, actionName string, onFatal func()) {
+	leaderInfo := searchForLeaderInfo(peers, sigPort)
+
+	// Primeira tentativa síncrona
+	if leaderInfo.SigAddr != "" {
+		err := forwardCommand(leaderInfo.SigAddr, cmd)
+		if err == nil {
+			return
+		}
+		fmt.Printf("\033[1;33m[AVISO]\033[0m Falha ao encaminhar '%s'. O líder pode ter caído. Tentando em background...\n", actionName)
+	} else {
+		fmt.Printf("\033[1;33m[AVISO]\033[0m Nenhum líder conhecido para '%s'. Tentando em background...\n", actionName)
+	}
+
+	// Tenta em uma rotina em background até 3 vezes.
+	go func() {
+		maxRetries := 3
+		for i := 1; i <= maxRetries; i++ {
+			// Aguarda 3 segundos. É o tempo ideal para o Raft fazer o timeout e eleger novo líder
+			time.Sleep(3 * time.Second)
+
+			fmt.Printf("\033[1;33m[RETRY %d/%d]\033[0m Tentando reencaminhar '%s'...\n", i, maxRetries, actionName)
+
+			// Busca novamente para pegar o IP do novo líder eleito
+			freshLeader := searchForLeaderInfo(peers, sigPort)
+			if freshLeader.SigAddr == "" {
+				continue
+			}
+
+			if err := forwardCommand(freshLeader.SigAddr, cmd); err == nil {
+				fmt.Printf("\033[1;32m[SUCESSO]\033[0m '%s' salvo! Encaminhado ao novo líder.\n", actionName)
+				return
+			}
+		}
+
+		fmt.Printf("\033[1;31m[ERRO FATAL]\033[0m Desistindo de '%s' após %d tentativas. Mensagem descartada.\n", actionName, maxRetries)
+
+		if onFatal != nil {
+			onFatal()
+		}
+
+	}()
 }
 
 // LeaderInfo contém o endereço do líder do cluster e seu endereço de escuta para sinalização.

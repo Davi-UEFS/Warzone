@@ -12,16 +12,23 @@ import (
 	"github.com/hashicorp/raft"
 )
 
+// Struct usada para enviar um pedido de join para o líder via TCP
 type joinReq struct {
 	ID   string `json:"id"`
 	Addr string `json:"addr"`
 }
 
+// Struct usada para encaminhar um alerta recebido por MQTT para o líder via TCP.
+// Contém o alerta original e o setor de origem para que o líder possa processar corretamente.
 type forwardedAlert struct {
 	Alert        shared.Alert `json:"alert"`
 	OriginSector string       `json:"origin_sector"`
 }
 
+// Handler chamado quando o cliente MQTT se conecta ao broker.
+// Ele se inscreve nos tópicos relevantes para receber alertas,
+//
+//	resultados de missões, registros de drones e heartbeats.
 var onConnect = func(client mqtt.Client) {
 	fmt.Println("\033[1;94m[LOCAL]:\033[0m Conectado ao broker local")
 	fmt.Println("\033[1;94m[LOCAL]:\033[0m Se inscrevendo nos tópicos...")
@@ -32,6 +39,10 @@ var onConnect = func(client mqtt.Client) {
 	client.Subscribe("drones/+/heartbeat", 1, onHeartbeatHandler)
 }
 
+// Handler chamado quando um resultado de missão é publicado por um drone no tópico.
+// Ele processa o resultado e atualiza o estado do sistema. Se o nó atual não for o líder, ele encaminha o resultado para o líder via TCP.
+//
+// Atualiza o relógio de Lamport.
 var onDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 	var result shared.DoneInfo
@@ -44,13 +55,11 @@ var onDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 	if raftNode.State() != raft.Leader {
 		fmt.Println("\033[1;94m[LOCAL]:\033[0m Sou seguidor, encaminhando resultado para o líder via TCP...")
 
-		leaderInfo := searchForLeaderInfo(peers, sigPort)
-		if err := forwardCommand(leaderInfo.SigAddr, shared.HeaderCommand{
+		dispatchForwarding(shared.HeaderCommand{
 			Operation: FORWARD_DONE,
 			Payload:   msg.Payload(),
-		}); err != nil {
-			fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao encaminhar resultado: %v\n", err)
-		}
+		}, "Conclusão de Missão", nil)
+
 		return
 	}
 
@@ -79,11 +88,19 @@ var onDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 	}
 }
 
+// Gera um ID único para o incidente com base no ID do sensor e um número aleatório.
+//
+// Returns:
+//   - string: O ID do incidente no formato "inc--SENSOR_ID--RANDOM", onde RANDOM é um número de 6 dígitos.
 func createIncidentID(SENSOR_ID string) string {
 	randomPart := rand.New(rand.NewSource(time.Now().UnixNano())).Int63n(1000000)
 	return fmt.Sprintf("inc--%s--%06d", SENSOR_ID, randomPart)
 }
 
+// Handler chamado quando um alerta é publicado por um sensor no tópico MQTT.
+// Ele processa o alerta e cria uma requisição correspondente. Se o nó atual não for o líder, ele encaminha o alerta para o líder via TCP.
+//
+// Atualiza o relógio de Lamport.
 var onAlertHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 	fmt.Println("\033[1;94m[LOCAL]:\033[0m Novo alerta chegou por MQTT")
@@ -99,23 +116,15 @@ var onAlertHandler = func(client mqtt.Client, msg mqtt.Message) {
 	if raftNode.State() != raft.Leader {
 		fmt.Println("\033[1;94m[LOCAL]:\033[0m Sou seguidor, encaminhando alerta para o líder via TCP...")
 
-		leaderInfo := searchForLeaderInfo(peers, sigPort)
-
-		forwardPayload, err := json.Marshal(forwardedAlert{
+		forwardPayload, _ := json.Marshal(forwardedAlert{
 			Alert:        alert,
 			OriginSector: sectorFSM.GetSector(),
 		})
-		if err != nil {
-			fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao serializar forward alert: %v\n", err)
-			return
-		}
 
-		if err := forwardCommand(leaderInfo.SigAddr, shared.HeaderCommand{
+		dispatchForwarding(shared.HeaderCommand{
 			Operation: FORWARD_ALR,
 			Payload:   forwardPayload,
-		}); err != nil {
-			fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao encaminhar alerta: %v\n", err)
-		}
+		}, "Alerta de Incidente", nil)
 
 		return
 	}
@@ -152,7 +161,7 @@ var onAlertHandler = func(client mqtt.Client, msg mqtt.Message) {
 	// ----------------------------------------------------
 	// Simulação de latência para o sensor "sensor-lento"
 	// Esta seção não é necessária para o funcionamento.
-	// Simula um atraso na rede para testar a resiliência do sistema e a sincronização de Lamport.
+	// Simula um atraso para testar a sincronização de Lamport.
 	// ----------------------------------------------------
 	if DebugMode && alert.SensorID == "sensor-lento" {
 		log.Printf("[DEBUG-LAMPORT] Interceptado alerta do %s. Retardando envio ao Raft por 10 segundos...\n", alert.SensorID)
@@ -176,6 +185,10 @@ var onAlertHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 }
 
+// Handler chamado quando um novo drone se registra publicando no tópico MQTT.
+// Ele processa o registro e adiciona o drone ao sistema. Se o nó atual não for o líder, ele encaminha o registro para o líder via TCP.
+//
+// Atualiza o relógio de Lamport.
 var onNewDroneHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 	var drone shared.Drone
@@ -192,14 +205,14 @@ var onNewDroneHandler = func(client mqtt.Client, msg mqtt.Message) {
 	if raftNode.State() != raft.Leader {
 		fmt.Println("\033[1;94m[LOCAL]:\033[0m Sou seguidor, encaminhando registro de drone para o líder via TCP...")
 
-		leaderInfo := searchForLeaderInfo(peers, sigPort)
-
-		if err := forwardCommand(leaderInfo.SigAddr, shared.HeaderCommand{
+		dispatchForwarding(shared.HeaderCommand{
 			Operation: FORWARD_REG,
 			Payload:   payload,
-		}); err != nil {
-			tellRegError(drone.ID, "Sem líder no momento. Aguarde...")
-		}
+		}, "Registro de Drone", func() {
+			tellRegError(drone.ID, "Sem líder no momento. Aguarde e tente novamente.")
+		})
+
+		// Se um erro ocorrer, a função de callback irá informar o drone sobre o erro de registro.
 
 		return
 	}
@@ -230,6 +243,8 @@ var onNewDroneHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 }
 
+// Handler chamado quando um heartbeat é publicado por um drone no tópico MQTT.
+// Ele processa o heartbeat e atualiza o estado do sistema. Se o nó atual não for o líder, ele encaminha o heartbeat para o líder via TCP.
 var onHeartbeatHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 	if raftNode.State() != raft.Leader {
@@ -255,6 +270,13 @@ var onHeartbeatHandler = func(client mqtt.Client, msg mqtt.Message) {
 	raftNode.Apply(cmdBytes, 1*time.Second)
 }
 
+// publishDrones escuta o canal de eventos de missão e publica os eventos para os drones via MQTT.
+//
+//	Ele é executado em uma goroutine separada para não bloquear o loop principal do MQTT.
+//
+// Params:
+//   - eventsChan: Canal onde os eventos de missão.
+//   - client: Cliente MQTT para publicar os eventos.
 func publishToDrones(eventsChan chan MissionPublishEvent, client mqtt.Client) {
 	for {
 		event := <-eventsChan
@@ -267,6 +289,11 @@ func publishToDrones(eventsChan chan MissionPublishEvent, client mqtt.Client) {
 	}
 }
 
+// tellRegError publica uma mensagem de erro de registro para um drone específico no tópico MQTT.
+//
+// Params:
+//   - droneID: ID do drone para o qual a mensagem de erro deve ser publicada.
+//   - errMsg: Mensagem de erro a ser enviada.
 func tellRegError(droneID string, errMsg string) {
 	errorMessage := shared.RegErrorMessage{
 		DroneID: droneID,
