@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
@@ -79,8 +80,8 @@ var onDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 }
 
 func createIncidentID(SENSOR_ID string) string {
-	shortTime := time.Now().Unix() % 10000 // Para evitar IDs muito longos
-	return fmt.Sprintf("inc--%s--%d", SENSOR_ID, shortTime)
+	randomPart := rand.New(rand.NewSource(time.Now().UnixNano())).Int63n(1000000)
+	return fmt.Sprintf("inc--%s--%06d", SENSOR_ID, randomPart)
 }
 
 var onAlertHandler = func(client mqtt.Client, msg mqtt.Message) {
