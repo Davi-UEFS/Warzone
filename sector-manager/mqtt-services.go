@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strconv"
 	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
@@ -81,8 +80,7 @@ var onDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 func createIncidentID(SENSOR_ID string) string {
 	shortTime := time.Now().Unix() % 10000 // Para evitar IDs muito longos
-	idNum, _ := strconv.Atoi(SENSOR_ID)
-	return fmt.Sprintf("inc--%s--%d", SENSOR_ID, shortTime+int64(idNum))
+	return fmt.Sprintf("inc--%s--%d", SENSOR_ID, shortTime)
 }
 
 var onAlertHandler = func(client mqtt.Client, msg mqtt.Message) {
