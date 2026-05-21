@@ -109,6 +109,8 @@ func (fsm *RaftFSM) handleADDRequisition(payload json.RawMessage) error {
 
 	// push into priority queue
 	heap.Push(&fsm.PendingReqsQueue, requisition)
+	fmt.Printf("\033[1;33m[FSM]:\033[0m Requisição \033[33m%s\033[1;33m adicionada à fila pendente.\033[0m\n", requisition.ID)
+
 	return nil
 }
 
