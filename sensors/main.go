@@ -10,8 +10,16 @@ import (
 	"github.com/Davi-UEFS/Warzone/shared"
 )
 
-// flags are handled in main; removed getEnviromentVariables
-
+// createAlertPayload cria o payload do alerta a ser enviado ao setor manager.
+// Ele inclui o ID do sensor, a coordenada gerada aleatoriamente, o tipo de alerta e o tempo de Lamport atual.
+//
+// Params:
+//   - SENSOR_TYPE: o tipo do sensor que gerou o alerta.
+//   - SENSOR_ID: o ID do sensor que gerou o alerta.
+//
+// Returns:
+//   - []byte: o payload do alerta em formato JSON pronto.
+//   - error: um erro caso a serialização do alerta falhe.
 func createAlertPayload(SENSOR_TYPE int, SENSOR_ID string) ([]byte, error) {
 
 	alert := shared.Alert{
@@ -25,6 +33,13 @@ func createAlertPayload(SENSOR_TYPE int, SENSOR_ID string) ([]byte, error) {
 
 }
 
+// getSensorTypeString converte o número do tipo de sensor em uma string correspondente ao tipo de alerta.
+//
+// Params:
+//   - sensorType: o número do tipo de sensor.
+//
+// Returns:
+//   - string: a string correspondente ao tipo de alerta. Retorna "INSPECTION" como padrão para números inválidos.
 func getSensorTypeString(sensorType int) string {
 	switch sensorType {
 	case 1:
@@ -45,6 +60,13 @@ func getSensorTypeString(sensorType int) string {
 	}
 }
 
+// getSensorGenerator chama a função de geração de alerta correspondente ao tipo de sensor fornecido.
+//
+// Params:
+//   - sensorType: o número do tipo de sensor.
+//
+// Returns:
+//   - bool: true se o alerta for gerado, false caso contrário. Retorna false para números de sensor inválidos.
 func getSensorGenerator(sensorType int) bool {
 	switch sensorType {
 	case 1:
@@ -65,18 +87,14 @@ func getSensorGenerator(sensorType int) bool {
 	}
 }
 
-/////////////////////////////////////////////////////
-//////////////////// VARS ///////////////////////////
-/////////////////////////////////////////////////////
+///////////////////////////////////////////////
+////////////// LAMPORT CLOCK  /////////////////
+///////////////////////////////////////////////
 
 var LClock = &shared.LamportClock{
 	Time: 0,
 	Mu:   sync.Mutex{},
 }
-
-// Nota: lógica de notificação ao sensor removida — sensores não aguardam mais solução.
-
-//////////////////////////////////////////
 
 func main() {
 	// Flags
@@ -86,11 +104,13 @@ func main() {
 	flag.Parse()
 
 	BROKER_IP, CLIENT_ID, SENSOR_TYPE := *broker, *sensorID, *sensorType
-	TOPIC := fmt.Sprintf("sensors/%s/incidents", CLIENT_ID)
+	TOPIC := fmt.Sprintf("sensors/%s/incidents", CLIENT_ID) // Tópico para publicar os alertas, usando o ID do sensor para criar um tópico único.
 
-	client, _ := shared.MakeClient(BROKER_IP, CLIENT_ID, nil, true)
+	client, _ := shared.MakeClient(BROKER_IP, CLIENT_ID, nil, true) // Cria o cliente MQTT. Não usa um onConnect personalizado e possui AutoReconnect do Paho.
 
 	trigger := false
+
+	// Fica em loop gerando alertas em intervalos de 1 segundo.
 
 	for {
 		if !trigger {

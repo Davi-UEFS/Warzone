@@ -6,6 +6,7 @@ import (
 	raft "github.com/hashicorp/raft"
 )
 
+// Constantes usadas para comandos do Raft.
 const (
 	OP_ADDREQ    = "ADD_REQUISITION"
 	OP_RMVREQ    = "REMOVE_REQUISITION"
@@ -18,6 +19,7 @@ const (
 	OP_AGING     = "APPLY_AGING"
 )
 
+// Constantes usadas para os tipos de mensagens de encaminhamento.
 const (
 	QUERY          = "QUERY_LEADER"
 	JOIN           = "JOIN_CLUSTER"
@@ -30,6 +32,7 @@ const (
 	ERR_NOT_LEADER = "ERRO: NÃO É O LIDER"
 )
 
+// PRIOTIRIES é um mapa que define a prioridade de cada tipo de requisição.
 var PRIOTIRIES = map[string]int{
 	shared.OIL:            4,
 	shared.FIRE:           5,
@@ -39,6 +42,7 @@ var PRIOTIRIES = map[string]int{
 	shared.BOTTLENECK:     2,
 }
 
+// Variáveis globais usadas pelo setor manager.
 var (
 	sectorFSM    *RaftFSM
 	LClock       shared.LamportClock

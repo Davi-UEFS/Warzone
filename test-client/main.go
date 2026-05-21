@@ -15,10 +15,16 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
+// typesMap relaciona a opção do menu com o tipo de incidente enviado ao broker.
 var typesMap = map[int]string{
 	1: shared.FIRE, 2: shared.OIL, 3: shared.WRECKAGE, 4: shared.INSPECTION, 5: shared.UNKNOWN_OBJECT, 6: shared.BOTTLENECK,
 }
 
+// main inicializa o cliente MQTT usado para testes. Ele apresenta um menu interativo para o usuário escolher diferentes
+// tipos de simulações, como enviar alertas manuais, em lote, testar latência e estresse com drones autônomos.
+//
+// O cliente se conecta ao broker MQTT especificado pelo usuário e publica mensagens nos tópicos
+// usados pelo sistema Warzone para simular o comportamento de sensores e drones.
 func main() {
 	reader := bufio.NewReader(os.Stdin)
 
@@ -73,6 +79,7 @@ func main() {
 	}
 }
 
+// showMenu exibe as opções disponíveis no simulador.
 func showMenu() {
 	fmt.Println("\033[1;34m--- MENU DE SIMULAÇÕES DIRETAS ---\033[0m")
 	fmt.Println("1- Enviar alerta único (Manual)")
@@ -83,7 +90,7 @@ func showMenu() {
 	fmt.Println("6- Sair")
 }
 
-// 1. ENVIAR ALERTA MANUAL
+// enviarAlertaManual publica um alerta simples no tópico do sensor informado.
 func enviarAlertaManual(client mqtt.Client, reader *bufio.Reader, id string) {
 	fmt.Println("\nTipos: 1-Fogo, 2-Óleo, 3-Mantimentos, 4-Inspeção, 5-Objeto Suspeito, 6-Tráfego")
 	fmt.Print("Escolha o tipo (1-6): ")
@@ -108,7 +115,7 @@ func enviarAlertaManual(client mqtt.Client, reader *bufio.Reader, id string) {
 	fmt.Printf("\033[1;32m[SUCESSO]\033[0m Alerta enviado no tópico '%s' (Tipo: %s)\n", topic, typeName)
 }
 
-// 2. ENVIAR EM LOTE
+// enviarEmLote publica vários alertas em sequência para simular carga simples.
 func enviarEmLote(client mqtt.Client, reader *bufio.Reader) {
 	fmt.Print("Quantos alertas deseja enviar em lote? ")
 	qtdStr, _ := reader.ReadString('\n')
@@ -129,7 +136,7 @@ func enviarEmLote(client mqtt.Client, reader *bufio.Reader) {
 	fmt.Printf("\033[1;32m[SUCESSO]\033[0m %d alertas enviados sequencialmente.\n", qtd)
 }
 
-// 3. ENVIAR SENSOR LENTO (10s)
+// enviarSensorLento publica um alerta preparado para testar latência no manager.
 func enviarSensorLento(client mqtt.Client) {
 	alert := shared.Alert{
 		SensorID:    "sensor-lento",
@@ -142,7 +149,7 @@ func enviarSensorLento(client mqtt.Client) {
 	fmt.Println("\033[1;33m[GATILHO]\033[0m Alerta do 'sensor-lento' publicado! O Manager configurado com -debug vai retê-lo por 10s.")
 }
 
-// 4. TESTE DE ESTRESSE (SENSORS)
+// testeEstresseSensores dispara vários alertas ao mesmo tempo para simular carga.
 func testeEstresseSensores(client mqtt.Client, reader *bufio.Reader) {
 	fmt.Print("Quantos alertas simultâneos no ataque de estresse? ")
 	qtdStr, _ := reader.ReadString('\n')
@@ -170,7 +177,7 @@ func testeEstresseSensores(client mqtt.Client, reader *bufio.Reader) {
 	fmt.Printf("\033[1;32m[TESTE CONCLUÍDO]\033[0m %d mensagens processadas em %v\n", qtd, time.Since(start))
 }
 
-// 5. INJETAR DRONES FUNCIONAIS AUTÔNOMOS (Cria Drones vivos com ciclo de vida completo)
+// testeEstresseDronesAutonomos cria drones virtuais que registram, recebem missões e enviam conclusão.
 func testeEstresseDronesAutonomos(client mqtt.Client, reader *bufio.Reader, brokerTarget string) {
 	fmt.Print("Quantos drones deseja injetar? ")
 	qtdStr, _ := reader.ReadString('\n')
@@ -182,10 +189,8 @@ func testeEstresseDronesAutonomos(client mqtt.Client, reader *bufio.Reader, brok
 		go func(idx int) {
 			droneID := fmt.Sprintf("virtual-drone-%02d", idx)
 
-			// Inicializa o relógio lógico individual do drone virtuais
 			localClock := &shared.LamportClock{Time: 0}
 
-			// Conexão exclusiva estável do Drone Virtual
 			opts := mqtt.NewClientOptions().AddBroker(brokerTarget).SetClientID(droneID + "-client")
 			droneClient := mqtt.NewClient(opts)
 			if token := droneClient.Connect(); token.Wait() && token.Error() != nil {
@@ -198,7 +203,6 @@ func testeEstresseDronesAutonomos(client mqtt.Client, reader *bufio.Reader, brok
 				fmt.Printf("\033[1;31m[DRONE %s]\033[0m Desligado após teste de estresse.\n", droneID)
 			}()
 
-			// 1. Enviar Registro Inicial para o cluster Raft entrar em consenso
 			droneInfo := shared.Drone{
 				ID:             droneID,
 				BatteryLevel:   100,
@@ -209,7 +213,6 @@ func testeEstresseDronesAutonomos(client mqtt.Client, reader *bufio.Reader, brok
 			regPayload, _ := json.Marshal(droneInfo)
 			droneClient.Publish("drones/register", 1, false, regPayload).Wait()
 
-			// 2. Loop Assíncrono de Heartbeats (Evita remoção pelo Watchdog)
 			go func(client mqtt.Client, id string) {
 				ticker := time.NewTicker(4 * time.Second)
 				defer ticker.Stop()
@@ -224,7 +227,6 @@ func testeEstresseDronesAutonomos(client mqtt.Client, reader *bufio.Reader, brok
 				}
 			}(droneClient, droneID)
 
-			// 3. Inscrever-se no tópico de recepção de Missões atribuídas pelo líder
 			missionTopic := fmt.Sprintf("drones/%s/mission", droneID)
 			droneClient.Subscribe(missionTopic, 1, func(c mqtt.Client, msg mqtt.Message) {
 				var mission shared.DroneMission
@@ -232,19 +234,15 @@ func testeEstresseDronesAutonomos(client mqtt.Client, reader *bufio.Reader, brok
 					return
 				}
 
-				// Executa a lógica de sincronização temporal de Lamport recebendo o carimbo do cluster
 				localClock.CompareAndUpdate(mission.LamportTime)
 
 				fmt.Printf("\n\033[1;33m[DRONE %s]\033[0m Atribuído para Incidente: %s. Processando ação (%s)...\n",
 					droneID, mission.RequisitionID, mission.Type)
 
-				// Simula o tempo de execução da missão (3s)
 				time.Sleep(3 * time.Second)
 
-				// Incrementa o relógio local do drone indicando a conclusão interna do trabalho
 				localClock.Tick()
 
-				// Monta o payload de Done Info para se auto-liberar
 				doneInfo := shared.DoneInfo{
 					RequisitionID: mission.RequisitionID,
 					DroneID:       droneID,
@@ -254,7 +252,6 @@ func testeEstresseDronesAutonomos(client mqtt.Client, reader *bufio.Reader, brok
 				donePayload, _ := json.Marshal(doneInfo)
 				doneTopic := fmt.Sprintf("drones/%s/done", droneID)
 
-				// Publica no barramento. O onDoneHandler do Manager vai capturar e atualizar a FSM Raft!
 				c.Publish(doneTopic, 1, false, donePayload).Wait()
 				fmt.Printf("\033[1;32m[DRONE %s]\033[0m Missão %s concluída e enviada com Lamport: %d. Drone livre!\n",
 					droneID, mission.RequisitionID, localClock.GetTime())
