@@ -42,6 +42,10 @@ Se não quiser baixar todo o projeto, basta apenas baixar os Makefiles correspon
 
 ## Como subir os componentes
 
+Primeiramente, inicie o núcleo Raft dos gerenciadores de setor. É recomendado subir um número ímpar de nós, pois a tolerância não aumenta com números pares. Por exemplo, um _cluster_ com 3 nós tolera 1 falha, um com 4 nós também tolera apenas 1 falha, mas um com 5 nós passa a tolerar 2.
+
+Aguarde o _cluster_ estabilizar e então adicione os dispositivos de borda (sensores e drones). 
+
 > [!NOTE]
 > Os contêineres rodam em modo _host_ e, portanto, não precisam expor as portas.
 
@@ -58,7 +62,7 @@ Para configurar o sensor à sua vontade, utilize `make run-prompt`. Você precis
 
 #### Utilizando o sensor de teste
 
-Quando o líder do Raft estiver em modo de depuração, utilize o comando `make run-lento` para criar um sensor com um ID especial. Os alertas criados por sensor possuirão um atraso intencional até que sejam adicionados à fila de prioridades na RSM.
+Quando o líder do Raft estiver em modo de depuração, utilize o comando `make run-lento` para criar um sensor com um ID especial. Os alertas criados por este sensor possuirão um atraso intencional até que sejam adicionados à fila de prioridades na RSM.
 
 ### Drones
 
