@@ -8,7 +8,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
@@ -65,9 +64,9 @@ func main() {
 		case 3:
 			enviarSensorLento(client)
 		case 4:
-			testeEstresseSensores(client, reader)
+			testeEstresseSensores(reader, brokerInput)
 		case 5:
-			testeEstresseDronesAutonomos(client, reader, brokerInput)
+			testeEstresseDronesAutonomos(reader, brokerInput)
 		case 6:
 			fmt.Println("Saindo do simulador. Até logo!")
 			return
@@ -85,8 +84,8 @@ func showMenu() {
 	fmt.Println("1- Enviar alerta único (Manual)")
 	fmt.Println("2- Enviar alertas em lote (Sequencial)")
 	fmt.Println("3- Enviar sensor lento (Gatilho de Latência 10s)")
-	fmt.Println("4- Teste de estresse (Inundação de Alertas de Sensores)")
-	fmt.Println("5- Injetar enxame de Drones Autônomos (Processam e Liberam Missões)")
+	fmt.Println("4- Teste de estresse (Inundação de Sensores)")
+	fmt.Println("5- Teste de estresse (Inundação de Drones Autônomos)")
 	fmt.Println("6- Sair")
 }
 
@@ -149,36 +148,34 @@ func enviarSensorLento(client mqtt.Client) {
 	fmt.Println("\033[1;33m[GATILHO]\033[0m Alerta do 'sensor-lento' publicado! O Manager configurado com -debug vai retê-lo por 10s.")
 }
 
-// testeEstresseSensores dispara vários alertas ao mesmo tempo para simular carga.
-func testeEstresseSensores(client mqtt.Client, reader *bufio.Reader) {
-	fmt.Print("Quantos alertas simultâneos no ataque de estresse? ")
+// testeEstresseSensores conecta vários sensores no MQTT para simular um ataque de estresse, inundando o broker com conexões ativas. Cada sensor se desconecta após 1 minuto.
+func testeEstresseSensores(reader *bufio.Reader, sensorTarget string) {
+	fmt.Print("Quantos sensores no ataque de estresse? ")
 	qtdStr, _ := reader.ReadString('\n')
 	qtd, _ := strconv.Atoi(strings.TrimSpace(qtdStr))
 
-	var wg sync.WaitGroup
-	start := time.Now()
-
 	for i := 0; i < qtd; i++ {
-		wg.Add(1)
 		go func(idx int) {
-			defer wg.Done()
-			alert := shared.Alert{
-				SensorID:    fmt.Sprintf("stress-sensor-%d", idx),
-				Coordinate:  shared.Coordinate{Latitude: rand.Intn(500), Longitude: rand.Intn(500)},
-				Type:        shared.OIL,
-				LamportTime: idx,
+			sensorID := fmt.Sprintf("sensor-%d", idx)
+			testClient, err := shared.MakeClient(sensorTarget, sensorID, nil, true)
+			if err != nil {
+				fmt.Printf("\033[1;31m[ERRO]\033[0m Falha ao conectar sensor %s: %v\n", sensorID, err)
+				return
+			} else {
+				fmt.Printf("\033[1;34m[CONEXÃO]\033[0m Sensor %s conectado para teste de estresse.\nDesconectando em 1 minuto.", sensorID)
 			}
-			payload, _ := json.Marshal(alert)
-			topic := fmt.Sprintf("sensors/%s/incidents", alert.SensorID)
-			client.Publish(topic, 1, false, payload).Wait()
+
+			defer func() {
+				time.Sleep(1 * time.Minute)
+				testClient.Disconnect(250)
+			}()
 		}(i)
 	}
-	wg.Wait()
-	fmt.Printf("\033[1;32m[TESTE CONCLUÍDO]\033[0m %d mensagens processadas em %v\n", qtd, time.Since(start))
+	fmt.Printf("\033[1;32m[TESTE CONCLUÍDO]\033[0m %d sensores conectados.\n", qtd)
 }
 
 // testeEstresseDronesAutonomos cria drones virtuais que registram, recebem missões e enviam conclusão.
-func testeEstresseDronesAutonomos(client mqtt.Client, reader *bufio.Reader, brokerTarget string) {
+func testeEstresseDronesAutonomos(reader *bufio.Reader, brokerTarget string) {
 	fmt.Print("Quantos drones deseja injetar? ")
 	qtdStr, _ := reader.ReadString('\n')
 	qtd, _ := strconv.Atoi(strings.TrimSpace(qtdStr))
