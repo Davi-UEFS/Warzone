@@ -1,0 +1,162 @@
+syntax = "proto3";
+
+package warzonecore.warzone.v1;
+
+import "amino/amino.proto";
+import "cosmos/msg/v1/msg.proto";
+import "cosmos_proto/cosmos.proto";
+import "gogoproto/gogo.proto";
+import "warzonecore/warzone/v1/params.proto";
+
+option go_package = "github.com/Davi-UEFS/warzone-core/x/warzone/types";
+
+// Msg defines the Msg service.
+service Msg {
+  option (cosmos.msg.v1.service) = true;
+
+  // UpdateParams defines a (governance) operation for updating the module
+  // parameters. The authority defaults to the x/gov module account.
+  rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
+
+  // CreateDrone defines the CreateDrone RPC.
+  rpc CreateDrone(MsgCreateDrone) returns (MsgCreateDroneResponse);
+
+  // UpdateDrone defines the UpdateDrone RPC.
+  rpc UpdateDrone(MsgUpdateDrone) returns (MsgUpdateDroneResponse);
+
+  // DeleteDrone defines the DeleteDrone RPC.
+  rpc DeleteDrone(MsgDeleteDrone) returns (MsgDeleteDroneResponse);
+
+  // CreateMission defines the CreateMission RPC.
+  rpc CreateMission(MsgCreateMission) returns (MsgCreateMissionResponse);
+
+  // UpdateMission defines the UpdateMission RPC.
+  rpc UpdateMission(MsgUpdateMission) returns (MsgUpdateMissionResponse);
+
+  // DeleteMission defines the DeleteMission RPC.
+  rpc DeleteMission(MsgDeleteMission) returns (MsgDeleteMissionResponse);
+
+  // RequestDrone defines the RequestDrone RPC.
+  rpc RequestDrone(MsgRequestDrone) returns (MsgRequestDroneResponse);
+
+  // SubmitReport defines the SubmitReport RPC.
+  rpc SubmitReport(MsgSubmitReport) returns (MsgSubmitReportResponse);
+}
+
+// MsgUpdateParams is the Msg/UpdateParams request type.
+message MsgUpdateParams {
+  option (cosmos.msg.v1.signer) = "authority";
+  option (amino.name) = "warzonecore/x/warzone/MsgUpdateParams";
+
+  // authority is the address that controls the module (defaults to x/gov unless overwritten).
+  string authority = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+
+  // params defines the module parameters to update.
+
+  // NOTE: All parameters must be supplied.
+  Params params = 2 [
+    (gogoproto.nullable) = false,
+    (amino.dont_omitempty) = true
+  ];
+}
+
+// MsgUpdateParamsResponse defines the response structure for executing a
+// MsgUpdateParams message.
+message MsgUpdateParamsResponse {}
+
+// MsgCreateDrone defines the MsgCreateDrone message.
+message MsgCreateDrone {
+  option (cosmos.msg.v1.signer) = "creator";
+  string creator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string drone_id = 2;
+  string status = 3;
+  string sector = 4;
+  string battery = 5;
+}
+
+// MsgCreateDroneResponse defines the MsgCreateDroneResponse message.
+message MsgCreateDroneResponse {}
+
+// MsgUpdateDrone defines the MsgUpdateDrone message.
+message MsgUpdateDrone {
+  option (cosmos.msg.v1.signer) = "creator";
+  string creator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string drone_id = 2;
+  string status = 3;
+  string sector = 4;
+  string battery = 5;
+}
+
+// MsgUpdateDroneResponse defines the MsgUpdateDroneResponse message.
+message MsgUpdateDroneResponse {}
+
+// MsgDeleteDrone defines the MsgDeleteDrone message.
+message MsgDeleteDrone {
+  option (cosmos.msg.v1.signer) = "creator";
+  string creator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string drone_id = 2;
+}
+
+// MsgDeleteDroneResponse defines the MsgDeleteDroneResponse message.
+message MsgDeleteDroneResponse {}
+
+// MsgCreateMission defines the MsgCreateMission message.
+message MsgCreateMission {
+  option (cosmos.msg.v1.signer) = "creator";
+  string creator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string sector = 2;
+  string status = 3;
+  int32 priority = 4;
+  string assigned_drone_id = 5;
+}
+
+// MsgCreateMissionResponse defines the MsgCreateMissionResponse message.
+message MsgCreateMissionResponse {
+  uint64 id = 1;
+}
+
+// MsgUpdateMission defines the MsgUpdateMission message.
+message MsgUpdateMission {
+  option (cosmos.msg.v1.signer) = "creator";
+  string creator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 id = 2;
+  string sector = 3;
+  string status = 4;
+  int32 priority = 5;
+  string assigned_drone_id = 6;
+}
+
+// MsgUpdateMissionResponse defines the MsgUpdateMissionResponse message.
+message MsgUpdateMissionResponse {}
+
+// MsgDeleteMission defines the MsgDeleteMission message.
+message MsgDeleteMission {
+  option (cosmos.msg.v1.signer) = "creator";
+  string creator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 id = 2;
+}
+
+// MsgDeleteMissionResponse defines the MsgDeleteMissionResponse message.
+message MsgDeleteMissionResponse {}
+
+// MsgRequestDrone defines the MsgRequestDrone message.
+message MsgRequestDrone {
+  option (cosmos.msg.v1.signer) = "creator";
+  string creator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string sector = 2;
+  int32    priority = 3;
+}
+
+// MsgRequestDroneResponse defines the MsgRequestDroneResponse message.
+message MsgRequestDroneResponse {}
+
+// MsgSubmitReport defines the MsgSubmitReport message.
+message MsgSubmitReport {
+  option (cosmos.msg.v1.signer) = "creator";
+  string creator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string drone_id = 2;
+  string laudo = 3;
+}
+
+// MsgSubmitReportResponse defines the MsgSubmitReportResponse message.
+message MsgSubmitReportResponse {}

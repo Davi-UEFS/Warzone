@@ -1,0 +1,14 @@
+syntax = "proto3";
+package warzonecore.warzone.v1;
+
+option go_package = "github.com/Davi-UEFS/warzone-core/x/warzone/types";
+
+// Mission defines the Mission message.
+message Mission {
+  uint64 id = 1;
+  string sector = 2;
+  string status = 3;
+  int32 priority = 4;
+  string assigned_drone_id = 5;
+  string creator = 6;
+}

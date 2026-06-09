@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package warzonecore.warzone.v1;
+
+import "amino/amino.proto";
+import "gogoproto/gogo.proto";
+import "warzonecore/warzone/v1/drone.proto";
+import "warzonecore/warzone/v1/mission.proto";
+import "warzonecore/warzone/v1/params.proto";
+
+option go_package = "github.com/Davi-UEFS/warzone-core/x/warzone/types";
+
+// GenesisState defines the warzone module's genesis state.
+message GenesisState {
+  // params defines all the parameters of the module.
+  Params params = 1 [
+    (gogoproto.nullable) = false,
+    (amino.dont_omitempty) = true
+  ];
+  repeated Drone drone_map = 2 [(gogoproto.nullable) = false];
+  repeated Mission mission_list = 3 [(gogoproto.nullable) = false];
+  uint64 mission_count = 4;
+}

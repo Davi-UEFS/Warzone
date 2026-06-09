@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package warzonecore.warzone.v1;
+
+import "amino/amino.proto";
+import "cosmos/base/query/v1beta1/pagination.proto";
+import "gogoproto/gogo.proto";
+import "google/api/annotations.proto";
+import "warzonecore/warzone/v1/drone.proto";
+import "warzonecore/warzone/v1/mission.proto";
+import "warzonecore/warzone/v1/params.proto";
+
+option go_package = "github.com/Davi-UEFS/warzone-core/x/warzone/types";
+
+// Query defines the gRPC querier service.
+service Query {
+  // Parameters queries the parameters of the module.
+  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
+    option (google.api.http).get = "/Davi-UEFS/warzone-core/warzone/v1/params";
+  }
+
+  // ListDrone Queries a list of Drone items.
+  rpc GetDrone(QueryGetDroneRequest) returns (QueryGetDroneResponse) {
+    option (google.api.http).get = "/Davi-UEFS/warzone-core/warzone/v1/drone/{drone_id}";
+  }
+
+  // ListDrone defines the ListDrone RPC.
+  rpc ListDrone(QueryAllDroneRequest) returns (QueryAllDroneResponse) {
+    option (google.api.http).get = "/Davi-UEFS/warzone-core/warzone/v1/drone";
+  }
+
+  // ListMission Queries a list of Mission items.
+  rpc GetMission(QueryGetMissionRequest) returns (QueryGetMissionResponse) {
+    option (google.api.http).get = "/Davi-UEFS/warzone-core/warzone/v1/mission/{id}";
+  }
+
+  // ListMission defines the ListMission RPC.
+  rpc ListMission(QueryAllMissionRequest) returns (QueryAllMissionResponse) {
+    option (google.api.http).get = "/Davi-UEFS/warzone-core/warzone/v1/mission";
+  }
+}
+
+// QueryParamsRequest is request type for the Query/Params RPC method.
+message QueryParamsRequest {}
+
+// QueryParamsResponse is response type for the Query/Params RPC method.
+message QueryParamsResponse {
+  // params holds all the parameters of this module.
+  Params params = 1 [
+    (gogoproto.nullable) = false,
+    (amino.dont_omitempty) = true
+  ];
+}
+
+// QueryGetDroneRequest defines the QueryGetDroneRequest message.
+message QueryGetDroneRequest {
+  string drone_id = 1;
+}
+
+// QueryGetDroneResponse defines the QueryGetDroneResponse message.
+message QueryGetDroneResponse {
+  Drone drone = 1 [(gogoproto.nullable) = false];
+}
+
+// QueryAllDroneRequest defines the QueryAllDroneRequest message.
+message QueryAllDroneRequest {
+  cosmos.base.query.v1beta1.PageRequest pagination = 1;
+}
+
+// QueryAllDroneResponse defines the QueryAllDroneResponse message.
+message QueryAllDroneResponse {
+  repeated Drone drone = 1 [(gogoproto.nullable) = false];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
+
+// QueryGetMissionRequest defines the QueryGetMissionRequest message.
+message QueryGetMissionRequest {
+  uint64 id = 1;
+}
+
+// QueryGetMissionResponse defines the QueryGetMissionResponse message.
+message QueryGetMissionResponse {
+  Mission mission = 1 [(gogoproto.nullable) = false];
+}
+
+// QueryAllMissionRequest defines the QueryAllMissionRequest message.
+message QueryAllMissionRequest {
+  cosmos.base.query.v1beta1.PageRequest pagination = 1;
+}
+
+// QueryAllMissionResponse defines the QueryAllMissionResponse message.
+message QueryAllMissionResponse {
+  repeated Mission mission = 1 [(gogoproto.nullable) = false];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
