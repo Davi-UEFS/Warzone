@@ -1,0 +1,14 @@
+syntax = "proto3";
+package warzonecore.warzone.v1;
+
+option go_package = "github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/types";
+
+// Drone defines the Drone message.
+message Drone {
+  string drone_id = 1;
+  string status = 2;
+  string sector = 3;
+  string battery = 4;
+  string creator = 5;
+  uint64 currentMissionId = 6;
+}

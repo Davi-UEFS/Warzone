@@ -20,7 +20,13 @@ const (
 	DRONE_RETURN DroneStatus = "RETURNING"
 )
 
+// Status de missão para as requisições.
 const NONE = "NONE"
+const (
+	PENDING     = "PENDING"
+	IN_PROGRESS = "IN_PROGRESS"
+	DONE        = "DONE"
+)
 
 // Tipos de missão usados pelo sistema.
 const (
