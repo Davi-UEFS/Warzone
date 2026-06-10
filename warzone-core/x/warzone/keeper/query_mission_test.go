@@ -22,7 +22,7 @@ func createNMission(keeper keeper.Keeper, ctx context.Context, n int) []types.Mi
 		items[i].Id = iu
 		items[i].Sector = strconv.Itoa(i)
 		items[i].Status = strconv.Itoa(i)
-		items[i].Priority = int32(i)
+		items[i].Priority = int64(i)
 		items[i].AssignedDroneId = strconv.Itoa(i)
 		_ = keeper.Mission.Set(ctx, iu, items[i])
 		_ = keeper.MissionSeq.Set(ctx, iu)

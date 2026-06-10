@@ -8,7 +8,10 @@ message Mission {
   uint64 id = 1;
   string sector = 2;
   string status = 3;
-  int32 priority = 4;
+  int64 priority = 4;
   string assigned_drone_id = 5;
   string creator = 6;
+  string reqType = 7;
+  string coord = 8;
+  int64 createdAt = 9;
 }

@@ -8,11 +8,23 @@ import (
 
 func RegisterInterfaces(registrar codectypes.InterfaceRegistry) {
 	registrar.RegisterImplementations((*sdk.Msg)(nil),
-		&MsgSubmitReport{},
+		&MsgRmvReq{},
 	)
 
 	registrar.RegisterImplementations((*sdk.Msg)(nil),
-		&MsgRequestDrone{},
+		&MsgRegDrone{},
+	)
+
+	registrar.RegisterImplementations((*sdk.Msg)(nil),
+		&MsgReportDeadDrone{},
+	)
+
+	registrar.RegisterImplementations((*sdk.Msg)(nil),
+		&MsgAssignDrone{},
+	)
+
+	registrar.RegisterImplementations((*sdk.Msg)(nil),
+		&MsgAddReq{},
 	)
 
 	registrar.RegisterImplementations((*sdk.Msg)(nil),

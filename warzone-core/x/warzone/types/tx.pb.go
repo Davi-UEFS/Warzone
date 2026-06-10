@@ -447,7 +447,7 @@ type MsgCreateMission struct {
 	Creator         string `protobuf:"bytes,1,opt,name=creator,proto3" json:"creator,omitempty"`
 	Sector          string `protobuf:"bytes,2,opt,name=sector,proto3" json:"sector,omitempty"`
 	Status          string `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
-	Priority        int32  `protobuf:"varint,4,opt,name=priority,proto3" json:"priority,omitempty"`
+	Priority        int64  `protobuf:"varint,4,opt,name=priority,proto3" json:"priority,omitempty"`
 	AssignedDroneId string `protobuf:"bytes,5,opt,name=assigned_drone_id,json=assignedDroneId,proto3" json:"assigned_drone_id,omitempty"`
 }
 
@@ -505,7 +505,7 @@ func (m *MsgCreateMission) GetStatus() string {
 	return ""
 }
 
-func (m *MsgCreateMission) GetPriority() int32 {
+func (m *MsgCreateMission) GetPriority() int64 {
 	if m != nil {
 		return m.Priority
 	}
@@ -570,7 +570,7 @@ type MsgUpdateMission struct {
 	Id              uint64 `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty"`
 	Sector          string `protobuf:"bytes,3,opt,name=sector,proto3" json:"sector,omitempty"`
 	Status          string `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
-	Priority        int32  `protobuf:"varint,5,opt,name=priority,proto3" json:"priority,omitempty"`
+	Priority        int64  `protobuf:"varint,5,opt,name=priority,proto3" json:"priority,omitempty"`
 	AssignedDroneId string `protobuf:"bytes,6,opt,name=assigned_drone_id,json=assignedDroneId,proto3" json:"assigned_drone_id,omitempty"`
 }
 
@@ -635,7 +635,7 @@ func (m *MsgUpdateMission) GetStatus() string {
 	return ""
 }
 
-func (m *MsgUpdateMission) GetPriority() int32 {
+func (m *MsgUpdateMission) GetPriority() int64 {
 	if m != nil {
 		return m.Priority
 	}
@@ -776,25 +776,27 @@ func (m *MsgDeleteMissionResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_MsgDeleteMissionResponse proto.InternalMessageInfo
 
-// MsgRequestDrone defines the MsgRequestDrone message.
-type MsgRequestDrone struct {
+// MsgAddReq defines the MsgAddReq message.
+type MsgAddReq struct {
 	Creator  string `protobuf:"bytes,1,opt,name=creator,proto3" json:"creator,omitempty"`
 	Sector   string `protobuf:"bytes,2,opt,name=sector,proto3" json:"sector,omitempty"`
-	Priority int32  `protobuf:"varint,3,opt,name=priority,proto3" json:"priority,omitempty"`
+	Priority int64  `protobuf:"varint,3,opt,name=priority,proto3" json:"priority,omitempty"`
+	ReqType  string `protobuf:"bytes,4,opt,name=reqType,proto3" json:"reqType,omitempty"`
+	Coord    string `protobuf:"bytes,5,opt,name=coord,proto3" json:"coord,omitempty"`
 }
 
-func (m *MsgRequestDrone) Reset()         { *m = MsgRequestDrone{} }
-func (m *MsgRequestDrone) String() string { return proto.CompactTextString(m) }
-func (*MsgRequestDrone) ProtoMessage()    {}
-func (*MsgRequestDrone) Descriptor() ([]byte, []int) {
+func (m *MsgAddReq) Reset()         { *m = MsgAddReq{} }
+func (m *MsgAddReq) String() string { return proto.CompactTextString(m) }
+func (*MsgAddReq) ProtoMessage()    {}
+func (*MsgAddReq) Descriptor() ([]byte, []int) {
 	return fileDescriptor_6728b951dcd3548c, []int{14}
 }
-func (m *MsgRequestDrone) XXX_Unmarshal(b []byte) error {
+func (m *MsgAddReq) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *MsgRequestDrone) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *MsgAddReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_MsgRequestDrone.Marshal(b, m, deterministic)
+		return xxx_messageInfo_MsgAddReq.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -804,55 +806,69 @@ func (m *MsgRequestDrone) XXX_Marshal(b []byte, deterministic bool) ([]byte, err
 		return b[:n], nil
 	}
 }
-func (m *MsgRequestDrone) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgRequestDrone.Merge(m, src)
+func (m *MsgAddReq) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgAddReq.Merge(m, src)
 }
-func (m *MsgRequestDrone) XXX_Size() int {
+func (m *MsgAddReq) XXX_Size() int {
 	return m.Size()
 }
-func (m *MsgRequestDrone) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgRequestDrone.DiscardUnknown(m)
+func (m *MsgAddReq) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgAddReq.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_MsgRequestDrone proto.InternalMessageInfo
+var xxx_messageInfo_MsgAddReq proto.InternalMessageInfo
 
-func (m *MsgRequestDrone) GetCreator() string {
+func (m *MsgAddReq) GetCreator() string {
 	if m != nil {
 		return m.Creator
 	}
 	return ""
 }
 
-func (m *MsgRequestDrone) GetSector() string {
+func (m *MsgAddReq) GetSector() string {
 	if m != nil {
 		return m.Sector
 	}
 	return ""
 }
 
-func (m *MsgRequestDrone) GetPriority() int32 {
+func (m *MsgAddReq) GetPriority() int64 {
 	if m != nil {
 		return m.Priority
 	}
 	return 0
 }
 
-// MsgRequestDroneResponse defines the MsgRequestDroneResponse message.
-type MsgRequestDroneResponse struct {
+func (m *MsgAddReq) GetReqType() string {
+	if m != nil {
+		return m.ReqType
+	}
+	return ""
 }
 
-func (m *MsgRequestDroneResponse) Reset()         { *m = MsgRequestDroneResponse{} }
-func (m *MsgRequestDroneResponse) String() string { return proto.CompactTextString(m) }
-func (*MsgRequestDroneResponse) ProtoMessage()    {}
-func (*MsgRequestDroneResponse) Descriptor() ([]byte, []int) {
+func (m *MsgAddReq) GetCoord() string {
+	if m != nil {
+		return m.Coord
+	}
+	return ""
+}
+
+// MsgAddReqResponse defines the MsgAddReqResponse message.
+type MsgAddReqResponse struct {
+}
+
+func (m *MsgAddReqResponse) Reset()         { *m = MsgAddReqResponse{} }
+func (m *MsgAddReqResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgAddReqResponse) ProtoMessage()    {}
+func (*MsgAddReqResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_6728b951dcd3548c, []int{15}
 }
-func (m *MsgRequestDroneResponse) XXX_Unmarshal(b []byte) error {
+func (m *MsgAddReqResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *MsgRequestDroneResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *MsgAddReqResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_MsgRequestDroneResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_MsgAddReqResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -862,37 +878,37 @@ func (m *MsgRequestDroneResponse) XXX_Marshal(b []byte, deterministic bool) ([]b
 		return b[:n], nil
 	}
 }
-func (m *MsgRequestDroneResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgRequestDroneResponse.Merge(m, src)
+func (m *MsgAddReqResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgAddReqResponse.Merge(m, src)
 }
-func (m *MsgRequestDroneResponse) XXX_Size() int {
+func (m *MsgAddReqResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *MsgRequestDroneResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgRequestDroneResponse.DiscardUnknown(m)
+func (m *MsgAddReqResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgAddReqResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_MsgRequestDroneResponse proto.InternalMessageInfo
+var xxx_messageInfo_MsgAddReqResponse proto.InternalMessageInfo
 
-// MsgSubmitReport defines the MsgSubmitReport message.
-type MsgSubmitReport struct {
-	Creator string `protobuf:"bytes,1,opt,name=creator,proto3" json:"creator,omitempty"`
-	DroneId string `protobuf:"bytes,2,opt,name=drone_id,json=droneId,proto3" json:"drone_id,omitempty"`
-	Laudo   string `protobuf:"bytes,3,opt,name=laudo,proto3" json:"laudo,omitempty"`
+// MsgAssignDrone defines the MsgAssignDrone message.
+type MsgAssignDrone struct {
+	Creator   string `protobuf:"bytes,1,opt,name=creator,proto3" json:"creator,omitempty"`
+	MissionId string `protobuf:"bytes,2,opt,name=mission_id,json=missionId,proto3" json:"mission_id,omitempty"`
+	DroneId   string `protobuf:"bytes,3,opt,name=drone_id,json=droneId,proto3" json:"drone_id,omitempty"`
 }
 
-func (m *MsgSubmitReport) Reset()         { *m = MsgSubmitReport{} }
-func (m *MsgSubmitReport) String() string { return proto.CompactTextString(m) }
-func (*MsgSubmitReport) ProtoMessage()    {}
-func (*MsgSubmitReport) Descriptor() ([]byte, []int) {
+func (m *MsgAssignDrone) Reset()         { *m = MsgAssignDrone{} }
+func (m *MsgAssignDrone) String() string { return proto.CompactTextString(m) }
+func (*MsgAssignDrone) ProtoMessage()    {}
+func (*MsgAssignDrone) Descriptor() ([]byte, []int) {
 	return fileDescriptor_6728b951dcd3548c, []int{16}
 }
-func (m *MsgSubmitReport) XXX_Unmarshal(b []byte) error {
+func (m *MsgAssignDrone) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *MsgSubmitReport) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *MsgAssignDrone) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_MsgSubmitReport.Marshal(b, m, deterministic)
+		return xxx_messageInfo_MsgAssignDrone.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -902,55 +918,55 @@ func (m *MsgSubmitReport) XXX_Marshal(b []byte, deterministic bool) ([]byte, err
 		return b[:n], nil
 	}
 }
-func (m *MsgSubmitReport) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgSubmitReport.Merge(m, src)
+func (m *MsgAssignDrone) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgAssignDrone.Merge(m, src)
 }
-func (m *MsgSubmitReport) XXX_Size() int {
+func (m *MsgAssignDrone) XXX_Size() int {
 	return m.Size()
 }
-func (m *MsgSubmitReport) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgSubmitReport.DiscardUnknown(m)
+func (m *MsgAssignDrone) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgAssignDrone.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_MsgSubmitReport proto.InternalMessageInfo
+var xxx_messageInfo_MsgAssignDrone proto.InternalMessageInfo
 
-func (m *MsgSubmitReport) GetCreator() string {
+func (m *MsgAssignDrone) GetCreator() string {
 	if m != nil {
 		return m.Creator
 	}
 	return ""
 }
 
-func (m *MsgSubmitReport) GetDroneId() string {
+func (m *MsgAssignDrone) GetMissionId() string {
+	if m != nil {
+		return m.MissionId
+	}
+	return ""
+}
+
+func (m *MsgAssignDrone) GetDroneId() string {
 	if m != nil {
 		return m.DroneId
 	}
 	return ""
 }
 
-func (m *MsgSubmitReport) GetLaudo() string {
-	if m != nil {
-		return m.Laudo
-	}
-	return ""
+// MsgAssignDroneResponse defines the MsgAssignDroneResponse message.
+type MsgAssignDroneResponse struct {
 }
 
-// MsgSubmitReportResponse defines the MsgSubmitReportResponse message.
-type MsgSubmitReportResponse struct {
-}
-
-func (m *MsgSubmitReportResponse) Reset()         { *m = MsgSubmitReportResponse{} }
-func (m *MsgSubmitReportResponse) String() string { return proto.CompactTextString(m) }
-func (*MsgSubmitReportResponse) ProtoMessage()    {}
-func (*MsgSubmitReportResponse) Descriptor() ([]byte, []int) {
+func (m *MsgAssignDroneResponse) Reset()         { *m = MsgAssignDroneResponse{} }
+func (m *MsgAssignDroneResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgAssignDroneResponse) ProtoMessage()    {}
+func (*MsgAssignDroneResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_6728b951dcd3548c, []int{17}
 }
-func (m *MsgSubmitReportResponse) XXX_Unmarshal(b []byte) error {
+func (m *MsgAssignDroneResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *MsgSubmitReportResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *MsgAssignDroneResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_MsgSubmitReportResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_MsgAssignDroneResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -960,17 +976,319 @@ func (m *MsgSubmitReportResponse) XXX_Marshal(b []byte, deterministic bool) ([]b
 		return b[:n], nil
 	}
 }
-func (m *MsgSubmitReportResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgSubmitReportResponse.Merge(m, src)
+func (m *MsgAssignDroneResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgAssignDroneResponse.Merge(m, src)
 }
-func (m *MsgSubmitReportResponse) XXX_Size() int {
+func (m *MsgAssignDroneResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *MsgSubmitReportResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgSubmitReportResponse.DiscardUnknown(m)
+func (m *MsgAssignDroneResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgAssignDroneResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_MsgSubmitReportResponse proto.InternalMessageInfo
+var xxx_messageInfo_MsgAssignDroneResponse proto.InternalMessageInfo
+
+// MsgReportDeadDrone defines the MsgReportDeadDrone message.
+type MsgReportDeadDrone struct {
+	Creator string `protobuf:"bytes,1,opt,name=creator,proto3" json:"creator,omitempty"`
+	DroneId string `protobuf:"bytes,2,opt,name=drone_id,json=droneId,proto3" json:"drone_id,omitempty"`
+}
+
+func (m *MsgReportDeadDrone) Reset()         { *m = MsgReportDeadDrone{} }
+func (m *MsgReportDeadDrone) String() string { return proto.CompactTextString(m) }
+func (*MsgReportDeadDrone) ProtoMessage()    {}
+func (*MsgReportDeadDrone) Descriptor() ([]byte, []int) {
+	return fileDescriptor_6728b951dcd3548c, []int{18}
+}
+func (m *MsgReportDeadDrone) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgReportDeadDrone) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgReportDeadDrone.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgReportDeadDrone) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgReportDeadDrone.Merge(m, src)
+}
+func (m *MsgReportDeadDrone) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgReportDeadDrone) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgReportDeadDrone.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgReportDeadDrone proto.InternalMessageInfo
+
+func (m *MsgReportDeadDrone) GetCreator() string {
+	if m != nil {
+		return m.Creator
+	}
+	return ""
+}
+
+func (m *MsgReportDeadDrone) GetDroneId() string {
+	if m != nil {
+		return m.DroneId
+	}
+	return ""
+}
+
+// MsgReportDeadDroneResponse defines the MsgReportDeadDroneResponse message.
+type MsgReportDeadDroneResponse struct {
+}
+
+func (m *MsgReportDeadDroneResponse) Reset()         { *m = MsgReportDeadDroneResponse{} }
+func (m *MsgReportDeadDroneResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgReportDeadDroneResponse) ProtoMessage()    {}
+func (*MsgReportDeadDroneResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_6728b951dcd3548c, []int{19}
+}
+func (m *MsgReportDeadDroneResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgReportDeadDroneResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgReportDeadDroneResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgReportDeadDroneResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgReportDeadDroneResponse.Merge(m, src)
+}
+func (m *MsgReportDeadDroneResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgReportDeadDroneResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgReportDeadDroneResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgReportDeadDroneResponse proto.InternalMessageInfo
+
+// MsgRegDrone defines the MsgRegDrone message.
+type MsgRegDrone struct {
+	Creator string `protobuf:"bytes,1,opt,name=creator,proto3" json:"creator,omitempty"`
+	DroneId string `protobuf:"bytes,2,opt,name=drone_id,json=droneId,proto3" json:"drone_id,omitempty"`
+	Sector  string `protobuf:"bytes,3,opt,name=sector,proto3" json:"sector,omitempty"`
+	Battery string `protobuf:"bytes,4,opt,name=battery,proto3" json:"battery,omitempty"`
+}
+
+func (m *MsgRegDrone) Reset()         { *m = MsgRegDrone{} }
+func (m *MsgRegDrone) String() string { return proto.CompactTextString(m) }
+func (*MsgRegDrone) ProtoMessage()    {}
+func (*MsgRegDrone) Descriptor() ([]byte, []int) {
+	return fileDescriptor_6728b951dcd3548c, []int{20}
+}
+func (m *MsgRegDrone) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgRegDrone) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgRegDrone.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgRegDrone) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgRegDrone.Merge(m, src)
+}
+func (m *MsgRegDrone) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgRegDrone) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgRegDrone.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgRegDrone proto.InternalMessageInfo
+
+func (m *MsgRegDrone) GetCreator() string {
+	if m != nil {
+		return m.Creator
+	}
+	return ""
+}
+
+func (m *MsgRegDrone) GetDroneId() string {
+	if m != nil {
+		return m.DroneId
+	}
+	return ""
+}
+
+func (m *MsgRegDrone) GetSector() string {
+	if m != nil {
+		return m.Sector
+	}
+	return ""
+}
+
+func (m *MsgRegDrone) GetBattery() string {
+	if m != nil {
+		return m.Battery
+	}
+	return ""
+}
+
+// MsgRegDroneResponse defines the MsgRegDroneResponse message.
+type MsgRegDroneResponse struct {
+}
+
+func (m *MsgRegDroneResponse) Reset()         { *m = MsgRegDroneResponse{} }
+func (m *MsgRegDroneResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgRegDroneResponse) ProtoMessage()    {}
+func (*MsgRegDroneResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_6728b951dcd3548c, []int{21}
+}
+func (m *MsgRegDroneResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgRegDroneResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgRegDroneResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgRegDroneResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgRegDroneResponse.Merge(m, src)
+}
+func (m *MsgRegDroneResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgRegDroneResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgRegDroneResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgRegDroneResponse proto.InternalMessageInfo
+
+// MsgRmvReq defines the MsgRmvReq message.
+type MsgRmvReq struct {
+	Creator   string `protobuf:"bytes,1,opt,name=creator,proto3" json:"creator,omitempty"`
+	DroneId   string `protobuf:"bytes,2,opt,name=drone_id,json=droneId,proto3" json:"drone_id,omitempty"`
+	Laudo     string `protobuf:"bytes,3,opt,name=laudo,proto3" json:"laudo,omitempty"`
+	MissionId uint64 `protobuf:"varint,4,opt,name=missionId,proto3" json:"missionId,omitempty"`
+}
+
+func (m *MsgRmvReq) Reset()         { *m = MsgRmvReq{} }
+func (m *MsgRmvReq) String() string { return proto.CompactTextString(m) }
+func (*MsgRmvReq) ProtoMessage()    {}
+func (*MsgRmvReq) Descriptor() ([]byte, []int) {
+	return fileDescriptor_6728b951dcd3548c, []int{22}
+}
+func (m *MsgRmvReq) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgRmvReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgRmvReq.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgRmvReq) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgRmvReq.Merge(m, src)
+}
+func (m *MsgRmvReq) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgRmvReq) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgRmvReq.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgRmvReq proto.InternalMessageInfo
+
+func (m *MsgRmvReq) GetCreator() string {
+	if m != nil {
+		return m.Creator
+	}
+	return ""
+}
+
+func (m *MsgRmvReq) GetDroneId() string {
+	if m != nil {
+		return m.DroneId
+	}
+	return ""
+}
+
+func (m *MsgRmvReq) GetLaudo() string {
+	if m != nil {
+		return m.Laudo
+	}
+	return ""
+}
+
+func (m *MsgRmvReq) GetMissionId() uint64 {
+	if m != nil {
+		return m.MissionId
+	}
+	return 0
+}
+
+// MsgRmvReqResponse defines the MsgRmvReqResponse message.
+type MsgRmvReqResponse struct {
+}
+
+func (m *MsgRmvReqResponse) Reset()         { *m = MsgRmvReqResponse{} }
+func (m *MsgRmvReqResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgRmvReqResponse) ProtoMessage()    {}
+func (*MsgRmvReqResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_6728b951dcd3548c, []int{23}
+}
+func (m *MsgRmvReqResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgRmvReqResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgRmvReqResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgRmvReqResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgRmvReqResponse.Merge(m, src)
+}
+func (m *MsgRmvReqResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgRmvReqResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgRmvReqResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgRmvReqResponse proto.InternalMessageInfo
 
 func init() {
 	proto.RegisterType((*MsgUpdateParams)(nil), "warzonecore.warzone.v1.MsgUpdateParams")
@@ -987,66 +1305,82 @@ func init() {
 	proto.RegisterType((*MsgUpdateMissionResponse)(nil), "warzonecore.warzone.v1.MsgUpdateMissionResponse")
 	proto.RegisterType((*MsgDeleteMission)(nil), "warzonecore.warzone.v1.MsgDeleteMission")
 	proto.RegisterType((*MsgDeleteMissionResponse)(nil), "warzonecore.warzone.v1.MsgDeleteMissionResponse")
-	proto.RegisterType((*MsgRequestDrone)(nil), "warzonecore.warzone.v1.MsgRequestDrone")
-	proto.RegisterType((*MsgRequestDroneResponse)(nil), "warzonecore.warzone.v1.MsgRequestDroneResponse")
-	proto.RegisterType((*MsgSubmitReport)(nil), "warzonecore.warzone.v1.MsgSubmitReport")
-	proto.RegisterType((*MsgSubmitReportResponse)(nil), "warzonecore.warzone.v1.MsgSubmitReportResponse")
+	proto.RegisterType((*MsgAddReq)(nil), "warzonecore.warzone.v1.MsgAddReq")
+	proto.RegisterType((*MsgAddReqResponse)(nil), "warzonecore.warzone.v1.MsgAddReqResponse")
+	proto.RegisterType((*MsgAssignDrone)(nil), "warzonecore.warzone.v1.MsgAssignDrone")
+	proto.RegisterType((*MsgAssignDroneResponse)(nil), "warzonecore.warzone.v1.MsgAssignDroneResponse")
+	proto.RegisterType((*MsgReportDeadDrone)(nil), "warzonecore.warzone.v1.MsgReportDeadDrone")
+	proto.RegisterType((*MsgReportDeadDroneResponse)(nil), "warzonecore.warzone.v1.MsgReportDeadDroneResponse")
+	proto.RegisterType((*MsgRegDrone)(nil), "warzonecore.warzone.v1.MsgRegDrone")
+	proto.RegisterType((*MsgRegDroneResponse)(nil), "warzonecore.warzone.v1.MsgRegDroneResponse")
+	proto.RegisterType((*MsgRmvReq)(nil), "warzonecore.warzone.v1.MsgRmvReq")
+	proto.RegisterType((*MsgRmvReqResponse)(nil), "warzonecore.warzone.v1.MsgRmvReqResponse")
 }
 
 func init() { proto.RegisterFile("warzonecore/warzone/v1/tx.proto", fileDescriptor_6728b951dcd3548c) }
 
 var fileDescriptor_6728b951dcd3548c = []byte{
-	// 789 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xd4, 0x56, 0x4f, 0x6b, 0xd4, 0x4c,
-	0x18, 0xdf, 0xec, 0x76, 0x77, 0xbb, 0xd3, 0xbe, 0xed, 0xdb, 0x50, 0xda, 0x34, 0x87, 0xb4, 0xac,
-	0x58, 0x97, 0x85, 0x26, 0xb6, 0x82, 0x48, 0x6f, 0xad, 0xab, 0x20, 0xb2, 0x20, 0x29, 0xbd, 0x78,
-	0x29, 0xd9, 0xcd, 0x90, 0x06, 0x9b, 0x4c, 0xcc, 0xcc, 0xd6, 0xd6, 0x93, 0x88, 0x20, 0x78, 0xf2,
-	0x63, 0x78, 0xec, 0x41, 0xf0, 0x1b, 0x94, 0x1e, 0x3c, 0x14, 0x4f, 0x1e, 0x44, 0xa4, 0x3d, 0xf4,
-	0x6b, 0x48, 0x32, 0x93, 0xec, 0x24, 0x64, 0xb3, 0xa1, 0xd6, 0x83, 0x97, 0x25, 0xcf, 0xcc, 0x33,
-	0xf3, 0xfb, 0xb3, 0xf3, 0x3c, 0x33, 0x60, 0xf9, 0x95, 0xe1, 0xbf, 0x46, 0x2e, 0xec, 0x23, 0x1f,
-	0x6a, 0xec, 0x5b, 0x3b, 0x5c, 0xd7, 0xc8, 0x91, 0xea, 0xf9, 0x88, 0x20, 0x71, 0x81, 0x4b, 0x50,
-	0xd9, 0xb7, 0x7a, 0xb8, 0x2e, 0xcf, 0x19, 0x8e, 0xed, 0x22, 0x2d, 0xfc, 0xa5, 0xa9, 0xf2, 0x62,
-	0x1f, 0x61, 0x07, 0x61, 0xcd, 0xc1, 0x56, 0xb0, 0x85, 0x83, 0x2d, 0x36, 0xb1, 0x44, 0x27, 0xf6,
-	0xc2, 0x48, 0xa3, 0x01, 0x9b, 0x9a, 0xb7, 0x90, 0x85, 0xe8, 0x78, 0xf0, 0xc5, 0x46, 0x6f, 0x8d,
-	0x60, 0xe5, 0x19, 0xbe, 0xe1, 0xb0, 0xa5, 0xcd, 0x53, 0x01, 0xcc, 0x76, 0xb1, 0xb5, 0xeb, 0x99,
-	0x06, 0x81, 0xcf, 0xc2, 0x19, 0xf1, 0x3e, 0x68, 0x18, 0x03, 0xb2, 0x8f, 0x7c, 0x9b, 0x1c, 0x4b,
-	0xc2, 0x8a, 0xd0, 0x6a, 0x6c, 0x4b, 0xdf, 0x3e, 0xaf, 0xcd, 0x33, 0xcc, 0x2d, 0xd3, 0xf4, 0x21,
-	0xc6, 0x3b, 0xc4, 0xb7, 0x5d, 0x4b, 0x1f, 0xa6, 0x8a, 0x5b, 0xa0, 0x46, 0xf7, 0x96, 0xca, 0x2b,
-	0x42, 0x6b, 0x6a, 0x43, 0x51, 0xb3, 0x65, 0xab, 0x14, 0x67, 0xbb, 0x71, 0xf6, 0x73, 0xb9, 0xf4,
-	0xe9, 0xea, 0xa4, 0x2d, 0xe8, 0x6c, 0xe1, 0xe6, 0x83, 0xb7, 0x57, 0x27, 0xed, 0xe1, 0x96, 0x1f,
-	0xae, 0x4e, 0xda, 0xb7, 0x79, 0x19, 0x47, 0xb1, 0x90, 0x14, 0xe9, 0xe6, 0x12, 0x58, 0x4c, 0x0d,
-	0xe9, 0x10, 0x7b, 0xc8, 0xc5, 0xb0, 0xf9, 0x45, 0x00, 0x33, 0x5d, 0x6c, 0x3d, 0xf4, 0xa1, 0x41,
-	0x60, 0xc7, 0x47, 0x2e, 0x14, 0x37, 0x40, 0xbd, 0x1f, 0x84, 0xc8, 0x1f, 0x2b, 0x30, 0x4a, 0x14,
-	0x97, 0xc0, 0xa4, 0x19, 0x2c, 0xde, 0xb3, 0xcd, 0x50, 0x60, 0x43, 0xaf, 0x87, 0xf1, 0x13, 0x53,
-	0x5c, 0x00, 0x35, 0x4c, 0x0c, 0x32, 0xc0, 0x52, 0x25, 0x9c, 0x60, 0x51, 0x38, 0x0e, 0xfb, 0x01,
-	0xca, 0x04, 0x1b, 0x0f, 0x23, 0x51, 0x02, 0xf5, 0x9e, 0x41, 0x08, 0xf4, 0x8f, 0xa5, 0x2a, 0xdd,
-	0x89, 0x85, 0x9b, 0xd3, 0x81, 0x01, 0x11, 0x64, 0x53, 0x02, 0x0b, 0x49, 0xe2, 0x69, 0x4d, 0x54,
-	0xef, 0x3f, 0xa8, 0x89, 0x23, 0x1e, 0x6b, 0x72, 0x42, 0x49, 0x1d, 0x78, 0x00, 0xff, 0x8e, 0xa4,
-	0x4c, 0x22, 0x1c, 0x5c, 0x4c, 0xe4, 0xab, 0x00, 0xfe, 0x8f, 0x7d, 0xef, 0xda, 0x18, 0xdb, 0xc8,
-	0xbd, 0x16, 0x97, 0xa1, 0x57, 0xe5, 0x84, 0x57, 0xa3, 0xbc, 0x95, 0xc1, 0xa4, 0xe7, 0xdb, 0xb4,
-	0xf0, 0x02, 0x77, 0xab, 0x7a, 0x1c, 0x8b, 0x6d, 0x30, 0x67, 0x60, 0x6c, 0x5b, 0x2e, 0x34, 0xf7,
-	0x62, 0x81, 0xd4, 0xe9, 0xd9, 0x68, 0xa2, 0x93, 0x29, 0xb4, 0x0d, 0xa4, 0xb4, 0x9a, 0x48, 0xaa,
-	0x38, 0x03, 0xca, 0xb6, 0x19, 0x0a, 0x9a, 0xd0, 0xcb, 0xb6, 0xd9, 0xfc, 0x41, 0xa5, 0xd3, 0xbf,
-	0xe7, 0x4f, 0xa4, 0xd3, 0x8d, 0xcb, 0xd1, 0xc6, 0x9c, 0x15, 0x95, 0x11, 0x56, 0x4c, 0x8c, 0xb4,
-	0xa2, 0x5a, 0xc4, 0x8a, 0x5a, 0x11, 0x2b, 0xe4, 0xd0, 0x8a, 0x84, 0xba, 0xf8, 0x5f, 0x37, 0x43,
-	0xe5, 0xf4, 0x3c, 0xdc, 0xa0, 0xf2, 0x4c, 0x06, 0x09, 0x94, 0x98, 0xc1, 0x7b, 0xda, 0x8c, 0x75,
-	0xf8, 0x72, 0x00, 0x31, 0xb9, 0x7e, 0x09, 0x8c, 0x3a, 0x76, 0xbc, 0xa7, 0x95, 0xa4, 0xa7, 0x29,
-	0x96, 0xb4, 0x9b, 0xf2, 0x44, 0x62, 0x92, 0xef, 0x28, 0xc9, 0x9d, 0x41, 0xcf, 0xb1, 0x89, 0x0e,
-	0x3d, 0xe4, 0x93, 0x9b, 0x6e, 0x3d, 0xf3, 0xa0, 0x7a, 0x60, 0x0c, 0x4c, 0xc4, 0x8e, 0x0a, 0x0d,
-	0x32, 0x19, 0xf2, 0x2c, 0x22, 0x86, 0x1b, 0xa7, 0x75, 0x50, 0xe9, 0x62, 0x4b, 0xdc, 0x07, 0xd3,
-	0x89, 0x7b, 0xed, 0xce, 0xa8, 0xfb, 0x28, 0x75, 0x71, 0xc8, 0x5a, 0xc1, 0xc4, 0xb8, 0x8a, 0x20,
-	0x98, 0xe2, 0x6f, 0x97, 0xd5, 0x9c, 0xf5, 0x5c, 0x9e, 0xac, 0x16, 0xcb, 0xe3, 0x61, 0xf8, 0x86,
-	0xbf, 0x3a, 0x96, 0xe6, 0x78, 0x98, 0x8c, 0x3e, 0x1c, 0xc0, 0xf0, 0x4d, 0x38, 0x0f, 0x86, 0xcb,
-	0xcb, 0x85, 0xc9, 0xe8, 0xb2, 0xe2, 0x0b, 0xf0, 0x5f, 0xb2, 0xc3, 0xb6, 0xc6, 0xda, 0xc1, 0x32,
-	0xe5, 0xbb, 0x45, 0x33, 0x79, 0xb0, 0x64, 0x4f, 0x6b, 0x8d, 0x35, 0xa5, 0x08, 0x58, 0x66, 0x27,
-	0x09, 0xc0, 0x92, 0x6d, 0xa4, 0x35, 0xd6, 0x9a, 0x22, 0x60, 0x99, 0x4d, 0x23, 0x38, 0xe5, 0x89,
-	0x86, 0x91, 0x77, 0xca, 0xf9, 0xc4, 0xdc, 0x53, 0x9e, 0x55, 0xf9, 0x01, 0x52, 0xa2, 0xea, 0xf3,
-	0x90, 0xf8, 0xc4, 0x5c, 0xa4, 0xac, 0x0a, 0x96, 0xab, 0x6f, 0x82, 0x57, 0xe1, 0xf6, 0xd3, 0xb3,
-	0x0b, 0x45, 0x38, 0xbf, 0x50, 0x84, 0x5f, 0x17, 0x8a, 0xf0, 0xf1, 0x52, 0x29, 0x9d, 0x5f, 0x2a,
-	0xa5, 0xef, 0x97, 0x4a, 0xe9, 0xf9, 0xba, 0x65, 0x93, 0xfd, 0x41, 0x4f, 0xed, 0x23, 0x47, 0xeb,
-	0x18, 0x87, 0xf6, 0xda, 0xee, 0xa3, 0xc7, 0x3b, 0xd1, 0xdb, 0x70, 0x2d, 0xf5, 0x54, 0x24, 0xc7,
-	0x1e, 0xc4, 0xbd, 0x5a, 0xf8, 0xe0, 0xbd, 0xf7, 0x3b, 0x00, 0x00, 0xff, 0xff, 0xfa, 0x3f, 0x5b,
-	0xf0, 0xad, 0x0b, 0x00, 0x00,
+	// 951 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xd4, 0x57, 0x4f, 0x6f, 0xe3, 0x44,
+	0x14, 0xaf, 0xf3, 0xaf, 0xcd, 0xeb, 0xb2, 0xa5, 0xb3, 0xa5, 0xeb, 0x5a, 0x4b, 0x76, 0xc9, 0x8a,
+	0x25, 0x04, 0x35, 0xa6, 0x41, 0x42, 0x68, 0x6f, 0x29, 0x01, 0x69, 0x85, 0x22, 0x21, 0x2f, 0xcb,
+	0x01, 0x21, 0x55, 0x6e, 0x3c, 0x72, 0x2d, 0xd6, 0x19, 0xc7, 0xe3, 0x84, 0x0d, 0x27, 0xc4, 0x11,
+	0x71, 0xe0, 0x03, 0xf0, 0x01, 0x38, 0x16, 0x09, 0x89, 0x6f, 0x80, 0xf6, 0xc0, 0x61, 0xc5, 0x09,
+	0x21, 0x84, 0x50, 0x7b, 0xe8, 0xd7, 0x40, 0x9e, 0x19, 0x3b, 0x63, 0xe3, 0xd8, 0x56, 0xd9, 0x22,
+	0x71, 0x89, 0xf2, 0x66, 0xde, 0xcc, 0xfb, 0xfd, 0x7e, 0xf3, 0xe6, 0xbd, 0x31, 0xdc, 0xfe, 0xdc,
+	0xf4, 0xbf, 0x20, 0x13, 0x3c, 0x26, 0x3e, 0xd6, 0xc5, 0x7f, 0x7d, 0x7e, 0xa0, 0x07, 0x4f, 0x7a,
+	0x9e, 0x4f, 0x02, 0x82, 0x76, 0x25, 0x87, 0x9e, 0xf8, 0xdf, 0x9b, 0x1f, 0x68, 0xdb, 0xa6, 0xeb,
+	0x4c, 0x88, 0xce, 0x7e, 0xb9, 0xab, 0x76, 0x73, 0x4c, 0xa8, 0x4b, 0xa8, 0xee, 0x52, 0x3b, 0xdc,
+	0xc2, 0xa5, 0xb6, 0x98, 0xd8, 0xe3, 0x13, 0x47, 0xcc, 0xd2, 0xb9, 0x21, 0xa6, 0x76, 0x6c, 0x62,
+	0x13, 0x3e, 0x1e, 0xfe, 0x13, 0xa3, 0x77, 0x57, 0xa0, 0xf2, 0x4c, 0xdf, 0x74, 0xc5, 0xd2, 0xf6,
+	0xcf, 0x0a, 0x6c, 0x8d, 0xa8, 0xfd, 0xc8, 0xb3, 0xcc, 0x00, 0x7f, 0xc8, 0x66, 0xd0, 0xdb, 0xd0,
+	0x34, 0x67, 0xc1, 0x09, 0xf1, 0x9d, 0x60, 0xa1, 0x2a, 0x77, 0x94, 0x4e, 0xf3, 0x50, 0xfd, 0xf5,
+	0xc7, 0xfd, 0x1d, 0x11, 0x73, 0x60, 0x59, 0x3e, 0xa6, 0xf4, 0x61, 0xe0, 0x3b, 0x13, 0xdb, 0x58,
+	0xba, 0xa2, 0x01, 0x34, 0xf8, 0xde, 0x6a, 0xe5, 0x8e, 0xd2, 0xd9, 0xec, 0xb7, 0x7a, 0xd9, 0xb4,
+	0x7b, 0x3c, 0xce, 0x61, 0xf3, 0xe9, 0x9f, 0xb7, 0xd7, 0xbe, 0xbf, 0x38, 0xed, 0x2a, 0x86, 0x58,
+	0x78, 0xff, 0x9d, 0xaf, 0x2e, 0x4e, 0xbb, 0xcb, 0x2d, 0xbf, 0xbe, 0x38, 0xed, 0xbe, 0x2a, 0xd3,
+	0x78, 0x12, 0x13, 0x49, 0x81, 0x6e, 0xef, 0xc1, 0xcd, 0xd4, 0x90, 0x81, 0xa9, 0x47, 0x26, 0x14,
+	0xb7, 0x7f, 0x52, 0xe0, 0xfa, 0x88, 0xda, 0xef, 0xfa, 0xd8, 0x0c, 0xf0, 0xd0, 0x27, 0x13, 0x8c,
+	0xfa, 0xb0, 0x3e, 0x0e, 0x4d, 0xe2, 0x17, 0x12, 0x8c, 0x1c, 0xd1, 0x1e, 0x6c, 0x58, 0xe1, 0xe2,
+	0x23, 0xc7, 0x62, 0x04, 0x9b, 0xc6, 0x3a, 0xb3, 0x1f, 0x58, 0x68, 0x17, 0x1a, 0x34, 0x30, 0x83,
+	0x19, 0x55, 0xab, 0x6c, 0x42, 0x58, 0x6c, 0x1c, 0x8f, 0xc3, 0x28, 0x35, 0x31, 0xce, 0x2c, 0xa4,
+	0xc2, 0xfa, 0xb1, 0x19, 0x04, 0xd8, 0x5f, 0xa8, 0x75, 0xbe, 0x93, 0x30, 0xef, 0x5f, 0x0b, 0x05,
+	0x88, 0x42, 0xb6, 0x55, 0xd8, 0x4d, 0x02, 0x4f, 0x73, 0xe2, 0x7c, 0xff, 0x87, 0x9c, 0x24, 0xe0,
+	0x31, 0x27, 0x97, 0x51, 0x1a, 0xe2, 0xc7, 0xf8, 0x6a, 0x28, 0x65, 0x02, 0x91, 0xc2, 0xc5, 0x40,
+	0x7e, 0x51, 0xe0, 0xc5, 0x58, 0xf7, 0x91, 0x43, 0xa9, 0x43, 0x26, 0x97, 0xc2, 0xb2, 0xd4, 0xaa,
+	0x92, 0xd0, 0x6a, 0x95, 0xb6, 0x1a, 0x6c, 0x78, 0xbe, 0xc3, 0x2f, 0x5e, 0xa8, 0x6e, 0xd5, 0x88,
+	0x6d, 0xd4, 0x85, 0x6d, 0x93, 0x52, 0xc7, 0x9e, 0x60, 0xeb, 0x28, 0x26, 0xc8, 0x95, 0xde, 0x8a,
+	0x26, 0x86, 0x99, 0x44, 0xbb, 0xa0, 0xa6, 0xd9, 0x44, 0x54, 0xd1, 0x75, 0xa8, 0x38, 0x16, 0x23,
+	0x54, 0x33, 0x2a, 0x8e, 0xd5, 0xfe, 0x83, 0x53, 0xe7, 0xc7, 0xf3, 0x6f, 0xa8, 0xf3, 0x8d, 0x2b,
+	0xd1, 0xc6, 0x92, 0x14, 0xd5, 0x15, 0x52, 0xd4, 0x56, 0x4a, 0x51, 0x2f, 0x23, 0x45, 0xa3, 0x8c,
+	0x14, 0x1a, 0x93, 0x22, 0xc1, 0x2e, 0x3e, 0x75, 0x8b, 0x31, 0xe7, 0xf9, 0xf0, 0x1c, 0x99, 0x67,
+	0x22, 0x48, 0x44, 0x89, 0x11, 0xfc, 0xa0, 0x40, 0x73, 0x44, 0xed, 0x81, 0x65, 0x19, 0x78, 0xfa,
+	0x5c, 0x13, 0x4e, 0x56, 0xb3, 0x9a, 0x52, 0x53, 0x85, 0x75, 0x1f, 0x4f, 0x3f, 0x5a, 0x78, 0x58,
+	0x1c, 0x41, 0x64, 0xa2, 0x1d, 0xa8, 0x8f, 0x09, 0xf1, 0xa3, 0x34, 0xe3, 0x46, 0x8a, 0xcf, 0x0d,
+	0xd8, 0x8e, 0x21, 0xc7, 0x44, 0xbe, 0xe1, 0xd5, 0x69, 0xc0, 0xce, 0xe2, 0xf2, 0x57, 0xf9, 0x65,
+	0x00, 0x97, 0x4b, 0xb4, 0xbc, 0xcc, 0x4d, 0x31, 0xf2, 0xc0, 0x4a, 0xdc, 0xf4, 0x6a, 0xf1, 0x4d,
+	0x97, 0xd0, 0xc4, 0x40, 0xa7, 0x80, 0x46, 0xd4, 0x36, 0xb0, 0x47, 0xfc, 0x60, 0x88, 0x4d, 0xeb,
+	0x3f, 0x28, 0x3b, 0xb7, 0x40, 0xfb, 0x67, 0xc8, 0x18, 0xd0, 0x77, 0x0a, 0x6c, 0xb2, 0x69, 0xfb,
+	0xca, 0x8a, 0x7a, 0xd6, 0x2d, 0x94, 0x8a, 0x77, 0x2d, 0xaf, 0x78, 0xbf, 0x04, 0x37, 0x24, 0x74,
+	0x32, 0xea, 0x30, 0x71, 0x0d, 0x77, 0x7e, 0xd9, 0xc4, 0xcd, 0xc1, 0xbc, 0x03, 0xf5, 0xc7, 0xe6,
+	0xcc, 0x22, 0x02, 0x32, 0x37, 0xd0, 0x2d, 0x58, 0x66, 0x02, 0xc3, 0x5c, 0x93, 0x52, 0x23, 0x33,
+	0x47, 0x39, 0xba, 0x08, 0x73, 0xff, 0xf7, 0x26, 0x54, 0x47, 0xd4, 0x46, 0x27, 0x70, 0x2d, 0xf1,
+	0xfa, 0x79, 0x6d, 0xd5, 0xab, 0x25, 0xf5, 0xbc, 0xd0, 0xf4, 0x92, 0x8e, 0x71, 0xad, 0xc5, 0xb0,
+	0x29, 0xbf, 0x41, 0xee, 0xe5, 0xac, 0x97, 0xfc, 0xb4, 0x5e, 0x39, 0x3f, 0x39, 0x8c, 0xfc, 0x2c,
+	0xb8, 0x57, 0x08, 0xb3, 0x38, 0x4c, 0x46, 0xb7, 0x0e, 0xc3, 0xc8, 0xad, 0x3a, 0x2f, 0x8c, 0xe4,
+	0x97, 0x1b, 0x26, 0xa3, 0x17, 0xa3, 0xcf, 0xe0, 0x85, 0x64, 0x1f, 0xee, 0x14, 0xca, 0x21, 0x3c,
+	0xb5, 0x37, 0xcb, 0x7a, 0xca, 0xc1, 0x92, 0x9d, 0xaf, 0x53, 0x28, 0x4a, 0x99, 0x60, 0x99, 0xfd,
+	0x26, 0x0c, 0x96, 0x6c, 0x36, 0x9d, 0x42, 0x69, 0xca, 0x04, 0xcb, 0x6c, 0x2d, 0xe8, 0x63, 0x68,
+	0x88, 0xb6, 0xf2, 0x4a, 0xce, 0x5a, 0xee, 0xa2, 0xbd, 0x5e, 0xe8, 0x22, 0x67, 0x81, 0x5c, 0xe5,
+	0xf3, 0xb2, 0x40, 0xf2, 0xcb, 0xcd, 0x82, 0x8c, 0x3a, 0x8d, 0xa6, 0xb0, 0x95, 0x2e, 0xd2, 0xdd,
+	0x9c, 0x2d, 0x52, 0xbe, 0x5a, 0xbf, 0xbc, 0x6f, 0x1c, 0xf2, 0x53, 0xd8, 0x88, 0xab, 0xf0, 0xdd,
+	0xdc, 0xf5, 0xdc, 0x49, 0x7b, 0xa3, 0x84, 0x93, 0x7c, 0x1e, 0xa2, 0x5a, 0xe6, 0x9d, 0x07, 0x77,
+	0xc9, 0x3d, 0x8f, 0x64, 0x55, 0xd3, 0xea, 0x5f, 0x86, 0xdf, 0x53, 0x87, 0x1f, 0x3c, 0x3d, 0x6b,
+	0x29, 0xcf, 0xce, 0x5a, 0xca, 0x5f, 0x67, 0x2d, 0xe5, 0xdb, 0xf3, 0xd6, 0xda, 0xb3, 0xf3, 0xd6,
+	0xda, 0x6f, 0xe7, 0xad, 0xb5, 0x4f, 0x0e, 0x6c, 0x27, 0x38, 0x99, 0x1d, 0xf7, 0xc6, 0xc4, 0xd5,
+	0x87, 0xe6, 0xdc, 0xd9, 0x7f, 0xf4, 0xde, 0xfb, 0x0f, 0xa3, 0xaf, 0xaa, 0xfd, 0xd4, 0x47, 0x56,
+	0xb0, 0xf0, 0x30, 0x3d, 0x6e, 0xb0, 0x4f, 0xc5, 0xb7, 0xfe, 0x0e, 0x00, 0x00, 0xff, 0xff, 0x7c,
+	0x56, 0xe2, 0x54, 0xe7, 0x0e, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -1076,10 +1410,16 @@ type MsgClient interface {
 	UpdateMission(ctx context.Context, in *MsgUpdateMission, opts ...grpc.CallOption) (*MsgUpdateMissionResponse, error)
 	// DeleteMission defines the DeleteMission RPC.
 	DeleteMission(ctx context.Context, in *MsgDeleteMission, opts ...grpc.CallOption) (*MsgDeleteMissionResponse, error)
-	// RequestDrone defines the RequestDrone RPC.
-	RequestDrone(ctx context.Context, in *MsgRequestDrone, opts ...grpc.CallOption) (*MsgRequestDroneResponse, error)
-	// SubmitReport defines the SubmitReport RPC.
-	SubmitReport(ctx context.Context, in *MsgSubmitReport, opts ...grpc.CallOption) (*MsgSubmitReportResponse, error)
+	// AddReq defines the AddReq RPC.
+	AddReq(ctx context.Context, in *MsgAddReq, opts ...grpc.CallOption) (*MsgAddReqResponse, error)
+	// AssignDrone defines the AssignDrone RPC.
+	AssignDrone(ctx context.Context, in *MsgAssignDrone, opts ...grpc.CallOption) (*MsgAssignDroneResponse, error)
+	// ReportDeadDrone defines the ReportDeadDrone RPC.
+	ReportDeadDrone(ctx context.Context, in *MsgReportDeadDrone, opts ...grpc.CallOption) (*MsgReportDeadDroneResponse, error)
+	// RegDrone defines the RegDrone RPC.
+	RegDrone(ctx context.Context, in *MsgRegDrone, opts ...grpc.CallOption) (*MsgRegDroneResponse, error)
+	// RmvReq defines the RmvReq RPC.
+	RmvReq(ctx context.Context, in *MsgRmvReq, opts ...grpc.CallOption) (*MsgRmvReqResponse, error)
 }
 
 type msgClient struct {
@@ -1153,18 +1493,45 @@ func (c *msgClient) DeleteMission(ctx context.Context, in *MsgDeleteMission, opt
 	return out, nil
 }
 
-func (c *msgClient) RequestDrone(ctx context.Context, in *MsgRequestDrone, opts ...grpc.CallOption) (*MsgRequestDroneResponse, error) {
-	out := new(MsgRequestDroneResponse)
-	err := c.cc.Invoke(ctx, "/warzonecore.warzone.v1.Msg/RequestDrone", in, out, opts...)
+func (c *msgClient) AddReq(ctx context.Context, in *MsgAddReq, opts ...grpc.CallOption) (*MsgAddReqResponse, error) {
+	out := new(MsgAddReqResponse)
+	err := c.cc.Invoke(ctx, "/warzonecore.warzone.v1.Msg/AddReq", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *msgClient) SubmitReport(ctx context.Context, in *MsgSubmitReport, opts ...grpc.CallOption) (*MsgSubmitReportResponse, error) {
-	out := new(MsgSubmitReportResponse)
-	err := c.cc.Invoke(ctx, "/warzonecore.warzone.v1.Msg/SubmitReport", in, out, opts...)
+func (c *msgClient) AssignDrone(ctx context.Context, in *MsgAssignDrone, opts ...grpc.CallOption) (*MsgAssignDroneResponse, error) {
+	out := new(MsgAssignDroneResponse)
+	err := c.cc.Invoke(ctx, "/warzonecore.warzone.v1.Msg/AssignDrone", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) ReportDeadDrone(ctx context.Context, in *MsgReportDeadDrone, opts ...grpc.CallOption) (*MsgReportDeadDroneResponse, error) {
+	out := new(MsgReportDeadDroneResponse)
+	err := c.cc.Invoke(ctx, "/warzonecore.warzone.v1.Msg/ReportDeadDrone", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) RegDrone(ctx context.Context, in *MsgRegDrone, opts ...grpc.CallOption) (*MsgRegDroneResponse, error) {
+	out := new(MsgRegDroneResponse)
+	err := c.cc.Invoke(ctx, "/warzonecore.warzone.v1.Msg/RegDrone", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) RmvReq(ctx context.Context, in *MsgRmvReq, opts ...grpc.CallOption) (*MsgRmvReqResponse, error) {
+	out := new(MsgRmvReqResponse)
+	err := c.cc.Invoke(ctx, "/warzonecore.warzone.v1.Msg/RmvReq", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1188,10 +1555,16 @@ type MsgServer interface {
 	UpdateMission(context.Context, *MsgUpdateMission) (*MsgUpdateMissionResponse, error)
 	// DeleteMission defines the DeleteMission RPC.
 	DeleteMission(context.Context, *MsgDeleteMission) (*MsgDeleteMissionResponse, error)
-	// RequestDrone defines the RequestDrone RPC.
-	RequestDrone(context.Context, *MsgRequestDrone) (*MsgRequestDroneResponse, error)
-	// SubmitReport defines the SubmitReport RPC.
-	SubmitReport(context.Context, *MsgSubmitReport) (*MsgSubmitReportResponse, error)
+	// AddReq defines the AddReq RPC.
+	AddReq(context.Context, *MsgAddReq) (*MsgAddReqResponse, error)
+	// AssignDrone defines the AssignDrone RPC.
+	AssignDrone(context.Context, *MsgAssignDrone) (*MsgAssignDroneResponse, error)
+	// ReportDeadDrone defines the ReportDeadDrone RPC.
+	ReportDeadDrone(context.Context, *MsgReportDeadDrone) (*MsgReportDeadDroneResponse, error)
+	// RegDrone defines the RegDrone RPC.
+	RegDrone(context.Context, *MsgRegDrone) (*MsgRegDroneResponse, error)
+	// RmvReq defines the RmvReq RPC.
+	RmvReq(context.Context, *MsgRmvReq) (*MsgRmvReqResponse, error)
 }
 
 // UnimplementedMsgServer can be embedded to have forward compatible implementations.
@@ -1219,11 +1592,20 @@ func (*UnimplementedMsgServer) UpdateMission(ctx context.Context, req *MsgUpdate
 func (*UnimplementedMsgServer) DeleteMission(ctx context.Context, req *MsgDeleteMission) (*MsgDeleteMissionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteMission not implemented")
 }
-func (*UnimplementedMsgServer) RequestDrone(ctx context.Context, req *MsgRequestDrone) (*MsgRequestDroneResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RequestDrone not implemented")
+func (*UnimplementedMsgServer) AddReq(ctx context.Context, req *MsgAddReq) (*MsgAddReqResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddReq not implemented")
 }
-func (*UnimplementedMsgServer) SubmitReport(ctx context.Context, req *MsgSubmitReport) (*MsgSubmitReportResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SubmitReport not implemented")
+func (*UnimplementedMsgServer) AssignDrone(ctx context.Context, req *MsgAssignDrone) (*MsgAssignDroneResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AssignDrone not implemented")
+}
+func (*UnimplementedMsgServer) ReportDeadDrone(ctx context.Context, req *MsgReportDeadDrone) (*MsgReportDeadDroneResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReportDeadDrone not implemented")
+}
+func (*UnimplementedMsgServer) RegDrone(ctx context.Context, req *MsgRegDrone) (*MsgRegDroneResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RegDrone not implemented")
+}
+func (*UnimplementedMsgServer) RmvReq(ctx context.Context, req *MsgRmvReq) (*MsgRmvReqResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RmvReq not implemented")
 }
 
 func RegisterMsgServer(s grpc1.Server, srv MsgServer) {
@@ -1356,38 +1738,92 @@ func _Msg_DeleteMission_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Msg_RequestDrone_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgRequestDrone)
+func _Msg_AddReq_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgAddReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MsgServer).RequestDrone(ctx, in)
+		return srv.(MsgServer).AddReq(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/warzonecore.warzone.v1.Msg/RequestDrone",
+		FullMethod: "/warzonecore.warzone.v1.Msg/AddReq",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).RequestDrone(ctx, req.(*MsgRequestDrone))
+		return srv.(MsgServer).AddReq(ctx, req.(*MsgAddReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Msg_SubmitReport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgSubmitReport)
+func _Msg_AssignDrone_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgAssignDrone)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MsgServer).SubmitReport(ctx, in)
+		return srv.(MsgServer).AssignDrone(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/warzonecore.warzone.v1.Msg/SubmitReport",
+		FullMethod: "/warzonecore.warzone.v1.Msg/AssignDrone",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).SubmitReport(ctx, req.(*MsgSubmitReport))
+		return srv.(MsgServer).AssignDrone(ctx, req.(*MsgAssignDrone))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_ReportDeadDrone_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgReportDeadDrone)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).ReportDeadDrone(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/warzonecore.warzone.v1.Msg/ReportDeadDrone",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).ReportDeadDrone(ctx, req.(*MsgReportDeadDrone))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_RegDrone_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgRegDrone)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).RegDrone(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/warzonecore.warzone.v1.Msg/RegDrone",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).RegDrone(ctx, req.(*MsgRegDrone))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_RmvReq_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgRmvReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).RmvReq(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/warzonecore.warzone.v1.Msg/RmvReq",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).RmvReq(ctx, req.(*MsgRmvReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1426,12 +1862,24 @@ var _Msg_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Msg_DeleteMission_Handler,
 		},
 		{
-			MethodName: "RequestDrone",
-			Handler:    _Msg_RequestDrone_Handler,
+			MethodName: "AddReq",
+			Handler:    _Msg_AddReq_Handler,
 		},
 		{
-			MethodName: "SubmitReport",
-			Handler:    _Msg_SubmitReport_Handler,
+			MethodName: "AssignDrone",
+			Handler:    _Msg_AssignDrone_Handler,
+		},
+		{
+			MethodName: "ReportDeadDrone",
+			Handler:    _Msg_ReportDeadDrone_Handler,
+		},
+		{
+			MethodName: "RegDrone",
+			Handler:    _Msg_RegDrone_Handler,
+		},
+		{
+			MethodName: "RmvReq",
+			Handler:    _Msg_RmvReq_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -1949,7 +2397,7 @@ func (m *MsgDeleteMissionResponse) MarshalToSizedBuffer(dAtA []byte) (int, error
 	return len(dAtA) - i, nil
 }
 
-func (m *MsgRequestDrone) Marshal() (dAtA []byte, err error) {
+func (m *MsgAddReq) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1959,16 +2407,30 @@ func (m *MsgRequestDrone) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *MsgRequestDrone) MarshalTo(dAtA []byte) (int, error) {
+func (m *MsgAddReq) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *MsgRequestDrone) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *MsgAddReq) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
+	if len(m.Coord) > 0 {
+		i -= len(m.Coord)
+		copy(dAtA[i:], m.Coord)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Coord)))
+		i--
+		dAtA[i] = 0x2a
+	}
+	if len(m.ReqType) > 0 {
+		i -= len(m.ReqType)
+		copy(dAtA[i:], m.ReqType)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.ReqType)))
+		i--
+		dAtA[i] = 0x22
+	}
 	if m.Priority != 0 {
 		i = encodeVarintTx(dAtA, i, uint64(m.Priority))
 		i--
@@ -1991,7 +2453,7 @@ func (m *MsgRequestDrone) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *MsgRequestDroneResponse) Marshal() (dAtA []byte, err error) {
+func (m *MsgAddReqResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2001,12 +2463,12 @@ func (m *MsgRequestDroneResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *MsgRequestDroneResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *MsgAddReqResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *MsgRequestDroneResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *MsgAddReqResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2014,7 +2476,7 @@ func (m *MsgRequestDroneResponse) MarshalToSizedBuffer(dAtA []byte) (int, error)
 	return len(dAtA) - i, nil
 }
 
-func (m *MsgSubmitReport) Marshal() (dAtA []byte, err error) {
+func (m *MsgAssignDrone) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2024,16 +2486,222 @@ func (m *MsgSubmitReport) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *MsgSubmitReport) MarshalTo(dAtA []byte) (int, error) {
+func (m *MsgAssignDrone) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *MsgSubmitReport) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *MsgAssignDrone) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
+	if len(m.DroneId) > 0 {
+		i -= len(m.DroneId)
+		copy(dAtA[i:], m.DroneId)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.DroneId)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.MissionId) > 0 {
+		i -= len(m.MissionId)
+		copy(dAtA[i:], m.MissionId)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.MissionId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Creator) > 0 {
+		i -= len(m.Creator)
+		copy(dAtA[i:], m.Creator)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Creator)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgAssignDroneResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgAssignDroneResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgAssignDroneResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgReportDeadDrone) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgReportDeadDrone) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgReportDeadDrone) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.DroneId) > 0 {
+		i -= len(m.DroneId)
+		copy(dAtA[i:], m.DroneId)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.DroneId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Creator) > 0 {
+		i -= len(m.Creator)
+		copy(dAtA[i:], m.Creator)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Creator)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgReportDeadDroneResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgReportDeadDroneResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgReportDeadDroneResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgRegDrone) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgRegDrone) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgRegDrone) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Battery) > 0 {
+		i -= len(m.Battery)
+		copy(dAtA[i:], m.Battery)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Battery)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if len(m.Sector) > 0 {
+		i -= len(m.Sector)
+		copy(dAtA[i:], m.Sector)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Sector)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.DroneId) > 0 {
+		i -= len(m.DroneId)
+		copy(dAtA[i:], m.DroneId)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.DroneId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Creator) > 0 {
+		i -= len(m.Creator)
+		copy(dAtA[i:], m.Creator)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Creator)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgRegDroneResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgRegDroneResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgRegDroneResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgRmvReq) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgRmvReq) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgRmvReq) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.MissionId != 0 {
+		i = encodeVarintTx(dAtA, i, uint64(m.MissionId))
+		i--
+		dAtA[i] = 0x20
+	}
 	if len(m.Laudo) > 0 {
 		i -= len(m.Laudo)
 		copy(dAtA[i:], m.Laudo)
@@ -2058,7 +2726,7 @@ func (m *MsgSubmitReport) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *MsgSubmitReportResponse) Marshal() (dAtA []byte, err error) {
+func (m *MsgRmvReqResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2068,12 +2736,12 @@ func (m *MsgSubmitReportResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *MsgSubmitReportResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *MsgRmvReqResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *MsgSubmitReportResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *MsgRmvReqResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2323,7 +2991,7 @@ func (m *MsgDeleteMissionResponse) Size() (n int) {
 	return n
 }
 
-func (m *MsgRequestDrone) Size() (n int) {
+func (m *MsgAddReq) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2340,10 +3008,18 @@ func (m *MsgRequestDrone) Size() (n int) {
 	if m.Priority != 0 {
 		n += 1 + sovTx(uint64(m.Priority))
 	}
+	l = len(m.ReqType)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.Coord)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
 	return n
 }
 
-func (m *MsgRequestDroneResponse) Size() (n int) {
+func (m *MsgAddReqResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2352,7 +3028,97 @@ func (m *MsgRequestDroneResponse) Size() (n int) {
 	return n
 }
 
-func (m *MsgSubmitReport) Size() (n int) {
+func (m *MsgAssignDrone) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Creator)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.MissionId)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.DroneId)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	return n
+}
+
+func (m *MsgAssignDroneResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *MsgReportDeadDrone) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Creator)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.DroneId)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	return n
+}
+
+func (m *MsgReportDeadDroneResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *MsgRegDrone) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Creator)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.DroneId)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.Sector)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.Battery)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	return n
+}
+
+func (m *MsgRegDroneResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *MsgRmvReq) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2370,10 +3136,13 @@ func (m *MsgSubmitReport) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovTx(uint64(l))
 	}
+	if m.MissionId != 0 {
+		n += 1 + sovTx(uint64(m.MissionId))
+	}
 	return n
 }
 
-func (m *MsgSubmitReportResponse) Size() (n int) {
+func (m *MsgRmvReqResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3376,7 +4145,7 @@ func (m *MsgCreateMission) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Priority |= int32(b&0x7F) << shift
+				m.Priority |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -3661,7 +4430,7 @@ func (m *MsgUpdateMission) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Priority |= int32(b&0x7F) << shift
+				m.Priority |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -3920,7 +4689,7 @@ func (m *MsgDeleteMissionResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *MsgRequestDrone) Unmarshal(dAtA []byte) error {
+func (m *MsgAddReq) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3943,10 +4712,10 @@ func (m *MsgRequestDrone) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: MsgRequestDrone: wiretype end group for non-group")
+			return fmt.Errorf("proto: MsgAddReq: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgRequestDrone: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: MsgAddReq: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -4027,11 +4796,75 @@ func (m *MsgRequestDrone) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Priority |= int32(b&0x7F) << shift
+				m.Priority |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ReqType", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ReqType = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Coord", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Coord = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipTx(dAtA[iNdEx:])
@@ -4053,7 +4886,7 @@ func (m *MsgRequestDrone) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *MsgRequestDroneResponse) Unmarshal(dAtA []byte) error {
+func (m *MsgAddReqResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -4076,10 +4909,10 @@ func (m *MsgRequestDroneResponse) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: MsgRequestDroneResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: MsgAddReqResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgRequestDroneResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: MsgAddReqResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:
@@ -4103,7 +4936,7 @@ func (m *MsgRequestDroneResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *MsgSubmitReport) Unmarshal(dAtA []byte) error {
+func (m *MsgAssignDrone) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -4126,10 +4959,598 @@ func (m *MsgSubmitReport) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: MsgSubmitReport: wiretype end group for non-group")
+			return fmt.Errorf("proto: MsgAssignDrone: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgSubmitReport: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: MsgAssignDrone: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Creator", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Creator = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MissionId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.MissionId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DroneId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.DroneId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgAssignDroneResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgAssignDroneResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgAssignDroneResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgReportDeadDrone) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgReportDeadDrone: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgReportDeadDrone: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Creator", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Creator = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DroneId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.DroneId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgReportDeadDroneResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgReportDeadDroneResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgReportDeadDroneResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgRegDrone) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgRegDrone: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgRegDrone: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Creator", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Creator = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DroneId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.DroneId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sector", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Sector = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Battery", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Battery = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgRegDroneResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgRegDroneResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgRegDroneResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgRmvReq) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgRmvReq: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgRmvReq: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -4228,6 +5649,25 @@ func (m *MsgSubmitReport) Unmarshal(dAtA []byte) error {
 			}
 			m.Laudo = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MissionId", wireType)
+			}
+			m.MissionId = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MissionId |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipTx(dAtA[iNdEx:])
@@ -4249,7 +5689,7 @@ func (m *MsgSubmitReport) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *MsgSubmitReportResponse) Unmarshal(dAtA []byte) error {
+func (m *MsgRmvReqResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -4272,10 +5712,10 @@ func (m *MsgSubmitReportResponse) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: MsgSubmitReportResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: MsgRmvReqResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgSubmitReportResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: MsgRmvReqResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:

@@ -126,34 +126,79 @@ func (am AppModule) WeightedOperations(simState module.SimulationState) []simtyp
 		warzonesimulation.SimulateMsgDeleteMission(am.authKeeper, am.bankKeeper, am.keeper, simState.TxConfig),
 	))
 	const (
-		opWeightMsgRequestDrone          = "op_weight_msg_warzone"
-		defaultWeightMsgRequestDrone int = 100
+		opWeightMsgAddReq          = "op_weight_msg_warzone"
+		defaultWeightMsgAddReq int = 100
 	)
 
-	var weightMsgRequestDrone int
-	simState.AppParams.GetOrGenerate(opWeightMsgRequestDrone, &weightMsgRequestDrone, nil,
+	var weightMsgAddReq int
+	simState.AppParams.GetOrGenerate(opWeightMsgAddReq, &weightMsgAddReq, nil,
 		func(_ *rand.Rand) {
-			weightMsgRequestDrone = defaultWeightMsgRequestDrone
+			weightMsgAddReq = defaultWeightMsgAddReq
 		},
 	)
 	operations = append(operations, simulation.NewWeightedOperation(
-		weightMsgRequestDrone,
-		warzonesimulation.SimulateMsgRequestDrone(am.authKeeper, am.bankKeeper, am.keeper, simState.TxConfig),
+		weightMsgAddReq,
+		warzonesimulation.SimulateMsgAddReq(am.authKeeper, am.bankKeeper, am.keeper, simState.TxConfig),
 	))
 	const (
-		opWeightMsgSubmitReport          = "op_weight_msg_warzone"
-		defaultWeightMsgSubmitReport int = 100
+		opWeightMsgAssignDrone          = "op_weight_msg_warzone"
+		defaultWeightMsgAssignDrone int = 100
 	)
 
-	var weightMsgSubmitReport int
-	simState.AppParams.GetOrGenerate(opWeightMsgSubmitReport, &weightMsgSubmitReport, nil,
+	var weightMsgAssignDrone int
+	simState.AppParams.GetOrGenerate(opWeightMsgAssignDrone, &weightMsgAssignDrone, nil,
 		func(_ *rand.Rand) {
-			weightMsgSubmitReport = defaultWeightMsgSubmitReport
+			weightMsgAssignDrone = defaultWeightMsgAssignDrone
 		},
 	)
 	operations = append(operations, simulation.NewWeightedOperation(
-		weightMsgSubmitReport,
-		warzonesimulation.SimulateMsgSubmitReport(am.authKeeper, am.bankKeeper, am.keeper, simState.TxConfig),
+		weightMsgAssignDrone,
+		warzonesimulation.SimulateMsgAssignDrone(am.authKeeper, am.bankKeeper, am.keeper, simState.TxConfig),
+	))
+	const (
+		opWeightMsgReportDeadDrone          = "op_weight_msg_warzone"
+		defaultWeightMsgReportDeadDrone int = 100
+	)
+
+	var weightMsgReportDeadDrone int
+	simState.AppParams.GetOrGenerate(opWeightMsgReportDeadDrone, &weightMsgReportDeadDrone, nil,
+		func(_ *rand.Rand) {
+			weightMsgReportDeadDrone = defaultWeightMsgReportDeadDrone
+		},
+	)
+	operations = append(operations, simulation.NewWeightedOperation(
+		weightMsgReportDeadDrone,
+		warzonesimulation.SimulateMsgReportDeadDrone(am.authKeeper, am.bankKeeper, am.keeper, simState.TxConfig),
+	))
+	const (
+		opWeightMsgRegDrone          = "op_weight_msg_warzone"
+		defaultWeightMsgRegDrone int = 100
+	)
+
+	var weightMsgRegDrone int
+	simState.AppParams.GetOrGenerate(opWeightMsgRegDrone, &weightMsgRegDrone, nil,
+		func(_ *rand.Rand) {
+			weightMsgRegDrone = defaultWeightMsgRegDrone
+		},
+	)
+	operations = append(operations, simulation.NewWeightedOperation(
+		weightMsgRegDrone,
+		warzonesimulation.SimulateMsgRegDrone(am.authKeeper, am.bankKeeper, am.keeper, simState.TxConfig),
+	))
+	const (
+		opWeightMsgRmvReq          = "op_weight_msg_warzone"
+		defaultWeightMsgRmvReq int = 100
+	)
+
+	var weightMsgRmvReq int
+	simState.AppParams.GetOrGenerate(opWeightMsgRmvReq, &weightMsgRmvReq, nil,
+		func(_ *rand.Rand) {
+			weightMsgRmvReq = defaultWeightMsgRmvReq
+		},
+	)
+	operations = append(operations, simulation.NewWeightedOperation(
+		weightMsgRmvReq,
+		warzonesimulation.SimulateMsgRmvReq(am.authKeeper, am.bankKeeper, am.keeper, simState.TxConfig),
 	))
 
 	return operations

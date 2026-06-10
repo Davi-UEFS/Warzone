@@ -12,7 +12,7 @@ import (
 	"github.com/Davi-UEFS/warzone-core/x/warzone/types"
 )
 
-func SimulateMsgRequestDrone(
+func SimulateMsgReportDeadDrone(
 	ak types.AuthKeeper,
 	bk types.BankKeeper,
 	k keeper.Keeper,
@@ -21,12 +21,12 @@ func SimulateMsgRequestDrone(
 	return func(r *rand.Rand, app *baseapp.BaseApp, ctx sdk.Context, accs []simtypes.Account, chainID string,
 	) (simtypes.OperationMsg, []simtypes.FutureOperation, error) {
 		simAccount, _ := simtypes.RandomAcc(r, accs)
-		msg := &types.MsgRequestDrone{
+		msg := &types.MsgReportDeadDrone{
 			Creator: simAccount.Address.String(),
 		}
 
-		// TODO: Handle the RequestDrone simulation
+		// TODO: Handle the ReportDeadDrone simulation
 
-		return simtypes.NoOpMsg(types.ModuleName, sdk.MsgTypeURL(msg), "RequestDrone simulation not implemented"), nil, nil
+		return simtypes.NoOpMsg(types.ModuleName, sdk.MsgTypeURL(msg), "ReportDeadDrone simulation not implemented"), nil, nil
 	}
 }

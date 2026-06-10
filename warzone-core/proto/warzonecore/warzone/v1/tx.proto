@@ -36,11 +36,20 @@ service Msg {
   // DeleteMission defines the DeleteMission RPC.
   rpc DeleteMission(MsgDeleteMission) returns (MsgDeleteMissionResponse);
 
-  // RequestDrone defines the RequestDrone RPC.
-  rpc RequestDrone(MsgRequestDrone) returns (MsgRequestDroneResponse);
+  // AddReq defines the AddReq RPC.
+  rpc AddReq(MsgAddReq) returns (MsgAddReqResponse);
 
-  // SubmitReport defines the SubmitReport RPC.
-  rpc SubmitReport(MsgSubmitReport) returns (MsgSubmitReportResponse);
+  // AssignDrone defines the AssignDrone RPC.
+  rpc AssignDrone(MsgAssignDrone) returns (MsgAssignDroneResponse);
+
+  // ReportDeadDrone defines the ReportDeadDrone RPC.
+  rpc ReportDeadDrone(MsgReportDeadDrone) returns (MsgReportDeadDroneResponse);
+
+  // RegDrone defines the RegDrone RPC.
+  rpc RegDrone(MsgRegDrone) returns (MsgRegDroneResponse);
+
+  // RmvReq defines the RmvReq RPC.
+  rpc RmvReq(MsgRmvReq) returns (MsgRmvReqResponse);
 }
 
 // MsgUpdateParams is the Msg/UpdateParams request type.
@@ -106,7 +115,7 @@ message MsgCreateMission {
   string creator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
   string sector = 2;
   string status = 3;
-  int32 priority = 4;
+  int64 priority = 4;
   string assigned_drone_id = 5;
 }
 
@@ -122,7 +131,7 @@ message MsgUpdateMission {
   uint64 id = 2;
   string sector = 3;
   string status = 4;
-  int32 priority = 5;
+  int64 priority = 5;
   string assigned_drone_id = 6;
 }
 
@@ -139,24 +148,60 @@ message MsgDeleteMission {
 // MsgDeleteMissionResponse defines the MsgDeleteMissionResponse message.
 message MsgDeleteMissionResponse {}
 
-// MsgRequestDrone defines the MsgRequestDrone message.
-message MsgRequestDrone {
+// MsgAddReq defines the MsgAddReq message.
+message MsgAddReq {
   option (cosmos.msg.v1.signer) = "creator";
   string creator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
   string sector = 2;
-  int32    priority = 3;
+  int64 priority = 3;
+  string reqType = 4;
+  string coord = 5;
 }
 
-// MsgRequestDroneResponse defines the MsgRequestDroneResponse message.
-message MsgRequestDroneResponse {}
+// MsgAddReqResponse defines the MsgAddReqResponse message.
+message MsgAddReqResponse {}
 
-// MsgSubmitReport defines the MsgSubmitReport message.
-message MsgSubmitReport {
+// MsgAssignDrone defines the MsgAssignDrone message.
+message MsgAssignDrone {
+  option (cosmos.msg.v1.signer) = "creator";
+  string creator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string mission_id = 2;
+  string drone_id = 3;
+}
+
+// MsgAssignDroneResponse defines the MsgAssignDroneResponse message.
+message MsgAssignDroneResponse {}
+
+// MsgReportDeadDrone defines the MsgReportDeadDrone message.
+message MsgReportDeadDrone {
+  option (cosmos.msg.v1.signer) = "creator";
+  string creator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string drone_id = 2;
+}
+
+// MsgReportDeadDroneResponse defines the MsgReportDeadDroneResponse message.
+message MsgReportDeadDroneResponse {}
+
+// MsgRegDrone defines the MsgRegDrone message.
+message MsgRegDrone {
+  option (cosmos.msg.v1.signer) = "creator";
+  string creator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string drone_id = 2;
+  string sector = 3;
+  string battery = 4;
+}
+
+// MsgRegDroneResponse defines the MsgRegDroneResponse message.
+message MsgRegDroneResponse {}
+
+// MsgRmvReq defines the MsgRmvReq message.
+message MsgRmvReq {
   option (cosmos.msg.v1.signer) = "creator";
   string creator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
   string drone_id = 2;
   string laudo = 3;
+  uint64 missionId = 4;
 }
 
-// MsgSubmitReportResponse defines the MsgSubmitReportResponse message.
-message MsgSubmitReportResponse {}
+// MsgRmvReqResponse defines the MsgRmvReqResponse message.
+message MsgRmvReqResponse {}
