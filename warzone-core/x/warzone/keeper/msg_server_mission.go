@@ -7,7 +7,7 @@ import (
 
 	"cosmossdk.io/collections"
 	errorsmod "cosmossdk.io/errors"
-	"github.com/Davi-UEFS/warzone-core/x/warzone/types"
+	"github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 )
 

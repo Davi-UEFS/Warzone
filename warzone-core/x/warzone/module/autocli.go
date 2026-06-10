@@ -3,7 +3,7 @@ package warzone
 import (
 	autocliv1 "cosmossdk.io/api/cosmos/autocli/v1"
 
-	"github.com/Davi-UEFS/warzone-core/x/warzone/types"
+	"github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/types"
 )
 
 // AutoCLIOptions implements the autocli.HasAutoCLIConfig interface.

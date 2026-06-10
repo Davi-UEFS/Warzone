@@ -45,8 +45,8 @@ import (
 	ibctransferkeeper "github.com/cosmos/ibc-go/v10/modules/apps/transfer/keeper"
 	ibckeeper "github.com/cosmos/ibc-go/v10/modules/core/keeper"
 
-	"github.com/Davi-UEFS/warzone-core/docs"
-	warzonemodulekeeper "github.com/Davi-UEFS/warzone-core/x/warzone/keeper"
+	"github.com/Davi-UEFS/Warzone/warzone-core/docs"
+	warzonemodulekeeper "github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/keeper"
 )
 
 const (

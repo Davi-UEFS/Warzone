@@ -7,8 +7,8 @@ import (
 	clienthelpers "cosmossdk.io/client/v2/helpers"
 	svrcmd "github.com/cosmos/cosmos-sdk/server/cmd"
 
-	"github.com/Davi-UEFS/warzone-core/app"
-	"github.com/Davi-UEFS/warzone-core/cmd/warzone-cored/cmd"
+	"github.com/Davi-UEFS/Warzone/warzone-core/app"
+	"github.com/Davi-UEFS/Warzone/warzone-core/cmd/warzone-cored/cmd"
 )
 
 func main() {

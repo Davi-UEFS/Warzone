@@ -3,7 +3,7 @@ package keeper
 import (
 	"context"
 
-	"github.com/Davi-UEFS/warzone-core/x/warzone/types"
+	"github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/types"
 )
 
 // InitGenesis initializes the module's state from a provided genesis state.

@@ -13,9 +13,9 @@ import (
 	moduletestutil "github.com/cosmos/cosmos-sdk/types/module/testutil"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 
-	"github.com/Davi-UEFS/warzone-core/x/warzone/keeper"
-	module "github.com/Davi-UEFS/warzone-core/x/warzone/module"
-	"github.com/Davi-UEFS/warzone-core/x/warzone/types"
+	"github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/keeper"
+	module "github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/module"
+	"github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/types"
 )
 
 type fixture struct {

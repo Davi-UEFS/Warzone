@@ -8,7 +8,7 @@ import (
 	corestore "cosmossdk.io/core/store"
 	"github.com/cosmos/cosmos-sdk/codec"
 
-	"github.com/Davi-UEFS/warzone-core/x/warzone/types"
+	"github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/types"
 )
 
 type Keeper struct {

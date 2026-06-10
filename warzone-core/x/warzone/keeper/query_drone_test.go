@@ -10,8 +10,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/Davi-UEFS/warzone-core/x/warzone/keeper"
-	"github.com/Davi-UEFS/warzone-core/x/warzone/types"
+	"github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/keeper"
+	"github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/types"
 )
 
 func createNDrone(keeper keeper.Keeper, ctx context.Context, n int) []types.Drone {

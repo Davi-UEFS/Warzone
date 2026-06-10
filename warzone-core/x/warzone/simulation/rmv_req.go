@@ -8,8 +8,8 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	simtypes "github.com/cosmos/cosmos-sdk/types/simulation"
 
-	"github.com/Davi-UEFS/warzone-core/x/warzone/keeper"
-	"github.com/Davi-UEFS/warzone-core/x/warzone/types"
+	"github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/keeper"
+	"github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/types"
 )
 
 func SimulateMsgRmvReq(

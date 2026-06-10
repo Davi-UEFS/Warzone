@@ -14,8 +14,8 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"google.golang.org/grpc"
 
-	"github.com/Davi-UEFS/warzone-core/x/warzone/keeper"
-	"github.com/Davi-UEFS/warzone-core/x/warzone/types"
+	"github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/keeper"
+	"github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/types"
 )
 
 var (

@@ -8,7 +8,7 @@ import "warzonecore/warzone/v1/drone.proto";
 import "warzonecore/warzone/v1/mission.proto";
 import "warzonecore/warzone/v1/params.proto";
 
-option go_package = "github.com/Davi-UEFS/warzone-core/x/warzone/types";
+option go_package = "github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/types";
 
 // GenesisState defines the warzone module's genesis state.
 message GenesisState {

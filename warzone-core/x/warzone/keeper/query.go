@@ -1,7 +1,7 @@
 package keeper
 
 import (
-	"github.com/Davi-UEFS/warzone-core/x/warzone/types"
+	"github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/types"
 )
 
 var _ types.QueryServer = queryServer{}

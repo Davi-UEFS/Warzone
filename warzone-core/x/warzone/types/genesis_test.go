@@ -3,7 +3,7 @@ package types_test
 import (
 	"testing"
 
-	"github.com/Davi-UEFS/warzone-core/x/warzone/types"
+	"github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/types"
 	"github.com/stretchr/testify/require"
 )
 

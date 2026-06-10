@@ -36,8 +36,8 @@ import (
 	_ "cosmossdk.io/x/nft/module" // import for side-effects
 	_ "cosmossdk.io/x/upgrade"    // import for side-effects
 	upgradetypes "cosmossdk.io/x/upgrade/types"
-	_ "github.com/Davi-UEFS/warzone-core/x/warzone/module"
-	warzonemoduletypes "github.com/Davi-UEFS/warzone-core/x/warzone/types"
+	_ "github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/module"
+	warzonemoduletypes "github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/types"
 	"github.com/cosmos/cosmos-sdk/runtime"
 	_ "github.com/cosmos/cosmos-sdk/x/auth/tx/config" // import for side-effects
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"

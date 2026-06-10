@@ -7,9 +7,9 @@ import (
 	simtypes "github.com/cosmos/cosmos-sdk/types/simulation"
 	"github.com/cosmos/cosmos-sdk/x/simulation"
 
-	"github.com/Davi-UEFS/warzone-core/testutil/sample"
-	warzonesimulation "github.com/Davi-UEFS/warzone-core/x/warzone/simulation"
-	"github.com/Davi-UEFS/warzone-core/x/warzone/types"
+	"github.com/Davi-UEFS/Warzone/warzone-core/testutil/sample"
+	warzonesimulation "github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/simulation"
+	"github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/types"
 )
 
 // GenerateGenesisState creates a randomized GenState of the module.

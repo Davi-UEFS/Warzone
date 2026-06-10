@@ -9,8 +9,8 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 
-	"github.com/Davi-UEFS/warzone-core/x/warzone/keeper"
-	"github.com/Davi-UEFS/warzone-core/x/warzone/types"
+	"github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/keeper"
+	"github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/types"
 )
 
 var _ depinject.OnePerModuleType = AppModule{}

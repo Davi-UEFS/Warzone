@@ -17,7 +17,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/spf13/cobra"
 
-	"github.com/Davi-UEFS/warzone-core/app"
+	"github.com/Davi-UEFS/Warzone/warzone-core/app"
 )
 
 // NewRootCmd creates a new root command for warzone-cored. It is called once in the main function.
