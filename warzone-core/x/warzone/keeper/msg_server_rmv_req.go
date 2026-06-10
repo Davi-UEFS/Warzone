@@ -23,7 +23,7 @@ func (k msgServer) RmvReq(goCtx context.Context, msg *types.MsgRmvReq) (*types.M
 	}
 
 	drone.Status = string(shared.DRONE_IDLE)
-
+	drone.CurrentMissionId = 0 // Limpa a missão atual do drone
 	if err := k.Drone.Set(ctx, msg.DroneId, drone); err != nil {
 		return nil, err
 	}

@@ -165,7 +165,7 @@ message MsgAddReqResponse {}
 message MsgAssignDrone {
   option (cosmos.msg.v1.signer) = "creator";
   string creator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
-  string mission_id = 2;
+  uint64 mission_id = 2;
   string drone_id = 3;
 }
 

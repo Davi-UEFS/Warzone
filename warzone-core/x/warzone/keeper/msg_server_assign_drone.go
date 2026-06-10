@@ -15,20 +15,14 @@ import (
 func (k msgServer) AssignDrone(goCtx context.Context, msg *types.MsgAssignDrone) (*types.MsgAssignDroneResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
-	// Converte a string da transação para o formato uint64 exigido pelo KVStore
-	missionIdUint, err := strconv.ParseUint(msg.MissionId, 10, 64)
-	if err != nil {
-		return nil, errorsmod.Wrapf(sdkerrors.ErrInvalidRequest, "ID da missão inválido: %s", msg.MissionId)
-	}
-
 	// 1. Validar e Atualizar a Requisição
-	requisicao, err := k.Mission.Get(ctx, missionIdUint)
+	requisicao, err := k.Mission.Get(ctx, msg.MissionId)
 	if err != nil {
-		return nil, errorsmod.Wrapf(sdkerrors.ErrKeyNotFound, "requisição %d não encontrada", missionIdUint)
+		return nil, errorsmod.Wrapf(sdkerrors.ErrKeyNotFound, "requisição %v não encontrada", msg.MissionId)
 	}
 
 	if requisicao.Status != shared.PENDING {
-		return nil, errorsmod.Wrapf(sdkerrors.ErrInvalidRequest, "requisição %d não está aguardando atendimento", missionIdUint)
+		return nil, errorsmod.Wrapf(sdkerrors.ErrInvalidRequest, "requisição %v não está aguardando atendimento", msg.MissionId)
 	}
 
 	// 2. Validar e Atualizar o Drone
@@ -44,11 +38,12 @@ func (k msgServer) AssignDrone(goCtx context.Context, msg *types.MsgAssignDrone)
 	// 3. Efetivar a Transição de Estado
 	requisicao.Status = shared.IN_PROGRESS
 	requisicao.AssignedDroneId = msg.DroneId
-	if err := k.Mission.Set(ctx, missionIdUint, requisicao); err != nil {
+	if err := k.Mission.Set(ctx, msg.MissionId, requisicao); err != nil {
 		return nil, err
 	}
 
 	drone.Status = string(shared.DRONE_BUSY)
+	drone.CurrentMissionId = msg.MissionId
 	if err := k.Drone.Set(ctx, msg.DroneId, drone); err != nil {
 		return nil, err
 	}
@@ -57,7 +52,7 @@ func (k msgServer) AssignDrone(goCtx context.Context, msg *types.MsgAssignDrone)
 	ctx.EventManager().EmitEvent(
 		sdk.NewEvent(
 			"drone_atribuido",
-			sdk.NewAttribute("requisicao_id", msg.MissionId),
+			sdk.NewAttribute("requisicao_id", strconv.Itoa(int(msg.MissionId))),
 			sdk.NewAttribute("drone_id", msg.DroneId),
 			sdk.NewAttribute("creator", msg.Creator),
 		),

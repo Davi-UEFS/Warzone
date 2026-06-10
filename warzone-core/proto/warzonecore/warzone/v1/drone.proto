@@ -10,4 +10,5 @@ message Drone {
   string sector = 3;
   string battery = 4;
   string creator = 5;
+  uint64 currentMissionId = 6;
 }
