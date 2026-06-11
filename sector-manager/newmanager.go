@@ -105,26 +105,26 @@ func FetchMissionsPENDING(blockchainURL string, targetSector string) ([]types.Mi
 	// Simulamos o JSON que a blockchain enviaria se estivesse ligada
 	mockMissions := []types.Mission{
 		{
-			Id:              "1",
+			Id:              1,
 			Creator:         "cosmos1xyz...",
 			Sector:          targetSector,
 			Status:          "PENDING",
-			Priority:        "2", // Alta
+			Priority:        2, // Alta
 			AssignedDroneId: "",
 			ReqType:         "THROW_WATER",
 			Coord:           "12.34,-56.78",
-			CreatedAt:       "1717941234",
+			CreatedAt:       1717941234,
 		},
 		{
-			Id:              "2",
+			Id:              2,
 			Creator:         "cosmos1abc...",
 			Sector:          targetSector,
 			Status:          "PENDING",
-			Priority:        "1", // Baixa
+			Priority:        1, // Baixa
 			AssignedDroneId: "",
 			ReqType:         "INSPECT_AREA",
 			Coord:           "12.99,-56.11",
-			CreatedAt:       "1717941500",
+			CreatedAt:       1717941500,
 		},
 	}
 
@@ -137,20 +137,11 @@ func FetchDronesIDLE(blockchainURL string, targetSector string) ([]types.Drone, 
 	// Simulamos o JSON que a blockchain enviaria se estivesse ligada
 	mockDrones := []types.Drone{
 		{
-			Id:        "drone-1",
-			Sector:    targetSector,
-			Status:    "IDLE",
-			Coord:     "12.30,-56.70",
-			Battery:   85,
-			CreatedAt: "1717940000",
-		},
-		{
-			Id:        "drone-2",
-			Sector:    targetSector,
-			Status:    "IDLE",
-			Coord:     "12.50,-56.90",
-			Battery:   60,
-			CreatedAt: "1717940500",
+			DroneId: "drone-1",
+			Sector:  targetSector,
+			Status:  "IDLE",
+			Battery: "85", //TODO: ajustar tipo de dado
+
 		},
 	}
 
@@ -163,29 +154,32 @@ func sortRequisitionsWithAging(requisitions []types.Mission) {
 		return
 	}
 
-	sort.Slice(requisitions, func(i, j int) bool {
-		now := time.Now().Unix()
+	//TODO: implementar ordenação por prioridade e tempo de espera (aging) para evitar starvation
 
-		// 1. Converter os timestamps da blockchain (string) para int64
-		timeI, _ := strconv.ParseInt(requisitions[i].CreatedAt, 10, 64)
-		timeJ, _ := strconv.ParseInt(requisitions[j].CreatedAt, 10, 64)
+	/*
+		sort.Slice(requisitions, func(i, j int) bool {
+			now := time.Now().Unix()
 
-		waitTimeI := now - timeI
-		PrioBoostI := waitTimeI / 10
-		scoreI := PrioBoostI + waitTimeI
+			// 1. Converter os timestamps da blockchain (string) para int64
+			timeI, _ := requisitions[i].CreatedAt
+			timeJ, _ :=
 
-		waitTimeJ := now - timeJ
-		PrioBoostJ := waitTimeJ / 10
-		scoreJ := PrioBoostJ + waitTimeJ
+			waitTimeI := now - timeI
+			PrioBoostI := waitTimeI / 10
+			scoreI := PrioBoostI + waitTimeI
 
-		// Ordena pelo maior score final
-		if scoreI != scoreJ {
-			return scoreI > scoreJ
-		}
-		// Desempate pelo ID menor
-		return requisitions[i].Id < requisitions[j].Id
-	})
+			waitTimeJ := now - timeJ
+			PrioBoostJ := waitTimeJ / 10
+			scoreJ := PrioBoostJ + waitTimeJ
 
+			// Ordena pelo maior score final
+			if scoreI != scoreJ {
+				return scoreI > scoreJ
+			}
+			// Desempate pelo ID menor
+			return requisitions[i].Id < requisitions[j].Id
+		})
+	*/
 }
 
 func newDispatch() {
@@ -196,12 +190,7 @@ func newDispatch() {
 		return
 	}
 
-	nextReq := requisitions[0]
-
-	freeDrones, err := FetchDronesIDLE("http://temp-blockchain-url", "Sector-1")
-	if err != nil {
-		fmt.Println("Erro ao buscar drones:", err)
-		return
-	}
+	// TODO: FAZER LOGICA DE DESPACHO AQUI
+	print(requisitions)
 
 }
