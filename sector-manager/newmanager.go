@@ -2,21 +2,13 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
-	"sort"
-	"strconv"
-	"time"
 
-	"github.com/Davi-UEFS/Warzone/shared"
 	"github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/types"
-	"github.com/cometbft/cometbft/crypto/secp256k1"
-	"github.com/cosmos/gogoproto/grpc"
-
-	"google.golang.org/api/transport/grpc"
-	"google.golang.org/grpc"
 )
 
+// COMENTEI AQUI SO PRA TIRAR OS ERROS. DPS TU CHECA ISSO NYCOLAS.
+
+/*
 type Wallet struct{
 	Name string
 	Addr string
@@ -93,10 +85,11 @@ func RegisterDrone (d shared.Drone, w Wallet){
 			TxBytes: txBytes,
 		},
 	)
-	
-}
 
-func ReportDeadDrone ()
+}
+*/
+
+func ReportDeadDrone()
 
 // FetchMissionsPENDING simulado para o laboratório (não precisa de blockchain rodando)
 func FetchMissionsPENDING(blockchainURL string, targetSector string) ([]types.Mission, error) {
