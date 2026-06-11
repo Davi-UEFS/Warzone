@@ -2,12 +2,101 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 	"sort"
 	"strconv"
 	"time"
 
-	"github.com/Davi-UEFS/warzone-core/x/warzone/types"
+	"github.com/Davi-UEFS/Warzone/shared"
+	"github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/types"
+	"github.com/cometbft/cometbft/crypto/secp256k1"
+	"github.com/cosmos/gogoproto/grpc"
+
+	"google.golang.org/api/transport/grpc"
+	"google.golang.org/grpc"
 )
+
+type Wallet struct{
+	Name string
+	Addr string
+	PrivKey secp256k1.PrivKey
+	PubKey secp256k1.PubKey
+}
+
+func (w *Wallet) CreateWallet(){
+
+	w.PrivKey = secp256k1.GenPrivKey()
+
+	w.PubKey = w.PrivKey.PubKey()
+
+	w.Addr = sdk.AccAddress(w.PubKey.Address())
+
+}
+
+func ConnectBlockchain(addr string) (types.QueryClient, error){
+
+	conn, err := grpc.Dial(addr, grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+
+	client := types.NewQueryClient(conn)
+	return client, nil
+
+}
+
+func StartBlockchainNode() error {
+    cmd := exec.Command(
+        "warzoned",
+        "start",
+    )
+
+    cmd.Stdout = os.Stdout
+    cmd.Stderr = os.Stderr
+
+    return cmd.Start()
+
+
+}
+
+
+func RegisterDrone (d shared.Drone, w Wallet){
+
+	msg := &types.MsgRegDrone{
+		Creator: w.Addr,
+		DroneId: d.ID,
+		Sector: d.CurrentSector,
+		Battery: d.BatteryLevel,
+	}
+
+	txBuilder := txConfig.NewTxBuilder()
+	err := txBuilder.SetMsgs(msg)
+
+	err = tx.Sign(
+		txConfig,
+		"empresa",
+		txBuilder,
+		signerData,
+		privKey,
+		true,
+	)
+
+	txBytes, err := txConfig.TxEncoder()(
+    txBuilder.GetTx(),
+)
+
+	res, err := txClient.BroadcastTx(
+		context.Background(),
+		&txtypes.BroadcastTxRequest{
+			Mode: txtypes.BroadcastMode_BROADCAST_MODE_SYNC,
+			TxBytes: txBytes,
+		},
+	)
+	
+}
+
+func ReportDeadDrone ()
 
 // FetchMissionsPENDING simulado para o laboratório (não precisa de blockchain rodando)
 func FetchMissionsPENDING(blockchainURL string, targetSector string) ([]types.Mission, error) {
