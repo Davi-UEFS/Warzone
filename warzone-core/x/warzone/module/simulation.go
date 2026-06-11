@@ -200,6 +200,21 @@ func (am AppModule) WeightedOperations(simState module.SimulationState) []simtyp
 		weightMsgRmvReq,
 		warzonesimulation.SimulateMsgRmvReq(am.authKeeper, am.bankKeeper, am.keeper, simState.TxConfig),
 	))
+	const (
+		opWeightMsgSubmitLaudo          = "op_weight_msg_warzone"
+		defaultWeightMsgSubmitLaudo int = 100
+	)
+
+	var weightMsgSubmitLaudo int
+	simState.AppParams.GetOrGenerate(opWeightMsgSubmitLaudo, &weightMsgSubmitLaudo, nil,
+		func(_ *rand.Rand) {
+			weightMsgSubmitLaudo = defaultWeightMsgSubmitLaudo
+		},
+	)
+	operations = append(operations, simulation.NewWeightedOperation(
+		weightMsgSubmitLaudo,
+		warzonesimulation.SimulateMsgSubmitLaudo(am.authKeeper, am.bankKeeper, am.keeper, simState.TxConfig),
+	))
 
 	return operations
 }

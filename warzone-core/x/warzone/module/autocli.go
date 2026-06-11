@@ -117,6 +117,12 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					Short:          "Send a rmvReq tx",
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "drone_id"}, {ProtoField: "laudo"}},
 				},
+				{
+					RpcMethod:      "SubmitLaudo",
+					Use:            "submit-laudo [requisition-id] [drone-id] [relatorio] [status]",
+					Short:          "Send a submitLaudo tx",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "requisition_id"}, {ProtoField: "drone_id"}, {ProtoField: "relatorio"}, {ProtoField: "status"}},
+				},
 			},
 		},
 	}

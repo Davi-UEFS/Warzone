@@ -29,7 +29,7 @@ require (
 	cosmossdk.io/x/feegrant v0.1.1
 	cosmossdk.io/x/nft v0.1.0
 	cosmossdk.io/x/upgrade v0.2.0
-	github.com/Davi-UEFS/Warzone v0.0.0-00010101000000-000000000000
+	github.com/Davi-UEFS/Warzone v0.0.0-20260611233351-976fceec8969
 	github.com/cometbft/cometbft v0.38.21
 	github.com/cosmos/cosmos-db v1.1.3
 	github.com/cosmos/cosmos-proto v1.0.0-beta.5
@@ -448,5 +448,3 @@ tool (
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc
 	google.golang.org/protobuf/cmd/protoc-gen-go
 )
-
-replace github.com/Davi-UEFS/Warzone => ../

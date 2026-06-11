@@ -50,6 +50,9 @@ service Msg {
 
   // RmvReq defines the RmvReq RPC.
   rpc RmvReq(MsgRmvReq) returns (MsgRmvReqResponse);
+
+  // SubmitLaudo defines the SubmitLaudo RPC.
+  rpc SubmitLaudo(MsgSubmitLaudo) returns (MsgSubmitLaudoResponse);
 }
 
 // MsgUpdateParams is the Msg/UpdateParams request type.
@@ -205,3 +208,16 @@ message MsgRmvReq {
 
 // MsgRmvReqResponse defines the MsgRmvReqResponse message.
 message MsgRmvReqResponse {}
+
+// MsgSubmitLaudo defines the MsgSubmitLaudo message.
+message MsgSubmitLaudo {
+  option (cosmos.msg.v1.signer) = "creator";
+  string creator = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string requisition_id = 2;
+  string drone_id = 3;
+  string relatorio = 4;
+  string status = 5;
+}
+
+// MsgSubmitLaudoResponse defines the MsgSubmitLaudoResponse message.
+message MsgSubmitLaudoResponse {}
