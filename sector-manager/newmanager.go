@@ -98,7 +98,7 @@ func newDispatch() {
 		return
 	}
 
-	// TODO: FAZER LOGICA DE DESPACHO
+	// TODO: FAZER LOGICA DE DESPACHO AQUI
 	print(requisitions)
 
 }
