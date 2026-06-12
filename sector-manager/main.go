@@ -2,7 +2,6 @@ package main
 
 import (
 	"container/heap"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -61,8 +60,6 @@ func main() {
 	raftPortFlag := flag.Int("raft-port", 10001, "Porta Raft")
 	brokerPortFlag := flag.Int("broker-port", 1883, "Porta do broker MQTT")
 	dashboardPortFlag := flag.Int("dashboard-port", 8080, "Porta do dashboard HTTP")
-	dataDirFlag := flag.String("dir", "data/node1", "Diretório de dados")
-	bootstrapFlag := flag.Bool("bootstrap", false, "Iniciar como líder")
 	peersFlag := flag.String("peers", "", "Endereços dos peers (SIG do líder). Separe por vírgula")
 	debugFlag := flag.Bool("debug", false, "Ativa simulações de latência, aging e logs de Lamport")
 	flag.Parse()
@@ -100,17 +97,6 @@ func main() {
 	heap.Init(&sectorFSM.PendingReqsQueue)
 
 	var err error
-	alreadyInDB := false
-
-	raftNode, alreadyInDB, err = setupRaft(*dataDirFlag, *nodeIDFlag, raftAddr, sectorFSM, *bootstrapFlag)
-	if err != nil {
-		log.Fatalf("Erro ao iniciar Raft: %v\n", err)
-	}
-
-	fmt.Println("Aguardando Raft estabilizar...")
-	time.Sleep(2 * time.Second)
-
-	go startSignaling(raftNode, sigAddr)
 
 	// --- INICIALIZA O BROKER EMBUTIDO ---
 	startEmbeddedBroker(*brokerPortFlag)
@@ -127,41 +113,7 @@ func main() {
 
 	sectorFSM.Sector = *nodeIDFlag
 
-	go publishToDrones(sectorFSM.EventsChan, globalClient)
-
-	// --- 4. LÓGICA DE JOIN NO CLUSTER ---
-
-	if alreadyInDB {
-		fmt.Printf("\nEste nó é pre-existente. Foi carregado do DB do disco.\n")
-	} else {
-		if !*bootstrapFlag {
-			fmt.Println("Procurando líder na lista de peers...")
-			leaderInfo := searchForLeaderInfo(peers, sigPort)
-
-			if leaderInfo.RaftAddr == "" {
-				fmt.Println("Não foi possível encontrar o líder.")
-			} else {
-				req := joinReq{
-					ID:   *nodeIDFlag,
-					Addr: raftAddr,
-				}
-
-				reqPayload, _ := json.Marshal(req)
-
-				cmd := shared.HeaderCommand{
-					Operation: JOIN,
-					Payload:   reqPayload,
-				}
-
-				if err := sendJoinRequest(leaderInfo.SigAddr, cmd); err != nil {
-					fmt.Printf("Erro ao enviar join request: %v\n", err)
-				} else {
-					fmt.Println("Join request enviado, aguardando replicação...")
-				}
-
-			}
-		}
-	}
+	//go publishToDrones(sectorFSM.EventsChan, globalClient)
 
 	fmt.Printf("NÓ %s EM EXECUÇÃO\n", *nodeIDFlag)
 	fmt.Printf("Raft: %s | Endereço de escuta: %s | Broker Embutido: :%d\n", raftAddr, sigAddr, *brokerPortFlag)
