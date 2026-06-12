@@ -1,6 +1,8 @@
 package main
 
 import (
+	"sync"
+
 	"github.com/Davi-UEFS/Warzone/shared"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	raft "github.com/hashicorp/raft"
@@ -44,12 +46,24 @@ var PRIOTIRIES = map[string]int{
 
 // Variáveis globais usadas pelo setor manager.
 var (
-	sectorFSM    *RaftFSM
-	LClock       shared.LamportClock
-	peers        []string
-	sigPort      int
+	sectorFSM    *RaftFSM            //TODO: DEPRECATED. TIRAR DEPOIS
+	LClock       shared.LamportClock //TODO: DEPRECATED. TIRAR DEPOIS
+	peers        []string            //TODO: DEPRECATED. TIRAR DEPOIS
+	sigPort      int                 //TODO: DEPRECATED. TIRAR DEPOIS
 	globalClient mqtt.Client
-	raftNode     *raft.Raft
+	raftNode     *raft.Raft //TODO: DEPRECATED. TIRAR DEPOIS
 	brokerAddr   string
 	DebugMode    bool
 )
+
+// LocalState substitui a antiga FSM.
+type LocalState struct {
+	Mu               sync.Mutex
+	PendingReqsQueue ReqHeap
+	DroneMap         map[string]*shared.Drone
+}
+
+// Inicializamos o estado local
+var sectorState = &LocalState{
+	DroneMap: make(map[string]*shared.Drone),
+}
