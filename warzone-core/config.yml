@@ -10,6 +10,18 @@ accounts:
   coins:
   - 10000token
   - 100000000stake
+- name: manager_setor_a
+  coins:
+  - 100000000000token
+  - 100000000000stake
+- name: manager_setor_b
+  coins:
+  - 100000000000token
+  - 100000000000stake
+- name: manager_setor_c
+  coins:
+  - 100000000000token
+  - 100000000000stake
 client:
   openapi:
     path: docs/static/openapi.json
