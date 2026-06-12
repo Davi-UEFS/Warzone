@@ -1,0 +1,109 @@
+===============================================================================
+     WARZONE BLOCKCHAIN - GUIA DE IMPLANTAÇÃO MULTI-NODE (LABORATÓRIO UEFS)
+===============================================================================
+
+Este guia contém os comandos exatos para configurar 2 PCs validadores independentes
+na mesma rede local, eliminando o Ponto Único de Falha (SPOF).
+
+-------------------------------------------------------------------------------
+PASSO 1: INICIALIZAÇÃO DO DISCO (Executar em AMBOS os computadores)
+-------------------------------------------------------------------------------
+# Limpa configurações antigas se houver
+rm -rf ~/.warzone
+
+# Compila o binário atualizado a partir do código-fonte do Cosmos SDK
+ignite chain build
+
+# Inicializa as pastas de configuração locais do nó
+# NO PC 1 execute:
+warzone-cored init no-lab-1 --chain-id warzone-rede
+
+# NO PC 2 execute:
+warzone-cored init no-lab-2 --chain-id warzone-rede
+
+
+-------------------------------------------------------------------------------
+PASSO 2: CRIAÇÃO DO BLOCO GÊNESE (Executar APENAS NO PC 1)
+-------------------------------------------------------------------------------
+# 1. Cria a chave criptográfica local do Validador 1
+warzone-cored keys add validador1 --keyring-backend test
+
+# 2. Registra o saldo inicial do validador (necessário para fazer staking)
+warzone-cored genesis add-genesis-account validador1 100000000stake --keyring-backend test
+
+# 3. [OPCIONAL] Adicione aqui as contas das empresas se já tiver os endereços:
+# warzone-cored genesis add-genesis-account <endereco_empresa> 50000moedas --keyring-backend test
+
+# 4. Gera a transação de validação (Gentx) vinculando as moedas ao consenso
+warzone-cored genesis gentx validador1 10000000stake --chain-id warzone-rede --keyring-backend test
+
+# 5. Consolida todas as regras e assinaturas no arquivo genesis.json definitivo
+warzone-cored genesis collect-gentxs
+
+
+-------------------------------------------------------------------------------
+PASSO 3: SINCRONIZAÇÃO DA HISTÓRIA (Copiar do PC 1 para o PC 2)
+-------------------------------------------------------------------------------
+# Pegue o arquivo gerado no PC 1 localizado em:
+# ~/.warzone/config/genesis.json
+
+# Envie para o PC 2 (via pendrive, chat ou SSH) e cole exatamente na pasta:
+# ~/.warzone/config/genesis.json
+# (Substitua o arquivo existente no PC 2 para que ambos tenham o mesmo passado)
+
+
+-------------------------------------------------------------------------------
+PASSO 4: DESCOBRIR PEERS E AJUSTAR REDE (Configurações de IP)
+-------------------------------------------------------------------------------
+# 1. No PC 1, descubra o Node ID criptográfico do seu motor de consenso:
+warzone-cored tendermint show-node-id
+# (Isso vai cuspir um hash longo, ex: a1b2c3d4e5f6g7h8i9j0...)
+
+# 2. No PC 2, abra o arquivo ~/.warzone/config/config.toml
+# Procure pela linha 'persistent_peers' e preencha com o ID do PC 1 e o IP dele:
+# persistent_peers = "HASH_DO_PC_1@IP_DO_PC_1:26656"
+
+Comentário: para um PC3 só precisa passar o endereço do PC1, ele irá passar o endereço do PC2 para o PC3
+
+# 3. Em AMBOS os PCs, abra o arquivo ~/.warzone/config/config.toml
+# Altere o endereço do RPC para permitir conexões externas do seu Manager:
+# Procure por 'laddr = "tcp://127.0.0.1:26657"' e mude para:
+# laddr = "tcp://0.0.0.0:26657"
+
+# 4. Em AMBOS os PCs, se o seu Manager for ler via API REST, abra o ~/.warzone/config/app.toml
+# Ative o servidor de API mudando 'enable = false' para:
+# enable = true
+# E garanta que o endereço está como:
+# address = "tcp://0.0.0.0:1317"
+
+
+-------------------------------------------------------------------------------
+PASSO 5: DECOLAGEM - INICIAR O CONSENSO (Executar em AMBOS os computadores)
+-------------------------------------------------------------------------------
+# Inicia o validador e abre a escuta P2P e HTTP
+# Ligue primeiro o PC 1, aguarde 5 segundos e ligue o PC 2.
+warzone-cored start
+
+# [TESTE DE AUDITORIA] Para testar o saldo de uma conta de qualquer PC via navegador:
+# http://<IP_DE_QUALQUER_PC>:1317/cosmos/bank/v1beta1/balances/<ENDERECO_COSMOS>
+===============================================================================
+
+Códigos:
+
+docker run -d \
+  --name warzone-node2 \
+  -v node2_data:/root/.warzone \
+  -p 26656:26656 -p 26657:26657 -p 1317:1317 \
+  warzone-app start \
+  --p2p.persistent_peers="HASH_DO_PC_1@IP_REAL_DO_PC_1:26656" \
+  --rpc.laddr=tcp://0.0.0.0:26657 \
+  --api.enable=true
+
+docker run -d \
+  --name warzone-node2 \
+  -v node2_data:/root/.warzone \
+  -p 26656:26656 -p 26657:26657 -p 1317:1317 \
+  warzone-app start \
+  --p2p.persistent_peers="HASH_DO_PC_1@IP_REAL_DO_PC_1:26656" \
+  --rpc.laddr=tcp://0.0.0.0:26657 \
+  --api.enable=true
