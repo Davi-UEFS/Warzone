@@ -6,195 +6,122 @@ import (
 	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
-	raft "github.com/hashicorp/raft"
 )
 
-// startDispatcher inicia as rotinas de despacho de missões, aging e watchdog.
-//
-//	Apenas o líder executa as ações.
+// startDispatcher inicia as rotinas de polling da blockchain e aging local.
 func startDispatcher() {
-	watchdogTicker := time.NewTicker(5 * time.Second) // O Cão de Guarda roda a cada 5s
-	agingTicker := time.NewTicker(20 * time.Second)   // Aging a cada 20s
-
-	go func() {
-		for {
-			// Apenas o Líder despacha novas missões
-			// Não utiliza ticker porque quer despachar assim que chegar uma nova requisição
-			if raftNode.State() == raft.Leader {
-				processRequisitions()
-			}
-		}
-	}()
+	pollingTicker := time.NewTicker(2 * time.Second) // Vai à blockchain a cada 2s
+	agingTicker := time.NewTicker(20 * time.Second)  // Aplica o Aging a cada 20s
 
 	for {
-
 		select {
+		case <-pollingTicker.C:
+			// 1. Busca missões na blockchain (A verdade global)
+			reqs, err := fetchRequisitionsFromBlockchain()
+			if err != nil {
+				fmt.Printf("\033[1;31m[DISPATCHER]\033[0m Falha no polling de requisições: %v\n", err)
+				continue
+			}
 
-		case <-watchdogTicker.C:
-			// Apenas o Líder caça os drones caídos
-			if raftNode.State() == raft.Leader {
-				checkDeadDrones()
-			}
+			// 2. Updates local ReqHeap
+			sectorState.Mu.Lock()
+			sectorState.PendingReqsQueue.FromSlice(reqs)
+			sectorState.Mu.Unlock()
+
+			// 3. Tenta processar e despachar
+			processRequisitions()
+
 		case <-agingTicker.C:
-			// Apenas o Líder aplica aging (será replicado via Raft)
-			if raftNode.State() == raft.Leader {
-				applyAging()
-			}
+			sectorState.Mu.Lock()
+			sectorState.PendingReqsQueue.ApplyAging(time.Now().Unix(), 20, 1)
+			sectorState.Mu.Unlock()
+
+			processRequisitions()
 		}
 	}
 }
 
-// processRequisitions verifica se há requisições pendentes e drones livres para despachar missões.
-// Se encontrar um drone IDLE, despacha a missão no topo da fila de prioridades para ele.
-// Deve ser chamado em loop para garantir que novas requisições sejam processadas assim que chegarem.
+// processRequisitions verifica se há requisições pendentes e drones livres.
 func processRequisitions() {
-	sectorFSM.Mu.Lock()
+	sectorState.Mu.Lock()
+	if len(sectorState.PendingReqsQueue) == 0 {
+		sectorState.Mu.Unlock()
+		return
+	}
+	sectorState.Mu.Unlock()
 
-	if len(sectorFSM.PendingReqsQueue) == 0 {
-		sectorFSM.Mu.Unlock()
+	// Busca o censo global de drones na blockchain
+	drones, err := fetchDronesFromBlockchain()
+	if err != nil {
+		fmt.Printf("\033[1;31m[DISPATCHER]\033[0m Falha ao buscar drones na blockchain: %v\n", err)
 		return
 	}
 
-	var freeDroneID string
+	var freeDroneID string = ""
 
-	for id, drone := range sectorFSM.DroneMap {
+	for _, drone := range drones {
+		// 1. A Blockchain diz que ele está livre?
 		if drone.Status == shared.DRONE_IDLE {
-			freeDroneID = id
-			break
+
+			// 2. Cross-check com o Heartbeat local (TTL)
+			sectorState.Mu.Lock()
+			localDrone, exists := sectorState.DroneMap[drone.ID]
+			sectorState.Mu.Unlock()
+
+			// Se o drone existe na memória e mandou sinal nos últimos 20 segundos
+			if exists && (time.Now().Unix()-localDrone.LastSeen <= 20) {
+				freeDroneID = drone.ID
+				break
+			}
 		}
 	}
 
 	if freeDroneID != "" {
-		req := sectorFSM.PendingReqsQueue.Peek()
-		sectorFSM.Mu.Unlock()
+		sectorState.Mu.Lock()
+		req := sectorState.PendingReqsQueue.Peek()
+		sectorState.Mu.Unlock()
 
-		dispatch(raftNode, freeDroneID, req)
-	} else {
-		sectorFSM.Mu.Unlock()
+		// Despacha fisicamente via MQTT e atualiza a blockchain
+		dispatch(freeDroneID, req)
 	}
 }
 
-// dispatch cria e envia a missão para o drone escolhido via Raft, garantindo que a ação seja replicada e consistente entre os nós.
-// O comando OP_ASSIGN é processado pela FSM para atualizar o mapa de drones.
-//
-// Incrementa o relógio de Lamport.
-//
-// Params:
-//   - raftNode: instância do Raft para enviar o comando
-//   - droneID: ID do drone que receberá a missão
-//   - req: requisição que será transformada em missão e enviada para o drone
-func dispatch(raftNode *raft.Raft, droneID string, req shared.Requisition) {
-	LClock.Tick()
-
-	// TODO: DEBUG_MODE_LAMPORT_TICK
-	if DebugMode {
-		fmt.Printf("\n\033[1;36m[DEBUG-LAMPORT]\033[0m TICK (+1): Relógio = %d | Ação: Despachando Missão para Drone\n", LClock.GetTime())
-	}
-
+// dispatch cria o payload e publica no broker MQTT para o drone atuar.
+func dispatch(droneID string, req shared.Requisition) {
 	mission := shared.DroneMission{
 		RequisitionID: req.ID,
 		AssignedDrone: droneID,
 		Type:          req.Type,
 		Coordinate:    req.Coord,
-		LamportTime:   LClock.GetTime(),
+		LamportTime:   0,
 	}
 
-	payload, _ := json.Marshal(mission)
-
-	cmd := shared.HeaderCommand{
-		Operation:   OP_ASSIGN,
-		Payload:     payload,
-		LamportTime: LClock.GetTime(),
-	}
-
-	cmdBytes, _ := json.Marshal(cmd)
-
-	future := raftNode.Apply(cmdBytes, 5*time.Second)
-
-	if err := future.Error(); err != nil {
-		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao aplicar comando ASSIGN no Raft: %v\n", err)
-	}
-}
-
-// applyAging envia comando OP_AGING via Raft para envelhecer requisições.
-//
-// Incrementa o relógio de Lamport se houver requisições pendentes para envelhecer.
-func applyAging() {
-
-	sectorFSM.Mu.Lock()
-	if len(sectorFSM.PendingReqsQueue) == 0 {
-		sectorFSM.Mu.Unlock()
-		return
-	}
-	LClock.Tick()
-
-	// TODO: DEBUG_MODE_LAMPORT_TICK
-	if DebugMode {
-		fmt.Printf("\n\033[1;36m[DEBUG-LAMPORT]\033[0m TICK (+1): Relógio = %d | Ação: Aplicando Aging na Fila de Prioridades\n", LClock.GetTime())
-	}
-	sectorFSM.Mu.Unlock()
-
-	payload := []byte(`{}`) // Aging não precisa de payload, mas ainda preciso mandar um RawMEssage válido
-
-	cmd := shared.HeaderCommand{
-		Operation:   OP_AGING,
-		Payload:     payload,
-		LamportTime: LClock.GetTime(),
-	}
-
-	cmdBytes, err := json.Marshal(cmd)
-
+	payload, err := json.Marshal(mission)
 	if err != nil {
-		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao serializar comando AGING: %v\n", err)
+		fmt.Printf("\033[1;31m[DISPATCHER]\033[0m Erro ao serializar missão: %v\n", err)
 		return
 	}
 
-	future := raftNode.Apply(cmdBytes, 5*time.Second)
+	topic := fmt.Sprintf("drones/%s/mission", droneID)
 
-	if err := future.Error(); err != nil {
-		fmt.Printf("\033[1;94m[LOCAL]:\033[0m Erro ao aplicar comando AGING no Raft: %v\n", err)
-	}
-}
+	// globalClient configurado no vars.go/init
+	token := globalClient.Publish(topic, 1, false, payload)
+	token.Wait()
 
-// checkDeadDrones verifica se há drones que não enviaram heartbeat há mais de 20 segundos e os declara como mortos,
-// enviando um comando OP_DEADDRONE via Raft para que a FSM possa resgatar a missão e liberar o drone.
-//
-// Incrementa relógio de Lamport se houver drones mortos para declarar.
-func checkDeadDrones() {
-	now := time.Now().Unix()
-
-	sectorFSM.Mu.Lock()
-	var deadDrones []string
-
-	// Procura drones que não mandam o heartbeat há mais de 20 segundos
-	for id, drone := range sectorFSM.DroneMap {
-		if now-drone.LastSeen > 20 {
-			deadDrones = append(deadDrones, id)
-		}
+	if token.Error() != nil {
+		fmt.Printf("\033[1;31m[DISPATCHER]\033[0m Erro ao enviar missão via MQTT: %v\n", token.Error())
+		return
 	}
 
-	sectorFSM.Mu.Unlock()
+	fmt.Printf("\033[1;32m[DISPATCHER]\033[0m Missão %s despachada com sucesso para o drone %s!\n", req.ID, droneID)
 
-	// Para cada drone inativo, avisa o Raft para matá-lo e resgatar a missão
-	for _, id := range deadDrones {
-		LClock.Tick()
-
-		// TODO: DEBUG_MODE_LAMPORT_TICK
-		if DebugMode {
-			fmt.Printf("\n\033[1;36m[DEBUG-LAMPORT]\033[0m TICK (+1): Relógio = %d | Ação: Declarando Drone Morto (Watchdog)\n", LClock.GetTime())
-		}
-
-		payload, _ := json.Marshal(id)
-
-		cmd := shared.HeaderCommand{
-			Operation:   OP_DEADDRONE,
-			Payload:     payload,
-			LamportTime: LClock.GetTime(),
-		}
-
-		cmdBytes, _ := json.Marshal(cmd)
-
-		// Envia a ordem de morte para a FSM (o handleDEADDrone fará o resgate da requisição)
-		raftNode.Apply(cmdBytes, 5*time.Second)
+	// Alteração preventiva rápida na RAM local para evitar corrida
+	sectorState.Mu.Lock()
+	if localDrone, exists := sectorState.DroneMap[droneID]; exists {
+		localDrone.Status = shared.DRONE_BUSY
 	}
+	sectorState.Mu.Unlock()
+
+	// Dispara a transação assíncrona para a blockchain
+	go enviarAssignDroneParaBlockchain(droneID, req.ID)
 }
