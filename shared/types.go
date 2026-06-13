@@ -56,6 +56,7 @@ type Drone struct {
 	CurrentBroker  string
 	CurrentMission string
 	LastSeen       int64
+	Verified       bool
 }
 
 // DroneHeartbeat é a mensagem curta enviada pelo drone para indicar vida.

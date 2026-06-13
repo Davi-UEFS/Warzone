@@ -12,30 +12,34 @@ import (
 func (k msgServer) ReportDeadDrone(goCtx context.Context, msg *types.MsgReportDeadDrone) (*types.MsgReportDeadDroneResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
+	// 1. Busca o drone
 	drone, err := k.Drone.Get(ctx, msg.DroneId)
 	if err != nil {
 		return nil, err
 	}
 
+	// 2. Se estava em missão, resgata a missão refém
 	if drone.Status == string(shared.DRONE_BUSY) && drone.CurrentMissionId != 0 {
-
 		req, err := k.Mission.Get(ctx, drone.CurrentMissionId)
 		if err != nil {
 			return nil, err
 		}
 
-		// Recupera missao
+		// Devolve a missão para a fila global
 		req.Status = shared.PENDING
-		req.AssignedDroneId = "" // Desvincula o drone da missão
+		req.AssignedDroneId = ""
 		if err := k.Mission.Set(ctx, drone.CurrentMissionId, req); err != nil {
 			return nil, err
 		}
 	}
 
-	if err := k.Drone.Set(ctx, msg.DroneId, drone); err != nil {
+	// 3. APAGA O DRONE DE VEZ DA BLOCKCHAIN
+	err = k.Drone.Remove(ctx, msg.DroneId)
+	if err != nil {
 		return nil, err
 	}
 
+	// 4. Emite o evento público
 	ctx.EventManager().EmitEvent(
 		sdk.NewEvent(
 			"drone_inoperante",

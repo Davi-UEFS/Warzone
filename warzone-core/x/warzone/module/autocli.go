@@ -88,10 +88,15 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}},
 				},
 				{
-					RpcMethod:      "AddReq",
-					Use:            "add-req [sector] [priority]",
-					Short:          "Send a addReq tx",
-					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "sector"}, {ProtoField: "priority"}},
+					RpcMethod: "AddReq",
+					Use:       "add-req [sector] [priority] [req-type] [coord]",
+					Short:     "Send a addReq tx",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{
+						{ProtoField: "sector"},
+						{ProtoField: "priority"},
+						{ProtoField: "reqType"},
+						{ProtoField: "coord"},
+					},
 				},
 				{
 					RpcMethod:      "AssignDrone",
@@ -112,10 +117,14 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "drone_id"}, {ProtoField: "sector"}, {ProtoField: "battery"}},
 				},
 				{
-					RpcMethod:      "RmvReq",
-					Use:            "rmv-req [drone-id] [laudo]",
-					Short:          "Send a rmvReq tx",
-					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "drone_id"}, {ProtoField: "laudo"}},
+					RpcMethod: "RmvReq",
+					Use:       "rmv-req [mission-id] [drone-id] [laudo]",
+					Short:     "Send a rmvReq tx",
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{
+						{ProtoField: "missionId"},
+						{ProtoField: "drone_id"},
+						{ProtoField: "laudo"},
+					},
 				},
 				{
 					RpcMethod:      "SubmitLaudo",

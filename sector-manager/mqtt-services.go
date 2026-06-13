@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
@@ -31,38 +31,44 @@ var onDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 	fmt.Printf("\033[1;94m[MQTT]:\033[0m Drone %s concluiu a requisição %s\n", result.DroneID, result.RequisitionID)
 
-	// Libera o drone no estado local imediatamente
-	sectorState.Mu.Lock()
-	if drone, exists := sectorState.DroneMap[result.DroneID]; exists {
+	// Libera o drone no NOVO COFRE local imediatamente
+	GlobalState.Mu.Lock()
+	if drone, exists := GlobalState.DroneMap[result.DroneID]; exists {
 		drone.Status = shared.DRONE_IDLE
 	}
-	sectorState.Mu.Unlock()
+	GlobalState.Mu.Unlock()
 
-	// 1. Envia o laudo para a blockchain
-	go enviarLaudoParaBlockchain(result.RequisitionID, result.DroneID, "Missao concluida via MQTT")
+	// 1. Extrai APENAS O NÚMERO do ID (Transforma "inc--Setor-A--0" em "0")
+	partes := strings.Split(result.RequisitionID, "--")
+	idNumerico := partes[len(partes)-1]
 
-	// 2. Remove a requisição da fila ativa e liberta o drone na blockchain (RmvReq)
-	go enviarRmvReqParaBlockchain(result.RequisitionID, result.DroneID, "Concluido com sucesso")
+	// 2. Agrupa as transações NUMA ÚNICA goroutine.
+	// Isso evita que o MQTT fique bloqueado, mas força as duas transações
+	// a entrarem em fila indiana, evitando o erro de "Sequence Mismatch" do Cosmos.
+	go func() {
+		// Envia o laudo e espera que a função termine (espera pelo output do comando CLI)
+		enviarLaudoParaBlockchain(idNumerico, result.DroneID, "Missao concluida via MQTT")
+
+		// Um pequeno intervalo de segurança para garantir que o bloco do laudo foi processado
+		time.Sleep(2 * time.Second)
+
+		// Agora sim, remove a requisição com segurança
+		enviarRmvReqParaBlockchain(idNumerico, result.DroneID, "Concluido com sucesso")
+	}()
 }
 
-func createIncidentID(SENSOR_ID string) string {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	randomPart := r.Int63n(1000000)
-	return fmt.Sprintf("inc--%s--%06d", SENSOR_ID, randomPart)
-}
-
-// onAlertHandler recebe o alerta do sensor e registra a nova requisição na blockchain
+// onAlertHandler recebe o alerta do sensor e regista a nova requisição na blockchain
 var onAlertHandler = func(client mqtt.Client, msg mqtt.Message) {
 	fmt.Println("\033[1;94m[MQTT]:\033[0m Novo alerta de sensor recebido")
 
 	var alert shared.Alert
 	if err := json.Unmarshal(msg.Payload(), &alert); err != nil {
-		fmt.Printf("\033[1;91m[MQTT ERROR]:\033[0m Erro ao decodificar Alerta: %v\n", err)
+		fmt.Printf("\033[1;91m[MQTT ERROR]:\033[0m Erro ao descodificar Alerta: %v\n", err)
 		return
 	}
 
-	reqID := createIncidentID(alert.SensorID)
-	go enviarRequisicaoParaBlockchain(reqID, alert)
+	// Enviamos apenas o alerta para a rede. A Blockchain gera o ID oficial!
+	go enviarRequisicaoParaBlockchain(alert)
 }
 
 // onNewDroneHandler registra o drone na memória local E na blockchain
@@ -81,27 +87,39 @@ var onNewDroneHandler = func(client mqtt.Client, msg mqtt.Message) {
 	drone.SetPhysicalLocation(sectorID, brokerAddr)
 	drone.LastSeen = time.Now().Unix()
 	drone.Status = shared.DRONE_IDLE
+	drone.Verified = true // O drone acabou de falar connosco no MQTT, logo é real!
 
-	// Salva na memória local
-	sectorState.Mu.Lock()
-	sectorState.DroneMap[drone.ID] = &drone
-	sectorState.Mu.Unlock()
+	// Salva no NOVO COFRE local
+	GlobalState.Mu.Lock()
+	GlobalState.DroneMap[drone.ID] = &drone
+	GlobalState.Mu.Unlock()
+
+	//TODO: DEBUG
+	fmt.Println(drone)
 
 	fmt.Printf("\033[1;94m[LOCAL]:\033[0m Drone %s registrado na RAM. Sincronizando com Blockchain...\n", drone.ID)
 
 	// Registra o drone no Censo Global da Blockchain
-	// Convertendo a bateria para string (ajuste se sua struct de bateria for diferente)
-	batteryStr := fmt.Sprintf("%f", drone.BatteryLevel)
+	// Convertendo a bateria para string
+	batteryStr := fmt.Sprintf("%d", drone.BatteryLevel)
 	go enviarRegDroneParaBlockchain(drone.ID, sectorID, batteryStr)
 }
 
 // onHeartbeatHandler atualiza o timestamp de vida do drone (TTL)
 var onHeartbeatHandler = func(client mqtt.Client, msg mqtt.Message) {
-	droneID := string(msg.Payload())
-
-	sectorState.Mu.Lock()
-	if drone, exists := sectorState.DroneMap[droneID]; exists {
-		drone.LastSeen = time.Now().Unix()
+	var droneHeartbeat shared.DroneHeartbeat
+	if err := json.Unmarshal(msg.Payload(), &droneHeartbeat); err != nil {
+		fmt.Printf("\033[1;91m[MQTT ERROR]:\033[0m Erro ao decodificar Heartbeat: %v\n", err)
+		return
 	}
-	sectorState.Mu.Unlock()
+
+	GlobalState.Mu.Lock() // Tranca o NOVO cofre
+
+	if drone, exists := GlobalState.DroneMap[droneHeartbeat.ID]; exists {
+		drone.LastSeen = time.Now().Unix()
+		drone.Verified = true // O drone provou que está vivo!
+		drone.BatteryLevel = droneHeartbeat.BatteryLevel
+	}
+
+	GlobalState.Mu.Unlock() // Destranca imediatamente
 }

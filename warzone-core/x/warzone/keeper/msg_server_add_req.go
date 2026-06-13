@@ -21,7 +21,7 @@ func (k msgServer) AddReq(goCtx context.Context, msg *types.MsgAddReq) (*types.M
 	}
 
 	// Define o custo do serviço em Tokens (10 ormuztokens)
-	custo, err := sdk.ParseCoinsNormalized("10ormuztoken")
+	custo, err := sdk.ParseCoinsNormalized("10token")
 	if err != nil {
 		return nil, errorsmod.Wrap(err, "erro ao formatar a moeda")
 	}

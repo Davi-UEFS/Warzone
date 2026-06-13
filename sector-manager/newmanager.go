@@ -89,7 +89,7 @@ func RegisterDrone (d shared.Drone, w Wallet){
 }
 */
 
-func ReportDeadDrone()
+func ReportDeadDrone() {}
 
 // FetchMissionsPENDING simulado para o laboratório (não precisa de blockchain rodando)
 func FetchMissionsPENDING(blockchainURL string, targetSector string) ([]types.Mission, error) {

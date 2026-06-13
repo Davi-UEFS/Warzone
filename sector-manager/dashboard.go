@@ -2,16 +2,9 @@ package main
 
 import (
 	_ "embed"
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"sort"
-	"time"
-
-	"github.com/Davi-UEFS/Warzone/shared"
-	raft "github.com/hashicorp/raft"
 )
 
+/* DEPRECATED. VO VER O QUE FACO DPS
 // DashboardState contém os campos de interesse do setor para visualização em HTML.
 type DashboardState struct {
 	Pending     []shared.Requisition `json:"pending"`
@@ -173,3 +166,4 @@ func buildDashboardState() DashboardState {
 
 	return state
 }
+*/
