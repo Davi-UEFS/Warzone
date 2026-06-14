@@ -15,6 +15,12 @@ var PRIOTIRIES = map[string]int{
 	shared.BOTTLENECK:     2,
 }
 
+// Dicionário de cobrança: Nome do País -> Endereço Público na Blockchain
+var EnderecosPaises = map[string]string{
+	"alice": "cosmos1w0dl36f7uumjqxn9899h077jups7083a06ex2l", // Carteira de teste da Alice
+	"bob":   "cosmos1rp9qpnj2t75z8708gkgsx7xadwm9vewkwvrs2d", // Carteira de teste do Bob
+}
+
 // Variáveis globais usadas pelo setor manager.
 var (
 	globalClient mqtt.Client

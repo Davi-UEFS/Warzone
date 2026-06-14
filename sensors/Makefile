@@ -5,6 +5,7 @@ IMAGE_NAME ?= daviuefs/sensors
 SENSOR_ID ?= sensor-01
 SENSOR_TYPE ?= 4
 BROKER_ADDR ?= tcp://127.0.0.1:1883
+COUNTRY ?= alice
 
 .PHONY: help build run run-go run-lento run-lento-go run-prompt clean
 
@@ -35,12 +36,14 @@ run:
 		-type=$(SENSOR_TYPE) \
 		-broker=$(BROKER_ADDR)
 
+// TODO: COLOCAR PARA OS OUTROS MAKES TAMBEM.
 run-go:
 	@echo "Iniciando sensor $(SENSOR_ID) sem Docker..."
 	go run . \
 		-id=$(SENSOR_ID) \
 		-type=$(SENSOR_TYPE) \
-		-broker=$(BROKER_ADDR)
+		-broker=$(BROKER_ADDR) \
+		-country=$(COUNTRY)
 
 run-lento:
 	@echo "Iniciando SENSOR LENTO (Teste de Latencia) via Docker..."

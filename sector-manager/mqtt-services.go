@@ -29,31 +29,33 @@ var onDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
-	fmt.Printf("\033[1;94m[MQTT]:\033[0m Drone %s concluiu a requisição %s\n", result.DroneID, result.RequisitionID)
-
-	// Libera o drone no NOVO COFRE local imediatamente
-	GlobalState.Mu.Lock()
-	if drone, exists := GlobalState.DroneMap[result.DroneID]; exists {
-		drone.Status = shared.DRONE_IDLE
-	}
-	GlobalState.Mu.Unlock()
+	fmt.Printf("\033[1;94m[MQTT]:\033[0m Drone %s concluiu a requisição %s no terreno. Iniciando burocracia blockchain...\n", result.DroneID, result.RequisitionID)
 
 	// 1. Extrai APENAS O NÚMERO do ID (Transforma "inc--Setor-A--0" em "0")
 	partes := strings.Split(result.RequisitionID, "--")
 	idNumerico := partes[len(partes)-1]
 
 	// 2. Agrupa as transações NUMA ÚNICA goroutine.
-	// Isso evita que o MQTT fique bloqueado, mas força as duas transações
-	// a entrarem em fila indiana, evitando o erro de "Sequence Mismatch" do Cosmos.
 	go func() {
-		// Envia o laudo e espera que a função termine (espera pelo output do comando CLI)
+		// A. Envia o laudo e espera
 		enviarLaudoParaBlockchain(idNumerico, result.DroneID, "Missao concluida via MQTT")
 
-		// Um pequeno intervalo de segurança para garantir que o bloco do laudo foi processado
+		// B. Intervalo de segurança para garantir que o bloco do laudo foi processado
 		time.Sleep(2 * time.Second)
 
-		// Agora sim, remove a requisição com segurança
+		// C. Remove a requisição antiga na blockchain (O que forçaria o IDLE na rede)
 		enviarRmvReqParaBlockchain(idNumerico, result.DroneID, "Concluido com sucesso")
+
+		// =========================================================================
+		// A CORREÇÃO: O drone SÓ FICA LIVRE na RAM local após a blockchain fechar a missão!
+		// =========================================================================
+		GlobalState.Mu.Lock()
+		if drone, exists := GlobalState.DroneMap[result.DroneID]; exists {
+			drone.Status = shared.DRONE_IDLE
+		}
+		GlobalState.Mu.Unlock()
+
+		fmt.Printf("\033[1;32m[MANAGER]\033[0m Burocracia da requisição %s finalizada. Drone %s liberado para nova missão!\n", idNumerico, result.DroneID)
 	}()
 }
 

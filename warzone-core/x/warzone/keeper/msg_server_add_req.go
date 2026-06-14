@@ -3,43 +3,63 @@ package keeper
 import (
 	"context"
 
-	errorsmod "cosmossdk.io/errors"
 	"github.com/Davi-UEFS/Warzone/shared"
 	"github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/types"
+
+	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 )
 
+var prices = map[string]string{
+	shared.FIRE:           "10token",
+	shared.OIL:            "8token",
+	shared.WRECKAGE:       "6token",
+	shared.INSPECTION:     "2token",
+	shared.UNKNOWN_OBJECT: "4token",
+	shared.BOTTLENECK:     "4token",
+}
+
 func (k msgServer) AddReq(goCtx context.Context, msg *types.MsgAddReq) (*types.MsgAddReqResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
-	// 1. Validação Financeira
-	// Transforma a string do remetente em um endereço criptográfico válido
-	remetenteAddr, err := sdk.AccAddressFromBech32(msg.Creator)
+	// ====================================================
+	// 1. Validação Financeira (A Cobrança)
+	// ====================================================
+
+	// Transforma a string do PAYER (País Pagante) em um endereço válido
+	paganteAddr, err := sdk.AccAddressFromBech32(msg.Payer)
 	if err != nil {
-		return nil, errorsmod.Wrap(err, "endereço da carteira inválido")
+		return nil, errorsmod.Wrap(err, "endereço da carteira do país pagante é inválido")
 	}
 
-	// Define o custo do serviço em Tokens (10 ormuztokens)
-	custo, err := sdk.ParseCoinsNormalized("10token")
-	if err != nil {
-		return nil, errorsmod.Wrap(err, "erro ao formatar a moeda")
+	// Pega o custo do serviço com base no tipo de requisição
+	custoStr, exists := prices[msg.ReqType]
+	if !exists {
+		return nil, errorsmod.Wrap(sdkerrors.ErrInvalidRequest, "tipo de requisição não suportado")
 	}
 
-	// Tenta transferir o saldo da carteira da Companhia para o Módulo
-	err = k.bankKeeper.SendCoinsFromAccountToModule(ctx, remetenteAddr, types.ModuleName, custo)
+	// Define o custo do serviço convertendo a string (ex: "10token") para o tipo Coin nativo
+	custo, err := sdk.ParseCoinsNormalized(custoStr)
 	if err != nil {
-		return nil, errorsmod.Wrap(err, "saldo insuficiente para pedir um drone")
+		return nil, errorsmod.Wrap(err, "erro ao formatar a moeda de cobrança")
 	}
 
-	// Queima os tokens (retira de circulação do ecossistema)
+	// TENTA RETIRAR OS FUNDOS DO PAÍS E MOVER PARA O MÓDULO
+	// Se o país não tiver dinheiro, a função devolve erro aqui e a missão NUNCA entra na rede!
+	err = k.bankKeeper.SendCoinsFromAccountToModule(ctx, paganteAddr, types.ModuleName, custo)
+	if err != nil {
+		return nil, errorsmod.Wrap(err, "alerta rejeitado: o país não tem saldo suficiente para despachar o drone")
+	}
+
+	// QUEIMA AS MOEDAS (Retira do suprimento total da rede)
 	err = k.bankKeeper.BurnCoins(ctx, types.ModuleName, custo)
 	if err != nil {
-		return nil, errorsmod.Wrap(err, "erro ao queimar tokens")
+		return nil, errorsmod.Wrap(err, "falha crítica ao queimar os tokens do país")
 	}
 
 	// ====================================================
-	// 2. Salvar no Banco de Dados
+	// 2. Registo da Missão no Banco de Dados
 	// ====================================================
 
 	// Pega o próximo ID automático da fila
@@ -51,21 +71,21 @@ func (k msgServer) AddReq(goCtx context.Context, msg *types.MsgAddReq) (*types.M
 	// Monta a estrutura da missão
 	novaMissao := types.Mission{
 		Id:              nextId,
-		Creator:         msg.Creator,
+		Creator:         msg.Creator, // O Manager que assinou a transação
 		Sector:          msg.Sector,
 		Status:          shared.PENDING,
 		Priority:        msg.Priority,
 		AssignedDroneId: "",
-		ReqType:         msg.ReqType,            // Vem do Protobuf
-		Coord:           msg.Coord,              // Vem do Protobuf
-		CreatedAt:       ctx.BlockTime().Unix(), // Relógio imutável do bloco
+		ReqType:         msg.ReqType,
+		Coord:           msg.Coord,
+		CreatedAt:       ctx.BlockTime().Unix(), // Relógio imutável validado pelo consenso
 	}
 
 	// Salva de forma imutável no KVStore
 	if err = k.Mission.Set(ctx, nextId, novaMissao); err != nil {
-		return nil, errorsmod.Wrap(sdkerrors.ErrLogic, "falha ao salvar a missão no banco")
+		return nil, errorsmod.Wrap(sdkerrors.ErrLogic, "falha ao salvar a missão no banco de dados da blockchain")
 	}
 
-	// Retorna sucesso para a transação
+	// Retorna sucesso e a rede inclui a transação no bloco!
 	return &types.MsgAddReqResponse{}, nil
 }

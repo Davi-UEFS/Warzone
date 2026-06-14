@@ -16,17 +16,19 @@ import (
 // Params:
 //   - SENSOR_TYPE: o tipo do sensor que gerou o alerta.
 //   - SENSOR_ID: o ID do sensor que gerou o alerta.
+//   - SENSOR_COUNTRY: o país dono do sensor que gerou o alerta.
 //
 // Returns:
 //   - []byte: o payload do alerta em formato JSON pronto.
 //   - error: um erro caso a serialização do alerta falhe.
-func createAlertPayload(SENSOR_TYPE int, SENSOR_ID string) ([]byte, error) {
+func createAlertPayload(SENSOR_TYPE int, SENSOR_ID string, SENSOR_COUNTRY string) ([]byte, error) {
 
 	alert := shared.Alert{
 		SensorID:    SENSOR_ID,
 		Coordinate:  generateRandomCoordinate(), //TODO: GERAR COORDENADAS MELHOR DEPOIS
 		Type:        getSensorTypeString(SENSOR_TYPE),
 		LamportTime: LClock.GetTime(),
+		Country:     SENSOR_COUNTRY,
 	}
 
 	return json.Marshal(alert)
@@ -101,9 +103,10 @@ func main() {
 	broker := flag.String("broker", "tcp://localhost:1883", "Endereço do broker MQTT (ex: tcp://host:1883)")
 	sensorID := flag.String("id", "sensor-01", "ID do cliente/sensor")
 	sensorType := flag.Int("type", 0, "Tipo de sensor")
+	sensorCountry := flag.String("country", "Unknown", "Qual o país dono do sensor?")
 	flag.Parse()
 
-	BROKER_IP, CLIENT_ID, SENSOR_TYPE := *broker, *sensorID, *sensorType
+	BROKER_IP, CLIENT_ID, SENSOR_TYPE, SENSOR_COUNTRY := *broker, *sensorID, *sensorType, *sensorCountry
 	TOPIC := fmt.Sprintf("sensors/%s/incidents", CLIENT_ID) // Tópico para publicar os alertas, usando o ID do sensor para criar um tópico único.
 
 	client, _ := shared.MakeClient(BROKER_IP, CLIENT_ID, nil, true) // Cria o cliente MQTT. Não usa um onConnect personalizado e possui AutoReconnect do Paho.
@@ -118,7 +121,7 @@ func main() {
 		} else {
 			LClock.Tick()
 
-			payload, _ := createAlertPayload(SENSOR_TYPE, CLIENT_ID)
+			payload, _ := createAlertPayload(SENSOR_TYPE, CLIENT_ID, SENSOR_COUNTRY)
 
 			token := client.Publish(TOPIC, 1, false, payload)
 			token.Wait()

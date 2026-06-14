@@ -107,6 +107,7 @@ type Alert struct {
 	Coordinate  Coordinate `json:"coordinate"`
 	Type        string     `json:"type"`
 	LamportTime int        `json:"lamport_time"`
+	Country     string     `json:"country"`
 }
 
 // Requisition representa uma requisição gerada a partir de um alerta.

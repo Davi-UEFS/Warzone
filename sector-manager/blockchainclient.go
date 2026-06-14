@@ -188,8 +188,8 @@ func fetchDronesFromBlockchain() ([]shared.Drone, error) {
 	return nil, fmt.Errorf("todos os nós falharam. Último erro: %v", lastErr)
 }
 
-// getWalletName puxa o nome da carteira dada por variável de ambiente.
-func getWalletName() string {
+// getSectorWalletName puxa o nome da carteira dada por variável de ambiente.
+func getSectorWalletName() string {
 	wallet := os.Getenv("WALLET_NAME")
 	if wallet == "" {
 		return "manager_setor_a"
@@ -205,7 +205,7 @@ func enviarAssignDroneParaBlockchain(missionID string, droneID string) {
 	defer txMutex.Unlock()
 	defer time.Sleep(2 * time.Second)
 	binPath := os.ExpandEnv("$HOME/go/bin/warzone-cored")
-	wallet := getWalletName()
+	wallet := getSectorWalletName()
 
 	// 1. Extrai apenas o número final da string "inc--Setor-A--123"
 	partes := strings.Split(missionID, "--")
@@ -228,7 +228,7 @@ func enviarLaudoParaBlockchain(reqID string, droneID string, relatorio string) {
 	defer txMutex.Unlock()
 	defer time.Sleep(2 * time.Second)
 	binPath := os.ExpandEnv("$HOME/go/bin/warzone-cored")
-	wallet := getWalletName()
+	wallet := getSectorWalletName()
 
 	cmd := exec.Command(binPath, "tx", "warzone", "submit-laudo", reqID, droneID, relatorio, "concluido", "--from", wallet, "--chain-id", "warzonecore", "-y")
 	output, err := cmd.CombinedOutput()
@@ -245,7 +245,7 @@ func enviarRequisicaoParaBlockchain(alert shared.Alert) {
 	defer txMutex.Unlock()
 	defer time.Sleep(2 * time.Second)
 	binPath := os.ExpandEnv("$HOME/go/bin/warzone-cored")
-	wallet := getWalletName()
+	wallet := getSectorWalletName()
 	sector := os.Getenv("SECTOR_ID")
 
 	if sector == "" {
@@ -257,8 +257,19 @@ func enviarRequisicaoParaBlockchain(alert shared.Alert) {
 	reqType := fmt.Sprintf("%s", alert.Type)
 	priority := strconv.Itoa(PRIOTIRIES[alert.Type]) // Converter por que o command line espera string
 
+	enderecoPagante, existe := EnderecosPaises[alert.Country]
+	if !existe {
+		log.Printf("\033[1;33m[WARNING]\033[0m País %s não encontrado no dicionário de endereços. Abortando...\n", alert.Country)
+		return
+	}
+
 	// Comando perfeitamente alinhado com o autocli.go: [sector] [priority] [req-type] [coord]
-	cmd := exec.Command(binPath, "tx", "warzone", "add-req", sector, priority, reqType, coordStr, "--from", wallet, "--chain-id", "warzonecore", "-y")
+	cmd := exec.Command(
+		binPath, "tx", "warzone", "add-req", sector, priority, reqType, coordStr,
+		"--payer", enderecoPagante,
+		"--from", wallet,
+		"--keyring-backend", "test",
+		"--chain-id", "warzonecore", "-y")
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -274,7 +285,7 @@ func enviarRegDroneParaBlockchain(droneID string, sector string, battery string)
 	defer txMutex.Unlock()
 	defer time.Sleep(2 * time.Second)
 	binPath := os.ExpandEnv("$HOME/go/bin/warzone-cored")
-	wallet := getWalletName()
+	wallet := getSectorWalletName()
 
 	// Ajuste a ordem dos argumentos conforme criado no seu scaffold (droneID, sector, battery)
 	cmd := exec.Command(binPath, "tx", "warzone", "reg-drone", droneID, sector, battery, "--from", wallet, "--chain-id", "warzonecore", "-y")
@@ -292,7 +303,7 @@ func enviarRmvReqParaBlockchain(missionID string, droneID string, laudo string) 
 	defer txMutex.Unlock()
 	defer time.Sleep(2 * time.Second)
 	binPath := os.ExpandEnv("$HOME/go/bin/warzone-cored")
-	wallet := getWalletName()
+	wallet := getSectorWalletName()
 
 	// Comando alinhado: [mission-id] [drone-id] [laudo]
 	cmd := exec.Command(binPath, "tx", "warzone", "rmv-req", missionID, droneID, laudo, "--from", wallet, "--chain-id", "warzonecore", "-y")
@@ -310,7 +321,7 @@ func enviarReportDeadDroneParaBlockchain(droneID string) {
 	defer txMutex.Unlock()
 	defer time.Sleep(2 * time.Second)
 	binPath := os.ExpandEnv("$HOME/go/bin/warzone-cored")
-	wallet := getWalletName()
+	wallet := getSectorWalletName()
 
 	// O comando usa report-dead-drone e precisa apenas do ID do drone
 	cmd := exec.Command(binPath, "tx", "warzone", "report-dead-drone", droneID, "--from", wallet, "--chain-id", "warzonecore", "-y")
