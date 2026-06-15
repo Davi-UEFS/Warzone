@@ -1,0 +1,19 @@
+FROM golang:1.25.10 AS builder
+
+WORKDIR /app
+
+COPY . .
+
+RUN go mod download
+
+RUN go build -o /warzone-cored ./cmd/warzone-cored
+
+FROM debian:bookworm-slim
+
+RUN apt-get update && \
+    apt-get install -y ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /warzone-cored /usr/local/bin/warzone-cored
+
+ENTRYPOINT ["warzone-cored"]
