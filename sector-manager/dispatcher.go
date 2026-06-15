@@ -19,6 +19,15 @@ func ProcessRequisitions() {
 		return // Silêncio, nada a fazer.
 	}
 
+	req := GlobalState.PendingReqsQueue.Peek()
+
+	// Proteção contra duplo despacho
+	if _, alreadyDispatched := GlobalState.DispatchedSet[req.ID]; alreadyDispatched {
+		GlobalState.PendingReqsQueue.Pop()
+		GlobalState.Mu.Unlock()
+		return
+	}
+
 	var freeDroneID string = ""
 	now := time.Now().Unix()
 
@@ -35,14 +44,14 @@ func ProcessRequisitions() {
 
 	// 3. Se achou um drone, aplica o bloqueio otimista e remove a missão da fila
 	if freeDroneID != "" {
-		req := GlobalState.PendingReqsQueue.Peek()
 
 		// Tranca o drone imediatamente para que o próximo ciclo não o use!
 		GlobalState.DroneMap[freeDroneID].Status = shared.DRONE_BUSY
 		GlobalState.PendingReqsQueue.Pop()
-
+		GlobalState.DispatchedSet[req.ID] = time.Now().Unix()
 		GlobalState.Mu.Unlock() // Liberta a RAM o mais rápido possível
 
+		// TODO: DEBUG
 		log.Printf("\033[1;35m[DEBUG DESPACHO]\033[0m Missão %s alocada para o drone %s\n", req.ID, freeDroneID)
 
 		// 4. Despacha a missão (Físico + Blockchain)

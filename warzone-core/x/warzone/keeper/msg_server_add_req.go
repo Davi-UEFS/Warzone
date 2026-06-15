@@ -23,6 +23,23 @@ var prices = map[string]string{
 func (k msgServer) AddReq(goCtx context.Context, msg *types.MsgAddReq) (*types.MsgAddReqResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
+	// Abre uma conexão direta com o banco de dados interno da sua blockchain
+	store := k.storeService.OpenKVStore(ctx)
+
+	// Cria uma chave única de rastreio para este alerta específico
+	alertaKey := []byte("alerta_processado_" + msg.AlertId)
+
+	// Verifica se algum outro Manager já cravou esta chave no bloco milissegundos antes
+	jaProcessado, _ := store.Has(alertaKey)
+	if jaProcessado {
+		// Se a chave já existe, a blockchain rejeita a transação.
+		return nil, errorsmod.Wrap(sdkerrors.ErrInvalidRequest, "alerta duplicado: este incidente já foi despachado pela rede")
+	}
+
+	// Se é a primeira vez que a rede vê este alerta, guarda a chave no banco.
+	// O valor []byte{1} é apenas um bool mais simples.
+	store.Set(alertaKey, []byte{1})
+
 	// ====================================================
 	// 1. Validação Financeira (A Cobrança)
 	// ====================================================

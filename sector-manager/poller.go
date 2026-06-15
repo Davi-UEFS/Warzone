@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"time"
+
+	"github.com/Davi-UEFS/Warzone/shared"
 )
 
 // SyncStateWithBlockchain puxa a verdade global e atualiza a RAM com segurança
@@ -13,7 +15,14 @@ func SyncStateWithBlockchain() {
 		fmt.Printf("\033[1;31m[POLLER]\033[0m Falha ao buscar missões REST: %v\n", err)
 	} else {
 		GlobalState.Mu.Lock()
-		GlobalState.PendingReqsQueue.FromSlice(reqs)
+		// Filtra missões que já foram despachadas localmente
+		filtered := make([]shared.Requisition, 0)
+		for _, r := range reqs {
+			if _, dispatched := GlobalState.DispatchedSet[r.ID]; !dispatched {
+				filtered = append(filtered, r)
+			}
+		}
+		GlobalState.PendingReqsQueue.FromSlice(filtered)
 		GlobalState.Mu.Unlock()
 	}
 

@@ -52,6 +52,7 @@ func startManagerLoop() {
 	watchdogTicker := time.NewTicker(10 * time.Second) // Ceifeiro: Procura mortos
 	agingTicker := time.NewTicker(20 * time.Second)    // Fila: Aplica o envelhecimento
 	dispatchTicker := time.NewTicker(1 * time.Second)  // Maestro: Tenta despachar
+	cleanupTicker := time.NewTicker(60 * time.Second)  // Limpa o DispatchedSet para evitar crescimento infinito
 
 	log.Println("\033[1;32m[MANAGER]\033[0m Orquestrador principal iniciado!")
 
@@ -76,6 +77,17 @@ func startManagerLoop() {
 			// Rodar a cada 1 segundo garante respostas ultrarrápidas,
 			// sem depender da lentidão da Blockchain!
 			ProcessRequisitions()
+
+		case <-cleanupTicker.C:
+			GlobalState.Mu.Lock()
+			now := time.Now().Unix()
+			for id, ts := range GlobalState.DispatchedSet {
+				if now-ts > 120 { // 2 minutos é tempo suficiente para qualquer bloco confirmar
+					delete(GlobalState.DispatchedSet, id)
+				}
+			}
+			GlobalState.Mu.Unlock()
 		}
+
 	}
 }

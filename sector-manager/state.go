@@ -12,14 +12,14 @@ type SectorMemory struct {
 	DroneMap         map[string]*shared.Drone
 	PendingReqsQueue ReqHeap          // Certifique-se de que o nome bate com o seu Heap
 	Graveyard        map[string]int64 // ID do Drone -> Timestamp da morte
+	DispatchedSet    map[string]int64
 }
 
 // GlobalState é a nossa única fonte da verdade na memória RAM
 var GlobalState = SectorMemory{
-	DroneMap:  make(map[string]*shared.Drone),
-	Graveyard: make(map[string]int64),
-	// A PendingReqsQueue geralmente é inicializada vazia automaticamente pelo Go,
-	// mas se o seu Heap exigir um Init() ou make(), coloque aqui ou no main.
+	DroneMap:      make(map[string]*shared.Drone),
+	Graveyard:     make(map[string]int64),
+	DispatchedSet: make(map[string]int64),
 }
 
 // --- Métodos Auxiliares de Segurança ---
