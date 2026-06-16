@@ -16,14 +16,15 @@ build:
 
 # 2. Configura o PC 1 (Master) do zero
 init-master:
-	@echo "--- Iniciando o Big Bang no PC1 ---"
-	sudo rm -rf ./data
-	docker run --rm -v $(PWD)/data:$(HOME_DIR) $(IMAGE_NAME) init no-lab-1 --chain-id warzone-rede --home $(HOME_DIR)
-	docker run --rm -v $(PWD)/data:$(HOME_DIR) $(IMAGE_NAME) keys add validador1 --keyring-backend test --home $(HOME_DIR)
-	docker run --rm -v $(PWD)/data:$(HOME_DIR) $(IMAGE_NAME) genesis add-genesis-account validador1 100000000stake --keyring-backend test --home $(HOME_DIR)
-	docker run --rm -v $(PWD)/data:$(HOME_DIR) $(IMAGE_NAME) genesis gentx validador1 10000000stake --chain-id warzone-rede --keyring-backend test --home $(HOME_DIR)
-	docker run --rm -v $(PWD)/data:$(HOME_DIR) $(IMAGE_NAME) genesis collect-gentxs --home $(HOME_DIR)
-	@echo "--- Gênese Pronto! ---"
+	@echo "--- Iniciando o Big Bang no PC1 (Sem sudo!) ---"
+	rm -rf ./data
+	mkdir -p ./data
+	docker run --rm -u $(USER_ID):$(GROUP_ID) -v $(PWD)/data:$(HOME_DIR) $(IMAGE_NAME) init no-lab-1 --chain-id warzone-rede --home $(HOME_DIR)
+	docker run --rm -u $(USER_ID):$(GROUP_ID) -v $(PWD)/data:$(HOME_DIR) $(IMAGE_NAME) keys add validador1 --keyring-backend test --home $(HOME_DIR)
+	docker run --rm -u $(USER_ID):$(GROUP_ID) -v $(PWD)/data:$(HOME_DIR) $(IMAGE_NAME) genesis add-genesis-account validador1 100000000stake --keyring-backend test --home $(HOME_DIR)
+	docker run --rm -u $(USER_ID):$(GROUP_ID) -v $(PWD)/data:$(HOME_DIR) $(IMAGE_NAME) genesis gentx validador1 10000000stake --chain-id warzone-rede --keyring-backend test --home $(HOME_DIR)
+	docker run --rm -u $(USER_ID):$(GROUP_ID) -v $(PWD)/data:$(HOME_DIR) $(IMAGE_NAME) genesis collect-gentxs --home $(HOME_DIR)
+	@echo "--- Gênese Pronto e com permissões corretas! ---"
 
 # 3. Auxiliar para PC 2
 get-genesis:
