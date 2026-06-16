@@ -51,13 +51,19 @@ run-master:
 	  $(IMAGE_NAME) start --home $(HOME_DIR) --rpc.laddr=tcp://0.0.0.0:$(PORT_RPC) --api.enable=true --api.address=tcp://0.0.0.0:$(PORT_API) --minimum-gas-prices="$(GAS_PRICES)"
 
 # 5. Roda os outros nós (Seguidores)
+# 5. Roda os outros nós (Seguidores)
+# Uso: make -f Makefile.docker run-node PEER_ID=SEU_ID PEER_IP=IP_DO_MASTER
 run-node:
+	@echo "--- Iniciando nó seguidor conectado a $(PEER_IP) ---"
 	docker run -d --name $(CONTAINER_NAME)-follower \
 	  -v $(PWD)/data:$(HOME_DIR) \
 	  -p $(PORT_P2P):$(PORT_P2P) -p $(PORT_RPC):$(PORT_RPC) -p $(PORT_API):$(PORT_API) \
 	  $(IMAGE_NAME) start --home $(HOME_DIR) \
 	  --p2p.persistent_peers="$(PEER_ID)@$(PEER_IP):$(PORT_P2P)" \
-	  --rpc.laddr=tcp://0.0.0.0:$(PORT_RPC) --api.enable=true --api.address=tcp://0.0.0.0:$(PORT_API) --minimum-gas-prices="$(GAS_PRICES)"
+	  --rpc.laddr=tcp://0.0.0.0:$(PORT_RPC) \
+	  --api.enable=true --api.address=tcp://0.0.0.0:$(PORT_API) \
+	  --minimum-gas-prices="$(GAS_PRICES)" \
+	  --fast_sync=true
 
 # A LINHA QUE VOCÊ PEDIU
 id-catch:
