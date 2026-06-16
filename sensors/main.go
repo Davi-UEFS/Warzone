@@ -24,8 +24,9 @@ import (
 func createAlertPayload(SENSOR_TYPE int, SENSOR_ID string, SENSOR_COUNTRY string) ([]byte, error) {
 
 	alert := shared.Alert{
+		ID:          fmt.Sprintf("%s-%d", SENSOR_ID, time.Now().UnixNano()), // NOVO
 		SensorID:    SENSOR_ID,
-		Coordinate:  generateRandomCoordinate(), //TODO: GERAR COORDENADAS MELHOR DEPOIS
+		Coordinate:  generateRandomCoordinate(),
 		Type:        getSensorTypeString(SENSOR_TYPE),
 		LamportTime: LClock.GetTime(),
 		Country:     SENSOR_COUNTRY,

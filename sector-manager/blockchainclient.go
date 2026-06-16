@@ -177,7 +177,7 @@ func fetchDronesFromBlockchain() ([]shared.Drone, error) {
 			}
 
 			//TODO: DEBUG
-			log.Printf("\033[1;35m[DEBUG DRONES]\033[0m Drone %s da Blockchain: Status=%s, Bateria=%d%%\n", blockDrone.DroneId, novoDrone.Status, novoDrone.BatteryLevel)
+			log.Printf("\033[1;35m[DEBUG DRONES]\033[0m Drone %s da Blockchain: Status=%s\n", blockDrone.DroneId, novoDrone.Status)
 
 			drones = append(drones, novoDrone)
 		}
@@ -266,6 +266,7 @@ func enviarRequisicaoParaBlockchain(alert shared.Alert) {
 	// Comando perfeitamente alinhado com o autocli.go: [sector] [priority] [req-type] [coord]
 	cmd := exec.Command(
 		binPath, "tx", "warzone", "add-req", sector, priority, reqType, coordStr,
+		alert.ID,
 		"--payer", enderecoPagante,
 		"--from", wallet,
 		"--keyring-backend", "test",

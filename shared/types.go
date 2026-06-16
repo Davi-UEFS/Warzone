@@ -103,6 +103,7 @@ type RegErrorMessage struct {
 
 // Alert representa um alerta gerado por um sensor.
 type Alert struct {
+	ID          string     `json:"id"`
 	SensorID    string     `json:"sensor_id"`
 	Coordinate  Coordinate `json:"coordinate"`
 	Type        string     `json:"type"`

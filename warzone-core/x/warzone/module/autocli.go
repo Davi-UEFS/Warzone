@@ -96,6 +96,7 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 						{ProtoField: "priority"},
 						{ProtoField: "reqType"},
 						{ProtoField: "coord"},
+						{ProtoField: "alertId"},
 					},
 				},
 				{
