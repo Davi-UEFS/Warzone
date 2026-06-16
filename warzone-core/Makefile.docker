@@ -7,6 +7,10 @@ PORT_RPC=26657
 PORT_API=1317
 GAS_PRICES=0.0001stake
 
+# Identificação do usuário para garantir permissões de leitura/escrita
+USER_ID := $(shell id -u)
+GROUP_ID := $(shell id -g)
+
 # Adicionei o id-catch aqui na lista de .PHONY
 .PHONY: build init-master get-genesis run-master run-node reset id-catch
 
@@ -16,15 +20,23 @@ build:
 
 # 2. Configura o PC 1 (Master) do zero
 init-master:
-	@echo "--- Iniciando o Big Bang no PC1 (Sem sudo!) ---"
+	@echo "--- Iniciando o Big Bang (Modo Root Robusto) ---"
 	rm -rf ./data
-	mkdir -p ./data
-	docker run --rm -u $(USER_ID):$(GROUP_ID) -v $(PWD)/data:$(HOME_DIR) $(IMAGE_NAME) init no-lab-1 --chain-id warzone-rede --home $(HOME_DIR)
-	docker run --rm -u $(USER_ID):$(GROUP_ID) -v $(PWD)/data:$(HOME_DIR) $(IMAGE_NAME) keys add validador1 --keyring-backend test --home $(HOME_DIR)
-	docker run --rm -u $(USER_ID):$(GROUP_ID) -v $(PWD)/data:$(HOME_DIR) $(IMAGE_NAME) genesis add-genesis-account validador1 100000000stake --keyring-backend test --home $(HOME_DIR)
-	docker run --rm -u $(USER_ID):$(GROUP_ID) -v $(PWD)/data:$(HOME_DIR) $(IMAGE_NAME) genesis gentx validador1 10000000stake --chain-id warzone-rede --keyring-backend test --home $(HOME_DIR)
-	docker run --rm -u $(USER_ID):$(GROUP_ID) -v $(PWD)/data:$(HOME_DIR) $(IMAGE_NAME) genesis collect-gentxs --home $(HOME_DIR)
-	@echo "--- Gênese Pronto e com permissões corretas! ---"
+	mkdir -p ./data/config
+	
+	# Usamos --entrypoint /bin/sh para sobrescrever o comportamento padrão da imagem
+	# e forçar o container a aceitar os comandos via shell.
+	docker run --rm -v $(PWD)/data:$(HOME_DIR) --entrypoint /bin/sh $(IMAGE_NAME) -c "\
+	  warzone-cored init no-lab-1 --chain-id warzone-rede --home $(HOME_DIR) && \
+	  warzone-cored keys add validador1 --keyring-backend test --home $(HOME_DIR) && \
+	  warzone-cored genesis add-genesis-account validador1 100000000stake --keyring-backend test --home $(HOME_DIR) && \
+	  warzone-cored genesis gentx validador1 10000000stake --chain-id warzone-rede --keyring-backend test --home $(HOME_DIR) && \
+	  warzone-cored genesis collect-gentxs --home $(HOME_DIR)"
+	
+	# Corrige as permissões para o seu usuário (1001) usando Alpine como root
+	docker run --rm -v $(PWD)/data:$(HOME_DIR) alpine chown -R 1001:1001 $(HOME_DIR)
+	
+	@echo "--- Gênese Pronto e Acessível! ---"
 
 # 3. Auxiliar para PC 2
 get-genesis:
