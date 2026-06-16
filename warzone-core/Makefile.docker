@@ -7,14 +7,14 @@ PORT_RPC=26657
 PORT_API=1317
 GAS_PRICES=0.0001stake
 
-.PHONY: build init-master get-genesis run-master run-node reset
+# Adicionei o id-catch aqui na lista de .PHONY
+.PHONY: build init-master get-genesis run-master run-node reset id-catch
 
 # 1. Compila a imagem
 build:
 	docker build -t $(IMAGE_NAME) .
 
 # 2. Configura o PC 1 (Master) do zero
-# Ele limpa os dados antigos, inicia a rede, cria chaves e fecha a gênese
 init-master:
 	@echo "--- Iniciando o Big Bang no PC1 ---"
 	sudo rm -rf ./data
@@ -25,7 +25,7 @@ init-master:
 	docker run --rm -v $(PWD)/data:$(HOME_DIR) $(IMAGE_NAME) genesis collect-gentxs --home $(HOME_DIR)
 	@echo "--- Gênese Pronto! ---"
 
-# 3. Auxiliar para PC 2: Baixar genesis do PC 1 (use: make get-genesis IP_PC1=192.168.1.5)
+# 3. Auxiliar para PC 2
 get-genesis:
 	mkdir -p ./data/config
 	curl -s http://$(IP_PC1):$(PORT_API)/cosmos/base/tendermint/v1beta1/genesis | jq '.result.genesis' > ./data/config/genesis.json
@@ -38,7 +38,6 @@ run-master:
 	  $(IMAGE_NAME) start --home $(HOME_DIR) --rpc.laddr=tcp://0.0.0.0:$(PORT_RPC) --api.enable=true --api.address=tcp://0.0.0.0:$(PORT_API) --minimum-gas-prices="$(GAS_PRICES)"
 
 # 5. Roda os outros nós (Seguidores)
-# Uso: make run-node PEER_ID=xxx PEER_IP=xxx
 run-node:
 	docker run -d --name $(CONTAINER_NAME)-follower \
 	  -v $(PWD)/data:$(HOME_DIR) \
@@ -46,6 +45,10 @@ run-node:
 	  $(IMAGE_NAME) start --home $(HOME_DIR) \
 	  --p2p.persistent_peers="$(PEER_ID)@$(PEER_IP):$(PORT_P2P)" \
 	  --rpc.laddr=tcp://0.0.0.0:$(PORT_RPC) --api.enable=true --api.address=tcp://0.0.0.0:$(PORT_API) --minimum-gas-prices="$(GAS_PRICES)"
+
+# A LINHA QUE VOCÊ PEDIU
+id-catch:
+	docker exec $(CONTAINER_NAME)-master warzone-cored tendermint show-node-id --home $(HOME_DIR)
 
 # 6. Limpeza total
 reset:
