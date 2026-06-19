@@ -1,74 +1,146 @@
-# Configurações padrão
-CONTAINER_NAME=warzone-node
+# ==========================================
+# CONFIGURAÇÕES DA REDE
+# ==========================================
 IMAGE_NAME=core
-HOME_DIR=/root/.warzone
-PORT_P2P=26656
-PORT_RPC=26657
-PORT_API=1317
 GAS_PRICES=0.0001stake
 
-# Identificação do usuário para garantir permissões de leitura/escrita
-USER_ID := $(shell id -u)
-GROUP_ID := $(shell id -g)
+# Define o diretório externo onde os dados da blockchain estão salvos
+BASE_DIR=$(HOME)/warzone-data
 
-# Adicionei o id-catch aqui na lista de .PHONY
-.PHONY: build init-master get-genesis run-master run-node reset id-catch
+# Define quem é o usuário atual para o Docker não usar root
+CURRENT_UID := $(shell id -u)
+CURRENT_GID := $(shell id -g)
 
-# 1. Compila a imagem
+.PHONY: build prepare clean run-local stop-local run-lan-master run-lan-node
+
+# ==========================================
+# 1. SETUP INICIAL (Todos os PCs rodam o build)
+# ==========================================
 build:
+	@echo "--- COMPILANDO A IMAGEM DOCKER ---"
 	docker build -t $(IMAGE_NAME) .
 
-# 2. Configura o PC 1 (Master) do zero
-init-master:
-	@echo "--- Iniciando o Big Bang (Modo Root Robusto) ---"
-	rm -rf ./data
-	mkdir -p ./data/config
+prepare:
+	@echo "--- CRIANDO O UNIVERSO E AS PASTAS DOS SETORES ---"
+	chmod +x prepara_rede.sh
+	./prepara_rede.sh
+
+clean:
+	@echo "--- DESTRUINDO TESTES ANTERIORES ---"
+	docker stop node-a node-b node-c node-d node-follower || true
+	docker rm node-a node-b node-c node-d node-follower || true
+	# Garante que a pasta existe e pertence a você antes do Docker agir
+	mkdir -p $(BASE_DIR)
+	# Usa o container Alpine para deletar as pastas sem precisar de root
+	docker run --rm \
+		--user $(CURRENT_UID):$(CURRENT_GID) \
+		-v $(BASE_DIR):/work \
+		alpine sh -c "rm -rf /work/setorA /work/setorB /work/setorC /work/setorD"
+
+# ==========================================
+# MODO 1: TESTE LOCAL NO SEU PC (REDE BRIDGE)
+# ==========================================
+run-local: clean prepare
+	@echo "--- MODO LOCAL (1 PC, 4 NÓS) ---"
+	docker network create warzone-net || true
+
+	@echo "[+] Subindo Setor A (Porta REST 1317)..."
+	docker run -d --name node-a --network warzone-net \
+		--user $(CURRENT_UID):$(CURRENT_GID) \
+		-v $(BASE_DIR)/setorA:/warzone \
+		-p 26656:26656 -p 26657:26657 -p 1317:1317 \
+		$(IMAGE_NAME) start --home /warzone \
+		--minimum-gas-prices="$(GAS_PRICES)" \
+		--rpc.laddr tcp://0.0.0.0:26657 \
+		--api.enable=true --api.address tcp://0.0.0.0:1317
 	
-	# Usamos --entrypoint /bin/sh para sobrescrever o comportamento padrão da imagem
-	# e forçar o container a aceitar os comandos via shell.
-	docker run --rm -v $(PWD)/data:$(HOME_DIR) --entrypoint /bin/sh $(IMAGE_NAME) -c "\
-	  warzone-cored init no-lab-1 --chain-id warzone-rede --home $(HOME_DIR) && \
-	  warzone-cored keys add validador1 --keyring-backend test --home $(HOME_DIR) && \
-	  warzone-cored genesis add-genesis-account validador1 100000000stake --keyring-backend test --home $(HOME_DIR) && \
-	  warzone-cored genesis gentx validador1 10000000stake --chain-id warzone-rede --keyring-backend test --home $(HOME_DIR) && \
-	  warzone-cored genesis collect-gentxs --home $(HOME_DIR)"
-	
-	# Corrige as permissões para o seu usuário (1001) usando Alpine como root
-	docker run --rm -v $(PWD)/data:$(HOME_DIR) alpine chown -R 1001:1001 $(HOME_DIR)
-	
-	@echo "--- Gênese Pronto e Acessível! ---"
+	@echo "[+] Aguardando node-a inicializar..."
+	@sleep 5
 
-# 3. Auxiliar para PC 2
-get-genesis:
-	mkdir -p ./data/config
-	curl -s http://$(IP_PC1):$(PORT_API)/cosmos/base/tendermint/v1beta1/genesis | jq '.result.genesis' > ./data/config/genesis.json
+	@echo "[+] Subindo Setor B (Porta REST 1318)..."
+	@NODE_A_ID=$$(docker exec node-a warzone-cored tendermint show-node-id --home /warzone) && \
+	docker run -d --name node-b --network warzone-net \
+		--user $(CURRENT_UID):$(CURRENT_GID) \
+		-v $(BASE_DIR)/setorB:/warzone \
+		-p 26659:26657 -p 1318:1317 \
+		$(IMAGE_NAME) start --home /warzone \
+		--minimum-gas-prices="$(GAS_PRICES)" \
+		--p2p.persistent_peers "$$NODE_A_ID@node-a:26656" \
+		--api.enable=true --api.address tcp://0.0.0.0:1317
 
-# 4. Roda o PC 1 (Master)
-run-master:
-	docker run -d --name $(CONTAINER_NAME)-master \
-	  -v $(PWD)/data:$(HOME_DIR) \
-	  -p $(PORT_P2P):$(PORT_P2P) -p $(PORT_RPC):$(PORT_RPC) -p $(PORT_API):$(PORT_API) \
-	  $(IMAGE_NAME) start --home $(HOME_DIR) --rpc.laddr=tcp://0.0.0.0:$(PORT_RPC) --api.enable=true --api.address=tcp://0.0.0.0:$(PORT_API) --minimum-gas-prices="$(GAS_PRICES)"
+	@echo "[+] Subindo Setor C (Porta REST 1319)..."
+	@NODE_A_ID=$$(docker exec node-a warzone-cored tendermint show-node-id --home /warzone) && \
+	docker run -d --name node-c --network warzone-net \
+		--user $(CURRENT_UID):$(CURRENT_GID) \
+		-v $(BASE_DIR)/setorC:/warzone \
+		-p 26661:26657 -p 1319:1317 \
+		$(IMAGE_NAME) start --home /warzone \
+		--minimum-gas-prices="$(GAS_PRICES)" \
+		--p2p.persistent_peers "$$NODE_A_ID@node-a:26656" \
+		--api.enable=true --api.address tcp://0.0.0.0:1317
 
-# 5. Roda os outros nós (Seguidores)
-# 5. Roda os outros nós (Seguidores)
-# Uso: make -f Makefile.docker run-node PEER_ID=SEU_ID PEER_IP=IP_DO_MASTER
-run-node:
-	@echo "--- Iniciando nó seguidor conectado a $(PEER_IP) ---"
-	docker run -d --name $(CONTAINER_NAME)-follower \
-	  -v $(PWD)/data:$(HOME_DIR) \
-	  -p $(PORT_P2P):$(PORT_P2P) -p $(PORT_RPC):$(PORT_RPC) -p $(PORT_API):$(PORT_API) \
-	  $(IMAGE_NAME) start --home $(HOME_DIR) \
-	  --p2p.persistent_peers="$(PEER_ID)@$(PEER_IP):$(PORT_P2P)" \
-	  --rpc.laddr=tcp://0.0.0.0:$(PORT_RPC) \
-	  --api.enable=true --api.address=tcp://0.0.0.0:$(PORT_API) \
-	  --minimum-gas-prices="$(GAS_PRICES)" \
-	  --fast_sync=true
+	@echo "[+] Subindo Setor D (Porta REST 1320)..."
+	@NODE_A_ID=$$(docker exec node-a warzone-cored tendermint show-node-id --home /warzone) && \
+	docker run -d --name node-d --network warzone-net \
+		--user $(CURRENT_UID):$(CURRENT_GID) \
+		-v $(BASE_DIR)/setorD:/warzone \
+		-p 26663:26657 -p 1320:1317 \
+		$(IMAGE_NAME) start --home /warzone \
+		--minimum-gas-prices="$(GAS_PRICES)" \
+		--p2p.persistent_peers "$$NODE_A_ID@node-a:26656" \
+		--api.enable=true --api.address tcp://0.0.0.0:1317
 
-# A LINHA QUE VOCÊ PEDIU
-id-catch:
-	docker exec $(CONTAINER_NAME)-master warzone-cored tendermint show-node-id --home $(HOME_DIR)
+	@echo "--- MATRIZ LOCAL ONLINE! ---"
 
-# 6. Limpeza total
-reset:
-	sudo rm -rf ./data
+stop-local:
+	@echo "--- PARANDO REDE LOCAL ---"
+	docker stop node-a node-b node-c node-d || true
+	docker rm node-a node-b node-c node-d || true
+	docker network rm warzone-net || true
+
+# ==========================================
+# MODO 2: APRESENTAÇÃO FÍSICA (4 PCs NA LAN)
+# ==========================================
+
+# Roda apenas no PC 1 (Dono do Setor A)
+run-lan-master:
+	@echo "--- MODO FÍSICO: INICIANDO SETOR A (PC 1) ---"
+	$(eval NODE_A_ID=$(shell docker exec node-a warzone-cored tendermint show-node-id --home /warzone 2>/dev/null || echo "Aguardando..."))
+	docker run -d --name node-a \
+		--user $(CURRENT_UID):$(CURRENT_GID) \
+		-v $(BASE_DIR)/setorA:/warzone \
+		-p 26656:26656 -p 26657:26657 -p 1317:1317 \
+		$(IMAGE_NAME) start --home /warzone --minimum-gas-prices="$(GAS_PRICES)" --api.enable=true --api.address tcp://0.0.0.0:1317
+	@sleep 3
+	@echo "=========================================================="
+	@echo "🟢 O NÓ A ESTÁ ONLINE NAS PORTAS PADRÃO!"
+	@echo "COPIE ESTE ID E PASSE PARA OS OUTROS ALUNOS: $$(docker exec node-a warzone-cored tendermint show-node-id --home /warzone)"
+	@echo "=========================================================="
+
+# Roda nos PCs 2, 3 e 4
+run-lan-node:
+	@echo "--- MODO FÍSICO: INICIANDO NÓ SEGUIDOR ---"
+	@if [ -z "$(FOLDER)" ] || [ -z "$(ID)" ] || [ -z "$(IP)" ]; then \
+		echo "🔴 ERRO: Faltam variáveis!"; \
+		echo "Uso correto: make run-lan-node FOLDER=setorB ID=codigo_do_pc1 IP=192.168.x.x"; \
+		exit 1; \
+	fi
+
+	# Remove container anterior se existir
+	docker rm -f node-follower || true
+
+	# Rodamos o nó com mapeamento apontando para o BASE_DIR
+	docker run -d --name node-follower \
+		--user $(CURRENT_UID):$(CURRENT_GID) \
+		-v $(BASE_DIR)/$(FOLDER):/warzone \
+		-p 26656:26656 \
+		-p 26657:26657 \
+		-p 1317:1317 \
+		$(IMAGE_NAME) start \
+		--home /warzone \
+		--minimum-gas-prices="$(GAS_PRICES)" \
+		--api.enable=true \
+		--api.address tcp://0.0.0.0:1317 \
+		--p2p.persistent_peers "$(ID)@$(IP):26656"
+
+	@echo "🟢 NÓ SEGUIDOR ONLINE! API REST rodando em http://localhost:1317"

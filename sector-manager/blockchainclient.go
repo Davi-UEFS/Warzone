@@ -16,6 +16,8 @@ import (
 	"github.com/Davi-UEFS/Warzone/shared"
 )
 
+const FEES = "20stake"
+
 // BlockchainMission mapeia EXATAMENTE como a blockchain devolve os dados
 type BlockchainMission struct {
 	Id              string `json:"id"`
@@ -43,8 +45,76 @@ type DronesResponse struct {
 	APIReturnedDrones []BlockchainDrone `json:"drone"`
 }
 
-// Mutex global de transação para evitar "Sequence Mismatch" no Cosmos SDK quando muitas transações são enviadas em paralelo.
+func getBinPath() string {
+	bin := os.Getenv("WARZONE_BIN")
+	if bin == "" {
+		bin = "/root/warzone-cored"
+	}
+	return bin
+}
+
+func getChainID() string {
+	chainID := os.Getenv("CHAIN_ID")
+	if chainID == "" {
+		chainID = "warzone-rede"
+	}
+	return chainID
+}
+
+func getRPCURL() string {
+	rpc := os.Getenv("BLOCKCHAIN_RPC_URL")
+	if rpc == "" {
+		rpc = "http://localhost:26657"
+	}
+	return rpc
+}
+
+// Mutex global de transação para evitar "Sequence Mismatch" no Cosmos SDK
 var txMutex sync.Mutex
+
+// extrairTxHash extrai o txhash do output da CLI do Cosmos SDK
+func extrairTxHash(output string) string {
+	for _, line := range strings.Split(output, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "txhash:") {
+			return strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(line), "txhash:"))
+		}
+	}
+	return ""
+}
+
+// verificarTx aguarda o bloco confirmar e verifica se a tx foi aceita pelo keeper.
+// Retorna (sucesso, raw_log) para facilitar o diagnóstico de erros.
+func verificarTx(txhash string) (bool, string) {
+	if txhash == "" {
+		return false, "txhash vazio — tx pode não ter chegado à mempool"
+	}
+
+	// Aguarda ~1 bloco para a tx ser incluída (~5s no Tendermint)
+	time.Sleep(6 * time.Second)
+
+	binPath := getBinPath()
+	cmd := exec.Command(binPath, "query", "tx", txhash,
+		"--node", getRPCURL(),
+		"--output", "json")
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return false, fmt.Sprintf("erro ao consultar tx: %v", err)
+	}
+
+	var result struct {
+		Code   int    `json:"code"`
+		RawLog string `json:"raw_log"`
+	}
+	if err := json.Unmarshal(output, &result); err != nil {
+		return false, fmt.Sprintf("erro ao parsear resposta: %v", err)
+	}
+
+	if result.Code != 0 {
+		return false, result.RawLog
+	}
+	return true, ""
+}
 
 // fetchRequisitionsFromBlockchain faz o polling e CONVERTE os dados
 func fetchRequisitionsFromBlockchain() ([]shared.Requisition, error) {
@@ -78,30 +148,26 @@ func fetchRequisitionsFromBlockchain() ([]shared.Requisition, error) {
 			return nil, fmt.Errorf("erro ao ler resposta REST: %v", err)
 		}
 
-		// Deserializa usando a struct intermediária
 		var data RequisitionsResponse
 		if err := json.Unmarshal(body, &data); err != nil {
 			return nil, fmt.Errorf("erro no parse do JSON: %v. Body: %s", err, string(body))
 		}
 
-		// Converte para a sua shared.Requisition original
 		var reqs []shared.Requisition
 		for _, bm := range data.Missions {
-			// Apenas missões PENDING importam para o Dispatcher
 			if bm.Status != shared.PENDING {
 				continue
 			}
 
-			// Simula uma coordenada baseada na string enviada
 			coordStrParts := strings.Split(bm.Coord, ",")
-			lat, _ := strconv.Atoi(coordStrParts[0]) // Extração simplificada
+			lat, _ := strconv.Atoi(coordStrParts[0])
 			lng := 0
 			if len(coordStrParts) > 1 {
 				lng, _ = strconv.Atoi(coordStrParts[1])
 			}
 
 			novaReq := shared.Requisition{
-				ID:           fmt.Sprintf("inc--%s--%s", bm.Sector, bm.Id), // Cria um ID compativel
+				ID:           fmt.Sprintf("inc--%s--%s", bm.Sector, bm.Id),
 				Priority:     bm.Priority,
 				Type:         bm.ReqType,
 				OriginSector: bm.Sector,
@@ -151,22 +217,17 @@ func fetchDronesFromBlockchain() ([]shared.Drone, error) {
 			return nil, fmt.Errorf("erro ao ler resposta REST: %v", err)
 		}
 
-		// Deserializa usando a struct intermediária
 		var data DronesResponse
 		if err := json.Unmarshal(body, &data); err != nil {
 			return nil, fmt.Errorf("erro no parse do JSON (Drone): %v. Body: %s", err, string(body))
 		}
 
-		// Converte para a sua shared.Drone original
 		var drones []shared.Drone
 		for _, blockDrone := range data.APIReturnedDrones {
-			// Converte a bateria de string para int
 			batteryLvl, _ := strconv.Atoi(blockDrone.Battery)
-
-			// Converte o status de string para o tipo DroneStatus
 			status := shared.DroneStatus(blockDrone.Status)
 			if status == "" {
-				status = shared.DRONE_IDLE // Prevenção caso venha vazio
+				status = shared.DRONE_IDLE
 			}
 
 			novoDrone := shared.Drone{
@@ -175,10 +236,6 @@ func fetchDronesFromBlockchain() ([]shared.Drone, error) {
 				Status:        status,
 				CurrentSector: blockDrone.Sector,
 			}
-
-			//TODO: DEBUG
-			log.Printf("\033[1;35m[DEBUG DRONES]\033[0m Drone %s da Blockchain: Status=%s\n", blockDrone.DroneId, novoDrone.Status)
-
 			drones = append(drones, novoDrone)
 		}
 
@@ -188,7 +245,6 @@ func fetchDronesFromBlockchain() ([]shared.Drone, error) {
 	return nil, fmt.Errorf("todos os nós falharam. Último erro: %v", lastErr)
 }
 
-// getSectorWalletName puxa o nome da carteira dada por variável de ambiente.
 func getSectorWalletName() string {
 	wallet := os.Getenv("WALLET_NAME")
 	if wallet == "" {
@@ -199,52 +255,83 @@ func getSectorWalletName() string {
 
 // --- FUNÇÕES DE TRANSAÇÃO BLOCKCHAIN (CLI) ---
 
-func enviarAssignDroneParaBlockchain(missionID string, droneID string) {
-	// Evita envios paralelos que causam "Sequence Mismatch" no Cosmos SDK
+// enviarAssignDroneParaBlockchain envia a tx e verifica se foi confirmada no bloco.
+// Retorna error se a tx foi rejeitada (ex: duplo despacho detectado pelo keeper).
+func enviarAssignDroneParaBlockchain(missionID string, droneID string) error {
 	txMutex.Lock()
 	defer txMutex.Unlock()
-	defer time.Sleep(2 * time.Second)
-	binPath := os.ExpandEnv("$HOME/go/bin/warzone-cored")
+
+	binPath := getBinPath()
 	wallet := getSectorWalletName()
 
-	// 1. Extrai apenas o número final da string "inc--Setor-A--123"
 	partes := strings.Split(missionID, "--")
-	idNumerico := partes[len(partes)-1] // Pega a última parte (o número)
+	idNumerico := partes[len(partes)-1]
 
-	// 2. Usa o idNumerico limpo ("0") no comando
-	cmd := exec.Command(binPath, "tx", "warzone", "assign-drone", idNumerico, droneID, "--from", wallet, "--chain-id", "warzonecore", "-y")
+	cmd := exec.Command(binPath, "tx", "warzone", "assign-drone", idNumerico, droneID,
+		"--from", wallet,
+		"--home", KeyringDir,
+		"--keyring-backend", "test",
+		"--chain-id", getChainID(),
+		"--node", getRPCURL(),
+		"--fees", FEES,
+		"--broadcast-mode", "sync",
+		"-y")
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Printf("\033[1;31m[BLOCKCHAIN ERROR]\033[0m Falha ao atribuir drone %s: %v\nOutput: %s\n", droneID, err, string(output))
-		return
+		log.Printf("\033[1;31m[BLOCKCHAIN ERROR]\033[0m Falha ao enviar assign-drone %s.\nOutput: %s\n", droneID, string(output))
+		return fmt.Errorf("falha ao enviar tx: %v", err)
 	}
-	fmt.Printf("\033[1;32m[BLOCKCHAIN]\033[0m Missão %s atribuída ao drone %s com sucesso!\n", idNumerico, droneID)
+
+	// Extrai o txhash e verifica confirmação no bloco
+	txhash := extrairTxHash(string(output))
+	log.Printf("\033[1;34m[BLOCKCHAIN]\033[0m Assign-drone enviado. TxHash: %s. Aguardando confirmação...\n", txhash)
+
+	if ok, rawLog := verificarTx(txhash); !ok {
+		log.Printf("\033[1;31m[BLOCKCHAIN ERROR]\033[0m Duplo despacho detectado para drone %s! Motivo: %s\n", droneID, rawLog)
+		return fmt.Errorf("tx rejeitada: %s", rawLog)
+	}
+
+	fmt.Printf("\033[1;32m[BLOCKCHAIN]\033[0m Missão %s atribuída ao drone %s confirmada no bloco!\n", idNumerico, droneID)
+	return nil
 }
 
 func enviarLaudoParaBlockchain(reqID string, droneID string, relatorio string) {
-	// Evita envios paralelos que causam "Sequence Mismatch" no Cosmos SDK
 	txMutex.Lock()
 	defer txMutex.Unlock()
-	defer time.Sleep(2 * time.Second)
-	binPath := os.ExpandEnv("$HOME/go/bin/warzone-cored")
+
+	binPath := getBinPath()
 	wallet := getSectorWalletName()
 
-	cmd := exec.Command(binPath, "tx", "warzone", "submit-laudo", reqID, droneID, relatorio, "concluido", "--from", wallet, "--chain-id", "warzonecore", "-y")
+	cmd := exec.Command(binPath, "tx", "warzone", "submit-laudo", reqID, droneID, relatorio, "concluido",
+		"--from", wallet,
+		"--home", KeyringDir,
+		"--keyring-backend", "test",
+		"--chain-id", getChainID(),
+		"--node", getRPCURL(),
+		"--fees", FEES,
+		"--broadcast-mode", "sync",
+		"-y")
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Printf("\033[1;31m[BLOCKCHAIN ERROR]\033[0m Falha ao submeter laudo %s: %v\nOutput: %s\n", reqID, err, string(output))
+		log.Printf("\033[1;31m[BLOCKCHAIN ERROR]\033[0m Falha ao submeter laudo %s.\nOutput: %s\n", reqID, string(output))
 		return
 	}
-	fmt.Printf("\033[1;32m[BLOCKCHAIN]\033[0m Laudo da %s salvo no bloco pela carteira %s!\n", reqID, wallet)
+
+	txhash := extrairTxHash(string(output))
+	if ok, rawLog := verificarTx(txhash); !ok {
+		log.Printf("\033[1;31m[BLOCKCHAIN ERROR]\033[0m Laudo da missão %s rejeitado! Motivo: %s\n", reqID, rawLog)
+		return
+	}
+	fmt.Printf("\033[1;32m[BLOCKCHAIN]\033[0m Laudo da missão %s confirmado no bloco! TxHash auditável: %s\n", reqID, txhash)
 }
 
 func enviarRequisicaoParaBlockchain(alert shared.Alert) {
-	// Evita envios paralelos que causam "Sequence Mismatch" no Cosmos SDK
 	txMutex.Lock()
 	defer txMutex.Unlock()
-	defer time.Sleep(2 * time.Second)
-	binPath := os.ExpandEnv("$HOME/go/bin/warzone-cored")
+
+	binPath := getBinPath()
 	wallet := getSectorWalletName()
 	sector := os.Getenv("SECTOR_ID")
 
@@ -252,10 +339,9 @@ func enviarRequisicaoParaBlockchain(alert shared.Alert) {
 		sector = "Setor-A"
 	}
 
-	// A coordenada volta a ser limpa, sem X: ou Y:
 	coordStr := fmt.Sprintf("%d,%d", alert.Coordinate.Longitude, alert.Coordinate.Latitude)
 	reqType := fmt.Sprintf("%s", alert.Type)
-	priority := strconv.Itoa(PRIOTIRIES[alert.Type]) // Converter por que o command line espera string
+	priority := strconv.Itoa(PRIOTIRIES[alert.Type])
 
 	enderecoPagante, existe := EnderecosPaises[alert.Country]
 	if !existe {
@@ -263,73 +349,122 @@ func enviarRequisicaoParaBlockchain(alert shared.Alert) {
 		return
 	}
 
-	// Comando perfeitamente alinhado com o autocli.go: [sector] [priority] [req-type] [coord]
 	cmd := exec.Command(
 		binPath, "tx", "warzone", "add-req", sector, priority, reqType, coordStr,
 		alert.ID,
 		"--payer", enderecoPagante,
 		"--from", wallet,
 		"--keyring-backend", "test",
-		"--chain-id", "warzonecore", "-y")
+		"--home", KeyringDir,
+		"--chain-id", getChainID(),
+		"--node", getRPCURL(),
+		"--fees", FEES,
+		"--broadcast-mode", "sync",
+		"-y")
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Printf("\033[1;31m[BLOCKCHAIN ERROR]\033[0m Falha ao criar req: %v\nOutput: %s\n", err, string(output))
+		log.Printf("\033[1;31m[BLOCKCHAIN ERROR]\033[0m Falha ao criar requisição no bloco.\nOutput: %s\n", string(output))
 		return
 	}
-	fmt.Printf("\033[1;32m[BLOCKCHAIN]\033[0m Alerta transformado em requisição com sucesso!\n")
+
+	txhash := extrairTxHash(string(output))
+	if ok, rawLog := verificarTx(txhash); !ok {
+		log.Printf("\033[1;31m[BLOCKCHAIN ERROR]\033[0m Requisição do alerta %s rejeitada! Motivo: %s\n", alert.ID, rawLog)
+		return
+	}
+	fmt.Printf("\033[1;32m[BLOCKCHAIN]\033[0m Alerta transformado em requisição! TxHash: %s\n", txhash)
 }
 
 func enviarRegDroneParaBlockchain(droneID string, sector string, battery string) {
-	// Evita envios paralelos que causam "Sequence Mismatch" no Cosmos SDK
 	txMutex.Lock()
 	defer txMutex.Unlock()
-	defer time.Sleep(2 * time.Second)
-	binPath := os.ExpandEnv("$HOME/go/bin/warzone-cored")
+
+	binPath := getBinPath()
 	wallet := getSectorWalletName()
 
-	// Ajuste a ordem dos argumentos conforme criado no seu scaffold (droneID, sector, battery)
-	cmd := exec.Command(binPath, "tx", "warzone", "reg-drone", droneID, sector, battery, "--from", wallet, "--chain-id", "warzonecore", "-y")
+	cmd := exec.Command(binPath, "tx", "warzone", "reg-drone", droneID, sector, battery,
+		"--from", wallet,
+		"--home", KeyringDir,
+		"--keyring-backend", "test",
+		"--chain-id", getChainID(),
+		"--node", getRPCURL(),
+		"--fees", FEES,
+		"--broadcast-mode", "sync",
+		"-y")
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Printf("\033[1;31m[BLOCKCHAIN ERROR]\033[0m Falha ao registrar drone %s: %v\nOutput: %s\n", droneID, err, string(output))
+		log.Printf("\033[1;31m[BLOCKCHAIN ERROR]\033[0m Falha ao registrar drone %s.\nOutput: %s\n", droneID, string(output))
+		return
+	}
+
+	txhash := extrairTxHash(string(output))
+	if ok, rawLog := verificarTx(txhash); !ok {
+		log.Printf("\033[1;31m[BLOCKCHAIN ERROR]\033[0m Registro do drone %s rejeitado! Motivo: %s\n", droneID, rawLog)
 		return
 	}
 	fmt.Printf("\033[1;32m[BLOCKCHAIN]\033[0m Drone %s registrado globalmente com sucesso!\n", droneID)
 }
 
 func enviarRmvReqParaBlockchain(missionID string, droneID string, laudo string) {
-	// Evita envios paralelos que causam "Sequence Mismatch" no Cosmos SDK
 	txMutex.Lock()
 	defer txMutex.Unlock()
-	defer time.Sleep(2 * time.Second)
-	binPath := os.ExpandEnv("$HOME/go/bin/warzone-cored")
+
+	binPath := getBinPath()
 	wallet := getSectorWalletName()
 
-	// Comando alinhado: [mission-id] [drone-id] [laudo]
-	cmd := exec.Command(binPath, "tx", "warzone", "rmv-req", missionID, droneID, laudo, "--from", wallet, "--chain-id", "warzonecore", "-y")
+	cmd := exec.Command(binPath, "tx", "warzone", "rmv-req", missionID, droneID, laudo,
+		"--from", wallet,
+		"--home", KeyringDir,
+		"--keyring-backend", "test",
+		"--chain-id", getChainID(),
+		"--node", getRPCURL(),
+		"--fees", FEES,
+		"--broadcast-mode", "sync",
+		"-y")
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Printf("\033[1;31m[BLOCKCHAIN ERROR]\033[0m Falha ao remover requisição %s: %v\nOutput: %s\n", missionID, err, string(output))
+		log.Printf("\033[1;31m[BLOCKCHAIN ERROR]\033[0m Falha ao remover requisição %s.\nOutput: %s\n", missionID, string(output))
+		return
+	}
+
+	txhash := extrairTxHash(string(output))
+	if ok, rawLog := verificarTx(txhash); !ok {
+		log.Printf("\033[1;31m[BLOCKCHAIN ERROR]\033[0m Remoção da missão %s rejeitada! Motivo: %s\n", missionID, rawLog)
 		return
 	}
 	fmt.Printf("\033[1;32m[BLOCKCHAIN]\033[0m Missão %s finalizada na blockchain. Drone %s livre!\n", missionID, droneID)
 }
 
 func enviarReportDeadDroneParaBlockchain(droneID string) {
-	// Evita envios paralelos que causam "Sequence Mismatch" no Cosmos SDK
 	txMutex.Lock()
 	defer txMutex.Unlock()
-	defer time.Sleep(2 * time.Second)
-	binPath := os.ExpandEnv("$HOME/go/bin/warzone-cored")
+
+	binPath := getBinPath()
 	wallet := getSectorWalletName()
 
-	// O comando usa report-dead-drone e precisa apenas do ID do drone
-	cmd := exec.Command(binPath, "tx", "warzone", "report-dead-drone", droneID, "--from", wallet, "--chain-id", "warzonecore", "-y")
+	cmd := exec.Command(binPath, "tx", "warzone", "report-dead-drone", droneID,
+		"--from", wallet,
+		"--home", KeyringDir,
+		"--keyring-backend", "test",
+		"--chain-id", getChainID(),
+		"--node", getRPCURL(),
+		"--fees", FEES,
+		"--broadcast-mode", "sync",
+		"-y")
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Printf("\033[1;31m[BLOCKCHAIN ERROR]\033[0m Falha ao reportar drone inativo %s: %v\nOutput: %s\n", droneID, err, string(output))
+		fmt.Printf("\033[1;31m[BLOCKCHAIN ERROR]\033[0m Falha ao reportar drone inativo %s.\nOutput: %s\n", droneID, string(output))
 		return
 	}
-	fmt.Printf("\033[1;31m[BLOCKCHAIN]\033[0m Comando de morte enviado. Resposta da rede: %s\n", string(output))
+
+	txhash := extrairTxHash(string(output))
+	if ok, rawLog := verificarTx(txhash); !ok {
+		log.Printf("\033[1;31m[BLOCKCHAIN ERROR]\033[0m Report de drone morto %s rejeitado! Motivo: %s\n", droneID, rawLog)
+		return
+	}
+	fmt.Printf("\033[1;31m[BLOCKCHAIN]\033[0m Drone %s reportado como inativo na blockchain.\n", droneID)
 }

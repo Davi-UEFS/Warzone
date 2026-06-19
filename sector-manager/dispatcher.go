@@ -52,9 +52,9 @@ func ProcessRequisitions() {
 		GlobalState.Mu.Unlock() // Liberta a RAM o mais rápido possível
 
 		// TODO: DEBUG
-		log.Printf("\033[1;35m[DEBUG DESPACHO]\033[0m Missão %s alocada para o drone %s\n", req.ID, freeDroneID)
+		log.Printf("\033[1;35m[DEBUG DESPACHO]\033[0m Tentando alocar missão %s para o drone %s na blockchain...\n", req.ID, freeDroneID)
 
-		// 4. Despacha a missão (Físico + Blockchain)
+		// 4. Despacha a missão (Blockchain PRIMEIRO, Físico depois)
 		dispatch(freeDroneID, req)
 		return
 	}
@@ -62,8 +62,30 @@ func ProcessRequisitions() {
 	GlobalState.Mu.Unlock()
 }
 
-// dispatch cria o payload, envia para o MQTT e avisa a Blockchain
+// dispatch cria o payload, avisa a Blockchain e, SE aprovado, envia para o MQTT
 func dispatch(droneID string, req shared.Requisition) {
+	// =========================================================================
+	// 1. A BLOCKCHAIN ATUA COMO JUÍZA (Síncrono)
+	// =========================================================================
+	err := enviarAssignDroneParaBlockchain(req.ID, droneID)
+
+	if err != nil {
+		// Se deu erro (ex: drone já foi pego por outro Manager no mesmo milissegundo), aborta!
+		fmt.Printf("\033[1;33m[DISPATCHER]\033[0m Perdeu a corrida pelo drone %s. Devolvendo missão para a fila.\n", droneID)
+
+		GlobalState.Mu.Lock()
+		if drone, ok := GlobalState.DroneMap[droneID]; ok {
+			drone.Status = shared.DRONE_IDLE // Libera o drone localmente
+		}
+		GlobalState.PendingReqsQueue.Push(&req)   // Devolve a missão para a fila
+		delete(GlobalState.DispatchedSet, req.ID) // Remove do set de despachados para não ser ignorada
+		GlobalState.Mu.Unlock()
+		return
+	}
+
+	// =========================================================================
+	// 2. SÓ ENVIA O SINAL DE RÁDIO (MQTT) SE A BLOCKCHAIN AUTORIZOU
+	// =========================================================================
 	mission := shared.DroneMission{
 		RequisitionID: req.ID,
 		AssignedDrone: droneID,
@@ -86,19 +108,9 @@ func dispatch(droneID string, req shared.Requisition) {
 
 	if token.Error() != nil {
 		fmt.Printf("\033[1;31m[DISPATCHER]\033[0m Erro ao enviar missão via MQTT: %v\n", token.Error())
-
-		// Se o rádio falhou, devolvemos o drone e a missão para tentarem no próximo ciclo
-		GlobalState.Mu.Lock()
-		if drone, ok := GlobalState.DroneMap[droneID]; ok {
-			drone.Status = shared.DRONE_IDLE
-		}
-		GlobalState.PendingReqsQueue.Push(&req)
-		GlobalState.Mu.Unlock()
-		return
+		// Nota: Aqui a blockchain já marcou o drone como ocupado.
+		// O poller futuramente pode sincronizar isso, ou o drone dar timeout.
+	} else {
+		fmt.Printf("\033[1;32m[DISPATCHER]\033[0m Missão %s despachada fisicamente para o drone %s!\n", req.ID, droneID)
 	}
-
-	fmt.Printf("\033[1;32m[DISPATCHER]\033[0m Missão %s despachada fisicamente para o drone %s!\n", req.ID, droneID)
-
-	// Dispara a transação assíncrona para selar o contrato na Blockchain
-	go enviarAssignDroneParaBlockchain(req.ID, droneID)
 }

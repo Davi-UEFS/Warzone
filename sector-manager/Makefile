@@ -149,3 +149,68 @@ clean:
 	-@docker stop $(NODE1_ID) $(NODE2_ID) $(NODE3_ID) 2>/dev/null || true
 	-@docker rm $(NODE1_ID) $(NODE2_ID) $(NODE3_ID) 2>/dev/null || true
 	rm -rf $(DATA_BASE_DIR)
+
+KEYRING_BASE_DIR ?= $(HOME)/warzone-data
+BLOCKCHAIN_REST_URLS ?= http://localhost:1317,http://localhost:1318,http://localhost:1319,http://localhost:1320
+BLOCKCHAIN_RPC_URL ?= http://localhost:26657
+CHAIN_ID ?= warzone-rede
+
+run-sectorA-blockchain:
+	docker run -d --name manager-a \
+		--network host \
+		--pull never \
+		-v $(KEYRING_BASE_DIR)/setorA:/keyring \
+		-e SECTOR_ID=Setor-A \
+		-e WALLET_NAME=key_a \
+		-e KEYRING_DIR=/keyring \
+		-e BLOCKCHAIN_REST_URLS="$(BLOCKCHAIN_REST_URLS)" \
+		-e BLOCKCHAIN_RPC_URL="$(BLOCKCHAIN_RPC_URL)" \
+		-e CHAIN_ID="$(CHAIN_ID)" \
+		$(IMAGE_NAME) --id setor-a --broker-port=1884
+	docker logs -f manager-a
+
+run-sectorB-blockchain:
+	docker run -d --name manager-b \
+		--network host \
+		--pull never \
+		-v $(KEYRING_BASE_DIR)/setorB:/keyring \
+		-e SECTOR_ID=Setor-B \
+		-e WALLET_NAME=key_b \
+		-e KEYRING_DIR=/keyring \
+		-e BLOCKCHAIN_REST_URLS="$(BLOCKCHAIN_REST_URLS)" \
+		-e BLOCKCHAIN_RPC_URL="$(BLOCKCHAIN_RPC_URL)" \
+		-e CHAIN_ID="$(CHAIN_ID)" \
+		$(IMAGE_NAME) --id setor-b --broker-port=1884
+	docker logs -f manager-b
+
+run-sectorC-blockchain:
+	docker run -d --name manager-c \
+		--network host \
+		--pull never \
+		-v $(KEYRING_BASE_DIR)/setorC:/keyring \
+		-e SECTOR_ID=Setor-C \
+		-e WALLET_NAME=key_c \
+		-e KEYRING_DIR=/keyring \
+		-e BLOCKCHAIN_REST_URLS="$(BLOCKCHAIN_REST_URLS)" \
+		-e BLOCKCHAIN_RPC_URL="$(BLOCKCHAIN_RPC_URL)" \
+		-e CHAIN_ID="$(CHAIN_ID)" \
+		$(IMAGE_NAME) --id setor-c --broker-port=1884
+	docker logs -f manager-c
+
+run-sectorD-blockchain:
+	docker run -d --name manager-d \
+		--network host \
+		--pull never \
+		-v $(KEYRING_BASE_DIR)/setorD:/keyring \
+		-e SECTOR_ID=Setor-D \
+		-e WALLET_NAME=key_d \
+		-e KEYRING_DIR=/keyring \
+		-e BLOCKCHAIN_REST_URLS="$(BLOCKCHAIN_REST_URLS)" \
+		-e BLOCKCHAIN_RPC_URL="$(BLOCKCHAIN_RPC_URL)" \
+		-e CHAIN_ID="$(CHAIN_ID)" \
+		$(IMAGE_NAME) --id setor-d
+	docker logs -f manager-d
+
+stop-blockchain:
+	-docker stop manager-a manager-b manager-c manager-d 2>/dev/null || true
+	-docker rm manager-a manager-b manager-c manager-d 2>/dev/null || true

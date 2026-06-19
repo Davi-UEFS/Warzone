@@ -8,6 +8,8 @@ sector-manager/data/
 sector-manager/dataRaft
 broker/data/
 warzone-core/data/
+sector-manager/warzone-cored
+
 
 # Local editor files
 .vscode/

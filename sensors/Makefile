@@ -4,8 +4,8 @@ IMAGE_NAME ?= daviuefs/sensors
 
 SENSOR_ID ?= sensor-01
 SENSOR_TYPE ?= 4
-BROKER_ADDR ?= tcp://127.0.0.1:1883
-COUNTRY ?= alice
+BROKER_ADDR ?= tcp://127.0.0.1:1884
+COUNTRY ?= eua
 
 .PHONY: help build run run-go run-lento run-lento-go run-prompt clean
 
@@ -34,8 +34,8 @@ run:
 		$(IMAGE_NAME) \
 		-id=$(SENSOR_ID) \
 		-type=$(SENSOR_TYPE) \
-		-broker=$(BROKER_ADDR)
-
+		-broker=$(BROKER_ADDR) \
+		-country="eua"
 // TODO: COLOCAR PARA OS OUTROS MAKES TAMBEM.
 run-go:
 	@echo "Iniciando sensor $(SENSOR_ID) sem Docker..."
@@ -94,7 +94,8 @@ run-prompt:
 		$(IMAGE_NAME) \
 		-id=$$_SENSOR_ID \
 		-type=$$_SENSOR_TYPE \
-		-broker=$$_BROKER_ADDR
+		-broker=$$_BROKER_ADDR \
+		-country=$(COUNTRY)
 
 clean:
 	@echo "Limpando container do sensor..."

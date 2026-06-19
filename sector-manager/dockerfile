@@ -1,17 +1,25 @@
 # Estágio de construção
-FROM golang:1.25.10-alpine AS builder
+FROM golang:1.25.10 AS builder
 WORKDIR /app
-COPY . .
+
+COPY go.mod go.sum* ./
 RUN go mod download
-RUN CGO_ENABLED=0 GOOS=linux go build -o sector-manager ./sector-manager
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux go build -o manager-bin ./sector-manager
 
 # Estágio de execução
-FROM alpine:latest
+FROM debian:bookworm-slim
+RUN apt-get update && \
+    apt-get install -y ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /root/
 
-COPY --from=builder /app/sector-manager .
-
+COPY --from=builder /app/manager-bin ./sector-manager
 COPY --from=builder /app/sector-manager/GUI ./GUI
+COPY --from=builder /app/sector-manager/warzone-cored ./warzone-cored
+RUN chmod +x ./warzone-cored ./sector-manager
 
-# O ENTRYPOINT permite que passemos as flags via comando
 ENTRYPOINT ["./sector-manager"]

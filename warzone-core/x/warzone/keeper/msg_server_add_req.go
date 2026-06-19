@@ -12,12 +12,12 @@ import (
 )
 
 var prices = map[string]string{
-	shared.FIRE:           "10token",
-	shared.OIL:            "8token",
-	shared.WRECKAGE:       "6token",
-	shared.INSPECTION:     "2token",
-	shared.UNKNOWN_OBJECT: "4token",
-	shared.BOTTLENECK:     "4token",
+	shared.FIRE:           "10stake",
+	shared.OIL:            "8stake",
+	shared.WRECKAGE:       "6stake",
+	shared.INSPECTION:     "2stake",
+	shared.UNKNOWN_OBJECT: "4stake",
+	shared.BOTTLENECK:     "4stake",
 }
 
 func (k msgServer) AddReq(goCtx context.Context, msg *types.MsgAddReq) (*types.MsgAddReqResponse, error) {

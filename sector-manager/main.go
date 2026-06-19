@@ -1,15 +1,32 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
 )
+
+func carregarEnderecosPaises() error {
+	caminho := filepath.Join(KeyringDir, "paises.json")
+
+	data, err := os.ReadFile(caminho)
+	if err != nil {
+		return fmt.Errorf("erro ao ler paises.json: %v", err)
+	}
+
+	// TODO: DEBUG
+	log.Printf("Endereços dos países carregados: %v\n", data)
+
+	return json.Unmarshal(data, &EnderecosPaises)
+}
 
 func main() {
 	// 1. Leitura de Flags de configuração
@@ -18,6 +35,11 @@ func main() {
 	dashboardPortFlag := flag.Int("dashboard-port", 8080, "Porta do dashboard HTTP")
 	debugFlag := flag.Bool("debug", false, "Ativa simulações de latência, aging e logs extras")
 	flag.Parse()
+
+	KeyringDir = os.Getenv("KEYRING_DIR")
+	if err := carregarEnderecosPaises(); err != nil {
+		log.Fatalf("[ERRO CRÍTICO] %v\n", err)
+	}
 
 	DebugMode = *debugFlag
 

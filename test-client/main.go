@@ -106,6 +106,7 @@ func enviarAlertaManual(client mqtt.Client, reader *bufio.Reader, id string) {
 		Coordinate:  shared.Coordinate{Latitude: rand.Intn(500), Longitude: rand.Intn(500)},
 		Type:        typeName,
 		LamportTime: 1,
+		Country:     "eua", //TODO: HARDCODED CARTEIRA
 	}
 
 	payload, _ := json.Marshal(alert)
@@ -123,10 +124,12 @@ func enviarEmLote(client mqtt.Client, reader *bufio.Reader) {
 	fmt.Println("Enviando lote...")
 	for i := 1; i <= qtd; i++ {
 		alert := shared.Alert{
+			ID:          fmt.Sprintf("alerta-lote-%d", i),
 			SensorID:    fmt.Sprintf("sensor-lote-%d", i),
 			Coordinate:  shared.Coordinate{Latitude: rand.Intn(500), Longitude: rand.Intn(500)},
 			Type:        typesMap[rand.Intn(6)+1],
 			LamportTime: i * 2,
+			Country:     "eua", //TODO: HARDCODED CARTEIRA
 		}
 		payload, _ := json.Marshal(alert)
 		topic := fmt.Sprintf("sensors/%s/incidents", alert.SensorID)
