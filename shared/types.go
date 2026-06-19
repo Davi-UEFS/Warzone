@@ -38,6 +38,13 @@ const (
 	BOTTLENECK     = "OPTIMIZE_TRAFFIC"
 )
 
+// No seu pacote shared
+type TransferRequest struct {
+	FromAlias string `json:"from"`
+	ToAddress string `json:"to"`
+	Amount    string `json:"amount"` // ex: "1000stake"
+}
+
 // DroneMission guarda os dados de uma missão atribuída a um drone.
 type DroneMission struct {
 	RequisitionID string     `json:"id"`           // ID da Requisição (OccurrenceID)

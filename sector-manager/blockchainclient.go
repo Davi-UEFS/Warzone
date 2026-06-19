@@ -468,3 +468,59 @@ func enviarReportDeadDroneParaBlockchain(droneID string) {
 	}
 	fmt.Printf("\033[1;31m[BLOCKCHAIN]\033[0m Drone %s reportado como inativo na blockchain.\n", droneID)
 }
+
+// obterEnderecoPorApelido consulta a keyring para converter o apelido (ex: "key_a")
+// no endereço bech32 real (ex: "cosmos1...") que a blockchain exige no bank send.
+func obterEnderecoPorApelido(apelido string) string {
+	binPath := getBinPath()
+	// Consulta o endereço público associado ao apelido no banco de chaves local
+	cmd := exec.Command(binPath, "keys", "show", apelido, "--address", "--home", KeyringDir)
+	output, err := cmd.Output()
+	if err != nil {
+		log.Printf("[BLOCKCHAIN ERROR] Não foi possível encontrar endereço para o apelido %s: %v\n", apelido, err)
+		return ""
+	}
+	return strings.TrimSpace(string(output))
+}
+
+// enviarTransferenciaParaBlockchain transfere 'valor' (ex: "1000stake")
+// de uma carteira interna (apelidoOrigem) para um endereço destino (cosmos1...)
+func enviarTransferenciaParaBlockchain(apelidoOrigem string, destinoAddr string, valor string) error {
+	txMutex.Lock()
+	defer txMutex.Unlock()
+
+	binPath := getBinPath()
+	// Converte o apelido de origem para o endereço real para o comando bank send
+	enderecoOrigem := obterEnderecoPorApelido(apelidoOrigem)
+	if enderecoOrigem == "" {
+		return fmt.Errorf("apelido de origem inválido ou não encontrado na keyring")
+	}
+
+	// Comando bank send: origem (endereco) -> destino (endereco) -> valor
+	// O --from usa o apelido para que a CLI saiba qual chave privada usar para assinar
+	cmd := exec.Command(binPath, "tx", "bank", "send", enderecoOrigem, destinoAddr, valor,
+		"--from", apelidoOrigem,
+		"--node", getRPCURL(),
+		"--home", KeyringDir,
+		"--keyring-backend", "test",
+		"--chain-id", getChainID(),
+		"--fees", FEES,
+		"--broadcast-mode", "sync",
+		"-y")
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("\033[1;31m[BLOCKCHAIN ERROR]\033[0m Falha na transferência de %s.\nOutput: %s\n", valor, string(output))
+		return fmt.Errorf("falha ao enviar tx de transferência: %v", err)
+	}
+
+	// Extrai o hash e aguarda confirmação no bloco
+	txhash := extrairTxHash(string(output))
+	if ok, rawLog := verificarTx(txhash); !ok {
+		log.Printf("\033[1;31m[BLOCKCHAIN ERROR]\033[0m Transferência rejeitada no bloco! Motivo: %s\n", rawLog)
+		return fmt.Errorf("transferência rejeitada: %s", rawLog)
+	}
+
+	fmt.Printf("\033[1;32m[BLOCKCHAIN]\033[0m Transferência de %s realizada com sucesso! TxHash: %s\n", valor, txhash)
+	return nil
+}

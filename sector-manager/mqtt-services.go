@@ -18,6 +18,28 @@ var onConnect = func(client mqtt.Client) {
 	client.Subscribe("drones/+/done", 1, onDoneHandler)
 	client.Subscribe("drones/register", 1, onNewDroneHandler)
 	client.Subscribe("drones/+/heartbeat", 1, onHeartbeatHandler)
+	client.Subscribe("finance/transfer", 1, onTransferHandler)
+}
+
+// onTransferHandler permite que você dispare transferências via MQTT
+var onTransferHandler = func(client mqtt.Client, msg mqtt.Message) {
+	var req shared.TransferRequest
+	if err := json.Unmarshal(msg.Payload(), &req); err != nil {
+		fmt.Printf("\033[1;91m[MQTT ERROR]:\033[0m Falha ao decodificar TransferRequest: %v\n", err)
+		return
+	}
+
+	fmt.Printf("\033[1;94m[MQTT]:\033[0m Recebido pedido de transferência de %s para %s\n", req.FromAlias, req.ToAddress)
+
+	// Chama a função que criamos no blockchainclient.go
+	go func() {
+		err := enviarTransferenciaParaBlockchain(req.FromAlias, req.ToAddress, req.Amount)
+		if err != nil {
+			fmt.Printf("\033[1;91m[MQTT ERROR]:\033[0m Falha na transferência via Blockchain: %v\n", err)
+		} else {
+			fmt.Printf("\033[1;92m[MQTT]:\033[0m Transferência executada com sucesso!\n")
+		}
+	}()
 }
 
 // onDoneHandler processa o laudo do drone e envia a transação imutável para a blockchain

@@ -1,0 +1,19 @@
+# Estágio de construção
+FROM golang:1.25.10-alpine AS builder
+WORKDIR /app
+
+# Copia os módulos e faz o download das dependências
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copia todo o código e compila o binário especificamente para esta pasta
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o transfer-client ./client-transfer
+
+# Estágio de execução
+FROM alpine:latest
+WORKDIR /root/
+COPY --from=builder /app/transfer-client .
+
+# O ponto de entrada padrão executa o binário
+ENTRYPOINT ["./transfer-client"]
