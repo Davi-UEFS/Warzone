@@ -98,6 +98,7 @@ func (d *Drone) HasJurisdiction(localSectorID string) bool {
 // DoneInfo representa a confirmação de conclusão de uma missão.
 type DoneInfo struct {
 	RequisitionID string `json:"occurrence_id"`
+	Report        string `json:"report"`
 	DroneID       string `json:"drone_id"`
 	LCTime        int    `json:"lc_time"`
 }

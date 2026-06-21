@@ -60,7 +60,7 @@ var onDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 	// 2. Agrupa as transações NUMA ÚNICA goroutine.
 	go func() {
 		// A. Envia o laudo e espera
-		enviarLaudoParaBlockchain(idNumerico, result.DroneID, "Missao concluida via MQTT")
+		enviarLaudoParaBlockchain(idNumerico, result.DroneID, result.Report)
 
 		// B. Intervalo de segurança para garantir que o bloco do laudo foi processado
 		time.Sleep(2 * time.Second)

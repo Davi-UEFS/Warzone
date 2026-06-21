@@ -61,6 +61,8 @@ func (app *DroneApp) makeResult(command shared.DroneMission) ([]byte, error) {
 		RequisitionID: command.RequisitionID,
 		DroneID:       command.AssignedDrone,
 		LCTime:        app.LClock.GetTime(),
+		Report: fmt.Sprintf("Missão %s concluída com sucesso pelo drone %s. nas coordenadas (%d, %d)",
+			command.Type, command.AssignedDrone, command.Coordinate.Longitude, command.Coordinate.Latitude),
 	}
 	return json.Marshal(result)
 }
