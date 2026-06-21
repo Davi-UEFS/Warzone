@@ -6,7 +6,7 @@ import "fmt"
 func DefaultGenesis() *GenesisState {
 	return &GenesisState{
 		Params:   DefaultParams(),
-		DroneMap: []Drone{}, MissionList: []Mission{}}
+		DroneMap: []Drone{}, MissionList: []Mission{}, LaudoMap: []Laudo{}}
 }
 
 // Validate performs basic genesis state validation returning an error upon any
@@ -31,6 +31,15 @@ func (gs GenesisState) Validate() error {
 			return fmt.Errorf("mission id should be lower or equal than the last id")
 		}
 		missionIdMap[elem.Id] = true
+	}
+	laudoIndexMap := make(map[string]struct{})
+
+	for _, elem := range gs.LaudoMap {
+		index := fmt.Sprint(elem.RequisitionId)
+		if _, ok := laudoIndexMap[index]; ok {
+			return fmt.Errorf("duplicated index for laudo")
+		}
+		laudoIndexMap[index] = struct{}{}
 	}
 
 	return gs.Params.Validate()

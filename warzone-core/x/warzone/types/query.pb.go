@@ -490,6 +490,194 @@ func (m *QueryAllMissionResponse) GetPagination() *query.PageResponse {
 	return nil
 }
 
+// QueryGetLaudoRequest defines the QueryGetLaudoRequest message.
+type QueryGetLaudoRequest struct {
+	RequisitionId string `protobuf:"bytes,1,opt,name=requisition_id,json=requisitionId,proto3" json:"requisition_id,omitempty"`
+}
+
+func (m *QueryGetLaudoRequest) Reset()         { *m = QueryGetLaudoRequest{} }
+func (m *QueryGetLaudoRequest) String() string { return proto.CompactTextString(m) }
+func (*QueryGetLaudoRequest) ProtoMessage()    {}
+func (*QueryGetLaudoRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_53f12bb2cf7a5ab1, []int{10}
+}
+func (m *QueryGetLaudoRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *QueryGetLaudoRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_QueryGetLaudoRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *QueryGetLaudoRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryGetLaudoRequest.Merge(m, src)
+}
+func (m *QueryGetLaudoRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *QueryGetLaudoRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryGetLaudoRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_QueryGetLaudoRequest proto.InternalMessageInfo
+
+func (m *QueryGetLaudoRequest) GetRequisitionId() string {
+	if m != nil {
+		return m.RequisitionId
+	}
+	return ""
+}
+
+// QueryGetLaudoResponse defines the QueryGetLaudoResponse message.
+type QueryGetLaudoResponse struct {
+	Laudo Laudo `protobuf:"bytes,1,opt,name=laudo,proto3" json:"laudo"`
+}
+
+func (m *QueryGetLaudoResponse) Reset()         { *m = QueryGetLaudoResponse{} }
+func (m *QueryGetLaudoResponse) String() string { return proto.CompactTextString(m) }
+func (*QueryGetLaudoResponse) ProtoMessage()    {}
+func (*QueryGetLaudoResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_53f12bb2cf7a5ab1, []int{11}
+}
+func (m *QueryGetLaudoResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *QueryGetLaudoResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_QueryGetLaudoResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *QueryGetLaudoResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryGetLaudoResponse.Merge(m, src)
+}
+func (m *QueryGetLaudoResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *QueryGetLaudoResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryGetLaudoResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_QueryGetLaudoResponse proto.InternalMessageInfo
+
+func (m *QueryGetLaudoResponse) GetLaudo() Laudo {
+	if m != nil {
+		return m.Laudo
+	}
+	return Laudo{}
+}
+
+// QueryAllLaudoRequest defines the QueryAllLaudoRequest message.
+type QueryAllLaudoRequest struct {
+	Pagination *query.PageRequest `protobuf:"bytes,1,opt,name=pagination,proto3" json:"pagination,omitempty"`
+}
+
+func (m *QueryAllLaudoRequest) Reset()         { *m = QueryAllLaudoRequest{} }
+func (m *QueryAllLaudoRequest) String() string { return proto.CompactTextString(m) }
+func (*QueryAllLaudoRequest) ProtoMessage()    {}
+func (*QueryAllLaudoRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_53f12bb2cf7a5ab1, []int{12}
+}
+func (m *QueryAllLaudoRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *QueryAllLaudoRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_QueryAllLaudoRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *QueryAllLaudoRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryAllLaudoRequest.Merge(m, src)
+}
+func (m *QueryAllLaudoRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *QueryAllLaudoRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryAllLaudoRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_QueryAllLaudoRequest proto.InternalMessageInfo
+
+func (m *QueryAllLaudoRequest) GetPagination() *query.PageRequest {
+	if m != nil {
+		return m.Pagination
+	}
+	return nil
+}
+
+// QueryAllLaudoResponse defines the QueryAllLaudoResponse message.
+type QueryAllLaudoResponse struct {
+	Laudo      []Laudo             `protobuf:"bytes,1,rep,name=laudo,proto3" json:"laudo"`
+	Pagination *query.PageResponse `protobuf:"bytes,2,opt,name=pagination,proto3" json:"pagination,omitempty"`
+}
+
+func (m *QueryAllLaudoResponse) Reset()         { *m = QueryAllLaudoResponse{} }
+func (m *QueryAllLaudoResponse) String() string { return proto.CompactTextString(m) }
+func (*QueryAllLaudoResponse) ProtoMessage()    {}
+func (*QueryAllLaudoResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_53f12bb2cf7a5ab1, []int{13}
+}
+func (m *QueryAllLaudoResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *QueryAllLaudoResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_QueryAllLaudoResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *QueryAllLaudoResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryAllLaudoResponse.Merge(m, src)
+}
+func (m *QueryAllLaudoResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *QueryAllLaudoResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryAllLaudoResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_QueryAllLaudoResponse proto.InternalMessageInfo
+
+func (m *QueryAllLaudoResponse) GetLaudo() []Laudo {
+	if m != nil {
+		return m.Laudo
+	}
+	return nil
+}
+
+func (m *QueryAllLaudoResponse) GetPagination() *query.PageResponse {
+	if m != nil {
+		return m.Pagination
+	}
+	return nil
+}
+
 func init() {
 	proto.RegisterType((*QueryParamsRequest)(nil), "warzonecore.warzone.v1.QueryParamsRequest")
 	proto.RegisterType((*QueryParamsResponse)(nil), "warzonecore.warzone.v1.QueryParamsResponse")
@@ -501,6 +689,10 @@ func init() {
 	proto.RegisterType((*QueryGetMissionResponse)(nil), "warzonecore.warzone.v1.QueryGetMissionResponse")
 	proto.RegisterType((*QueryAllMissionRequest)(nil), "warzonecore.warzone.v1.QueryAllMissionRequest")
 	proto.RegisterType((*QueryAllMissionResponse)(nil), "warzonecore.warzone.v1.QueryAllMissionResponse")
+	proto.RegisterType((*QueryGetLaudoRequest)(nil), "warzonecore.warzone.v1.QueryGetLaudoRequest")
+	proto.RegisterType((*QueryGetLaudoResponse)(nil), "warzonecore.warzone.v1.QueryGetLaudoResponse")
+	proto.RegisterType((*QueryAllLaudoRequest)(nil), "warzonecore.warzone.v1.QueryAllLaudoRequest")
+	proto.RegisterType((*QueryAllLaudoResponse)(nil), "warzonecore.warzone.v1.QueryAllLaudoResponse")
 }
 
 func init() {
@@ -508,49 +700,57 @@ func init() {
 }
 
 var fileDescriptor_53f12bb2cf7a5ab1 = []byte{
-	// 669 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x95, 0x41, 0x6b, 0x13, 0x41,
-	0x14, 0xc7, 0x33, 0x69, 0x9b, 0xb6, 0x53, 0x10, 0x1c, 0x6b, 0xd5, 0xa0, 0x5b, 0x19, 0x45, 0x6b,
-	0xda, 0xee, 0xb8, 0x2d, 0x22, 0xc5, 0x83, 0xb4, 0xd4, 0x16, 0x41, 0xa1, 0x6e, 0x11, 0xa5, 0x07,
-	0x75, 0xd2, 0x2c, 0xeb, 0x42, 0xb2, 0xb3, 0xdd, 0xdd, 0x44, 0x6b, 0xf1, 0xe2, 0x27, 0x10, 0xf4,
-	0xa4, 0x37, 0x15, 0xf1, 0xd8, 0x8f, 0xd1, 0x63, 0xc1, 0x8b, 0x27, 0x91, 0x44, 0xf0, 0x6b, 0xc8,
-	0xce, 0xbc, 0x35, 0xd9, 0x24, 0x6b, 0xb6, 0xd0, 0x4b, 0x98, 0x6c, 0xde, 0xff, 0xbd, 0xdf, 0x7b,
-	0x6f, 0xfe, 0x1b, 0x4c, 0x5f, 0x70, 0xff, 0x95, 0x70, 0xad, 0x6d, 0xe1, 0x5b, 0x0c, 0xce, 0xac,
-	0x61, 0xb0, 0x9d, 0xba, 0xe5, 0xef, 0xea, 0x9e, 0x2f, 0x42, 0x41, 0xa6, 0x3a, 0x62, 0x74, 0x38,
-	0xeb, 0x0d, 0xa3, 0x78, 0x92, 0xd7, 0x1c, 0x57, 0x30, 0xf9, 0xa9, 0x42, 0x8b, 0xa5, 0x6d, 0x11,
-	0xd4, 0x44, 0xc0, 0xca, 0x3c, 0xb0, 0x54, 0x0e, 0xd6, 0x30, 0xca, 0x56, 0xc8, 0x0d, 0xe6, 0x71,
-	0xdb, 0x71, 0x79, 0xe8, 0x08, 0x17, 0x62, 0x27, 0x6d, 0x61, 0x0b, 0x79, 0x64, 0xd1, 0x09, 0x9e,
-	0x9e, 0xb7, 0x85, 0xb0, 0xab, 0x16, 0xe3, 0x9e, 0xc3, 0xb8, 0xeb, 0x8a, 0x50, 0x4a, 0x02, 0xf8,
-	0x35, 0x0d, 0xb7, 0xe2, 0x47, 0x4c, 0x2a, 0xe6, 0x72, 0x4a, 0x4c, 0xcd, 0x09, 0x82, 0x76, 0xf5,
-	0x4b, 0x29, 0x51, 0x1e, 0xf7, 0x79, 0x0d, 0xca, 0xd1, 0x49, 0x4c, 0x1e, 0x44, 0x4d, 0x6c, 0xc8,
-	0x87, 0xa6, 0xb5, 0x53, 0xb7, 0x82, 0x90, 0x3e, 0xc6, 0xa7, 0x12, 0x4f, 0x03, 0x4f, 0xb8, 0x81,
-	0x45, 0x96, 0x71, 0x41, 0x89, 0xcf, 0xa2, 0x8b, 0x68, 0x66, 0x62, 0x41, 0xd3, 0xfb, 0xcf, 0x4d,
-	0x57, 0xba, 0x95, 0xf1, 0x83, 0x9f, 0xd3, 0xb9, 0x6f, 0x7f, 0xf6, 0x4b, 0xc8, 0x04, 0x21, 0x35,
-	0xf0, 0xa4, 0xcc, 0xbc, 0x6e, 0x85, 0xab, 0x51, 0x47, 0x50, 0x91, 0x9c, 0xc3, 0x63, 0xb2, 0xc3,
-	0xa7, 0x4e, 0x45, 0x26, 0x1f, 0x37, 0x47, 0xe5, 0xf7, 0xbb, 0x15, 0x6a, 0xe2, 0xd3, 0x5d, 0x12,
-	0xc0, 0x59, 0xc2, 0x23, 0x32, 0x06, 0x68, 0x2e, 0xa4, 0xd1, 0x48, 0xd5, 0xca, 0x70, 0x04, 0x63,
-	0x2a, 0x05, 0x7d, 0x02, 0x18, 0xcb, 0xd5, 0x6a, 0x02, 0x63, 0x0d, 0xe3, 0xf6, 0x16, 0x21, 0xef,
-	0x15, 0x5d, 0xad, 0x5c, 0x8f, 0x56, 0xae, 0xab, 0x6b, 0x03, 0x2b, 0xd7, 0x37, 0xb8, 0x1d, 0x6b,
-	0xcd, 0x0e, 0x25, 0xfd, 0x88, 0x00, 0xba, 0x5d, 0xa0, 0x17, 0x7a, 0xe8, 0x68, 0xd0, 0x64, 0x3d,
-	0x01, 0x97, 0x97, 0x70, 0x57, 0x07, 0xc2, 0xa9, 0xba, 0x09, 0xba, 0x19, 0x3c, 0x15, 0x4f, 0xf4,
-	0xbe, 0xba, 0x32, 0x71, 0xff, 0x27, 0x70, 0x1e, 0x16, 0x30, 0x6c, 0xe6, 0x9d, 0x0a, 0xdd, 0xc2,
-	0x67, 0x7a, 0x22, 0xa1, 0x91, 0xdb, 0x78, 0x14, 0xee, 0x1b, 0xcc, 0x69, 0x3a, 0xad, 0x15, 0x50,
-	0x42, 0x33, 0xb1, 0x8a, 0x3e, 0x03, 0x8a, 0xe5, 0x6a, 0xb5, 0x8b, 0xe2, 0xb8, 0xb6, 0xf0, 0x19,
-	0x01, 0x7e, 0x67, 0x89, 0x7e, 0xf8, 0x43, 0x47, 0xc7, 0x3f, 0xb6, 0x6d, 0x2c, 0xec, 0x17, 0xf0,
-	0x88, 0xa4, 0x24, 0xef, 0x11, 0x2e, 0x28, 0xeb, 0x90, 0x52, 0x1a, 0x4d, 0xaf, 0x5b, 0x8b, 0xb3,
-	0x99, 0x62, 0x55, 0x65, 0x6a, 0xbc, 0xf9, 0xfe, 0xfb, 0x5d, 0x7e, 0x96, 0x5c, 0x63, 0xab, 0xbc,
-	0xe1, 0xcc, 0x3f, 0xbc, 0xb3, 0xb6, 0x19, 0xbf, 0x1c, 0xe6, 0xfb, 0xbf, 0x29, 0xc8, 0x17, 0x84,
-	0xc7, 0x62, 0xf3, 0x91, 0xb9, 0xff, 0x16, 0xeb, 0xb2, 0x75, 0x71, 0x3e, 0x63, 0x34, 0xc0, 0xdd,
-	0x92, 0x70, 0x37, 0xc8, 0x62, 0x06, 0x38, 0xe9, 0x09, 0xb6, 0x17, 0xbf, 0x35, 0x5e, 0x93, 0x0f,
-	0x08, 0x8f, 0xdf, 0x73, 0x82, 0x4c, 0x9c, 0x5d, 0xbe, 0x1f, 0xc0, 0xd9, 0x6d, 0x62, 0x7a, 0x5d,
-	0x72, 0x96, 0xc8, 0x4c, 0x56, 0x4e, 0xf2, 0x15, 0x61, 0xdc, 0x36, 0x11, 0xd1, 0x07, 0xcd, 0x25,
-	0xe9, 0x88, 0x22, 0xcb, 0x1c, 0x0f, 0x84, 0x37, 0x25, 0xa1, 0x41, 0x58, 0x06, 0x42, 0xb8, 0xd1,
-	0x6c, 0x2f, 0x9a, 0xe2, 0x27, 0x84, 0x27, 0xa2, 0x29, 0x66, 0x23, 0xed, 0xf1, 0xee, 0x00, 0xd2,
-	0x5e, 0x23, 0xd2, 0x05, 0x49, 0x3a, 0x47, 0x4a, 0xd9, 0x49, 0x57, 0x36, 0x0f, 0x9a, 0x1a, 0x3a,
-	0x6c, 0x6a, 0xe8, 0x57, 0x53, 0x43, 0x6f, 0x5b, 0x5a, 0xee, 0xb0, 0xa5, 0xe5, 0x7e, 0xb4, 0xb4,
-	0xdc, 0xd6, 0x92, 0xed, 0x84, 0xcf, 0xeb, 0x65, 0x7d, 0x5b, 0xd4, 0x3a, 0xf2, 0x3d, 0x82, 0x14,
-	0x89, 0xbc, 0x2f, 0xff, 0x65, 0x0e, 0x77, 0x3d, 0x2b, 0x28, 0x17, 0xe4, 0x3f, 0xe2, 0xe2, 0xdf,
-	0x00, 0x00, 0x00, 0xff, 0xff, 0xe8, 0x81, 0x2c, 0xb9, 0x31, 0x08, 0x00, 0x00,
+	// 795 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x96, 0x4f, 0x4f, 0x13, 0x4f,
+	0x18, 0xc7, 0xbb, 0xe5, 0xff, 0x90, 0x1f, 0xc9, 0x6f, 0x44, 0xd4, 0x06, 0x8b, 0x8e, 0xfc, 0x13,
+	0xe8, 0x4e, 0x0a, 0x27, 0x0e, 0xc6, 0x40, 0x10, 0x62, 0x82, 0x09, 0x2e, 0x31, 0x1a, 0x0e, 0xea,
+	0xb4, 0xdd, 0x2c, 0x1b, 0xb7, 0x3b, 0x65, 0x67, 0x5b, 0x45, 0xe2, 0xc5, 0xb3, 0x07, 0x13, 0x8d,
+	0x1e, 0xf0, 0xe6, 0xc5, 0x83, 0x07, 0x5f, 0x06, 0x47, 0x12, 0x2f, 0x9e, 0x8c, 0x01, 0x13, 0xdf,
+	0x86, 0xd9, 0xd9, 0x67, 0xd9, 0xdd, 0xb6, 0xcb, 0x96, 0x04, 0x2f, 0xcd, 0x74, 0xfa, 0x7c, 0x67,
+	0x3e, 0xcf, 0x33, 0xcf, 0xf3, 0x4d, 0x11, 0x79, 0xce, 0x9c, 0x97, 0xdc, 0xd6, 0xcb, 0xdc, 0xd1,
+	0x29, 0xac, 0x69, 0xa3, 0x48, 0x77, 0xea, 0xba, 0xb3, 0xab, 0xd6, 0x1c, 0xee, 0x72, 0x3c, 0x12,
+	0x89, 0x51, 0x61, 0xad, 0x36, 0x8a, 0xb9, 0xff, 0x59, 0xd5, 0xb4, 0x39, 0x95, 0x9f, 0x7e, 0x68,
+	0x6e, 0xa6, 0xcc, 0x45, 0x95, 0x0b, 0x5a, 0x62, 0x42, 0xf7, 0xcf, 0xa0, 0x8d, 0x62, 0x49, 0x77,
+	0x59, 0x91, 0xd6, 0x98, 0x61, 0xda, 0xcc, 0x35, 0xb9, 0x0d, 0xb1, 0xc3, 0x06, 0x37, 0xb8, 0x5c,
+	0x52, 0x6f, 0x05, 0xbb, 0xa3, 0x06, 0xe7, 0x86, 0xa5, 0x53, 0x56, 0x33, 0x29, 0xb3, 0x6d, 0xee,
+	0x4a, 0x89, 0x80, 0x5f, 0x93, 0x70, 0x2b, 0x8e, 0xc7, 0x74, 0x7a, 0x8c, 0xc5, 0xea, 0x95, 0xe0,
+	0x96, 0xf1, 0x84, 0x98, 0xaa, 0x29, 0x44, 0x48, 0x78, 0x23, 0x21, 0xaa, 0xc6, 0x1c, 0x56, 0x05,
+	0x24, 0x32, 0x8c, 0xf0, 0x7d, 0x2f, 0xd1, 0x0d, 0xb9, 0xa9, 0xe9, 0x3b, 0x75, 0x5d, 0xb8, 0xe4,
+	0x11, 0xba, 0x10, 0xdb, 0x15, 0x35, 0x6e, 0x0b, 0x1d, 0x2f, 0xa1, 0x5e, 0x5f, 0x7c, 0x59, 0xb9,
+	0xa6, 0x4c, 0x0f, 0xce, 0xe7, 0xd5, 0xf6, 0xb5, 0x55, 0x7d, 0xdd, 0xf2, 0xc0, 0xc1, 0xcf, 0xb1,
+	0xcc, 0x97, 0x3f, 0xdf, 0x66, 0x14, 0x0d, 0x84, 0xa4, 0x88, 0x86, 0xe5, 0xc9, 0x6b, 0xba, 0xbb,
+	0xe2, 0x65, 0x0d, 0x37, 0xe2, 0x2b, 0xa8, 0x5f, 0x56, 0xe1, 0x89, 0x59, 0x91, 0x87, 0x0f, 0x68,
+	0x7d, 0xf2, 0xfb, 0xdd, 0x0a, 0xd1, 0xd0, 0xc5, 0x26, 0x09, 0xe0, 0x2c, 0xa2, 0x1e, 0x19, 0x03,
+	0x34, 0x57, 0x93, 0x68, 0xa4, 0x6a, 0xb9, 0xdb, 0x83, 0xd1, 0x7c, 0x05, 0x79, 0x0c, 0x18, 0x4b,
+	0x96, 0x15, 0xc3, 0x58, 0x45, 0x28, 0x7c, 0x69, 0x38, 0x77, 0x52, 0xf5, 0xdb, 0x42, 0xf5, 0xda,
+	0x42, 0xf5, 0x5b, 0x0b, 0xda, 0x42, 0xdd, 0x60, 0x46, 0xa0, 0xd5, 0x22, 0x4a, 0xb2, 0xaf, 0x00,
+	0x74, 0x78, 0x41, 0x2b, 0x74, 0xd7, 0xd9, 0xa0, 0xf1, 0x5a, 0x0c, 0x2e, 0x2b, 0xe1, 0xa6, 0x52,
+	0xe1, 0xfc, 0x7b, 0x63, 0x74, 0xd3, 0x68, 0x24, 0xa8, 0xe8, 0x3d, 0xbf, 0x65, 0x82, 0xfc, 0x87,
+	0x50, 0x16, 0x1e, 0xa0, 0x5b, 0xcb, 0x9a, 0x15, 0xb2, 0x85, 0x2e, 0xb5, 0x44, 0x42, 0x22, 0xb7,
+	0x51, 0x1f, 0xf4, 0x1b, 0xd4, 0x69, 0x2c, 0x29, 0x15, 0x50, 0x42, 0x32, 0x81, 0x8a, 0x3c, 0x05,
+	0x8a, 0x25, 0xcb, 0x6a, 0xa2, 0x38, 0xaf, 0x57, 0xf8, 0xac, 0x00, 0x7e, 0xf4, 0x8a, 0x76, 0xf8,
+	0x5d, 0x67, 0xc7, 0x3f, 0xbf, 0xd7, 0xb8, 0x15, 0x8e, 0xc4, 0xba, 0x37, 0xe4, 0x41, 0x15, 0x26,
+	0xd0, 0x90, 0xa3, 0xef, 0xd4, 0x4d, 0x61, 0x7a, 0x61, 0xe1, 0x60, 0xfc, 0x17, 0xd9, 0x8d, 0x8f,
+	0x07, 0xc8, 0xc3, 0x4e, 0x93, 0xa6, 0x91, 0x36, 0x1e, 0x52, 0x15, 0x74, 0x9a, 0x54, 0x44, 0xc7,
+	0x23, 0x86, 0xf4, 0x2f, 0xc6, 0x23, 0x11, 0xba, 0xeb, 0x6c, 0xd0, 0xe7, 0xf6, 0x20, 0xf3, 0x5f,
+	0xfb, 0x51, 0x8f, 0xa4, 0xc3, 0xef, 0x15, 0xd4, 0xeb, 0x7b, 0x19, 0x9e, 0x49, 0x22, 0x69, 0xb5,
+	0xcf, 0xdc, 0x6c, 0x47, 0xb1, 0xfe, 0xcd, 0xa4, 0xf8, 0xfa, 0xfb, 0xef, 0x77, 0xd9, 0x59, 0x7c,
+	0x93, 0xae, 0xb0, 0x86, 0x59, 0x78, 0x70, 0x67, 0x75, 0x33, 0x70, 0xeb, 0x42, 0x7b, 0xeb, 0xc6,
+	0x1f, 0x14, 0xd4, 0x1f, 0xb8, 0x21, 0x9e, 0x3b, 0xf5, 0xb2, 0x26, 0x9f, 0xcd, 0x15, 0x3a, 0x8c,
+	0x06, 0xb8, 0x82, 0x84, 0x9b, 0xc2, 0x13, 0xb4, 0x64, 0xf1, 0xf2, 0xb3, 0xf2, 0x36, 0x33, 0xed,
+	0x13, 0x20, 0xe9, 0x4a, 0x82, 0xee, 0x05, 0xc6, 0xfd, 0x0a, 0xbf, 0x51, 0xd0, 0xc0, 0xba, 0x29,
+	0x3a, 0x22, 0x6b, 0xb2, 0xde, 0x14, 0xb2, 0x66, 0x1f, 0x25, 0x44, 0x92, 0x8d, 0xe2, 0x5c, 0x32,
+	0x19, 0xde, 0x57, 0x10, 0x0a, 0x9d, 0x0b, 0xab, 0x69, 0xb9, 0xc7, 0x6d, 0x28, 0x47, 0x3b, 0x8e,
+	0x07, 0xa6, 0x39, 0xc9, 0x34, 0x89, 0xc7, 0xdb, 0x31, 0xc1, 0xd4, 0x96, 0xb9, 0x57, 0x32, 0xaf,
+	0x58, 0x1f, 0x15, 0x34, 0xe8, 0x15, 0xab, 0x33, 0xbc, 0x16, 0x97, 0x4c, 0xc1, 0x6b, 0xb5, 0x3c,
+	0x32, 0x25, 0xf1, 0xae, 0xe3, 0xb1, 0x14, 0x3c, 0xfc, 0xc9, 0xef, 0x2f, 0x39, 0x63, 0xe9, 0xfd,
+	0x15, 0x75, 0x88, 0xf4, 0xfe, 0x8a, 0x8d, 0x3b, 0x59, 0x90, 0x48, 0x05, 0x3c, 0xdb, 0x0e, 0x49,
+	0x8e, 0xb5, 0xa0, 0x7b, 0x71, 0x17, 0x0c, 0xbb, 0xac, 0x13, 0xbe, 0x26, 0x07, 0x4b, 0xef, 0xb2,
+	0x38, 0xdf, 0xa9, 0x5d, 0xe6, 0xf3, 0x2d, 0x6f, 0x1e, 0x1c, 0xe5, 0x95, 0xc3, 0xa3, 0xbc, 0xf2,
+	0xeb, 0x28, 0xaf, 0xbc, 0x3d, 0xce, 0x67, 0x0e, 0x8f, 0xf3, 0x99, 0x1f, 0xc7, 0xf9, 0xcc, 0xd6,
+	0xa2, 0x61, 0xba, 0xdb, 0xf5, 0x92, 0x5a, 0xe6, 0xd5, 0xc8, 0x70, 0x3f, 0x04, 0x79, 0x6c, 0xc8,
+	0x5f, 0x9c, 0x9c, 0xea, 0xee, 0xd6, 0x74, 0x51, 0xea, 0x95, 0x7f, 0xcf, 0x16, 0xfe, 0x06, 0x00,
+	0x00, 0xff, 0xff, 0xd2, 0x86, 0x09, 0x59, 0xe2, 0x0a, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -575,6 +775,10 @@ type QueryClient interface {
 	GetMission(ctx context.Context, in *QueryGetMissionRequest, opts ...grpc.CallOption) (*QueryGetMissionResponse, error)
 	// ListMission defines the ListMission RPC.
 	ListMission(ctx context.Context, in *QueryAllMissionRequest, opts ...grpc.CallOption) (*QueryAllMissionResponse, error)
+	// ListLaudo Queries a list of Laudo items.
+	GetLaudo(ctx context.Context, in *QueryGetLaudoRequest, opts ...grpc.CallOption) (*QueryGetLaudoResponse, error)
+	// ListLaudo defines the ListLaudo RPC.
+	ListLaudo(ctx context.Context, in *QueryAllLaudoRequest, opts ...grpc.CallOption) (*QueryAllLaudoResponse, error)
 }
 
 type queryClient struct {
@@ -630,6 +834,24 @@ func (c *queryClient) ListMission(ctx context.Context, in *QueryAllMissionReques
 	return out, nil
 }
 
+func (c *queryClient) GetLaudo(ctx context.Context, in *QueryGetLaudoRequest, opts ...grpc.CallOption) (*QueryGetLaudoResponse, error) {
+	out := new(QueryGetLaudoResponse)
+	err := c.cc.Invoke(ctx, "/warzonecore.warzone.v1.Query/GetLaudo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *queryClient) ListLaudo(ctx context.Context, in *QueryAllLaudoRequest, opts ...grpc.CallOption) (*QueryAllLaudoResponse, error) {
+	out := new(QueryAllLaudoResponse)
+	err := c.cc.Invoke(ctx, "/warzonecore.warzone.v1.Query/ListLaudo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // QueryServer is the server API for Query service.
 type QueryServer interface {
 	// Parameters queries the parameters of the module.
@@ -642,6 +864,10 @@ type QueryServer interface {
 	GetMission(context.Context, *QueryGetMissionRequest) (*QueryGetMissionResponse, error)
 	// ListMission defines the ListMission RPC.
 	ListMission(context.Context, *QueryAllMissionRequest) (*QueryAllMissionResponse, error)
+	// ListLaudo Queries a list of Laudo items.
+	GetLaudo(context.Context, *QueryGetLaudoRequest) (*QueryGetLaudoResponse, error)
+	// ListLaudo defines the ListLaudo RPC.
+	ListLaudo(context.Context, *QueryAllLaudoRequest) (*QueryAllLaudoResponse, error)
 }
 
 // UnimplementedQueryServer can be embedded to have forward compatible implementations.
@@ -662,6 +888,12 @@ func (*UnimplementedQueryServer) GetMission(ctx context.Context, req *QueryGetMi
 }
 func (*UnimplementedQueryServer) ListMission(ctx context.Context, req *QueryAllMissionRequest) (*QueryAllMissionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListMission not implemented")
+}
+func (*UnimplementedQueryServer) GetLaudo(ctx context.Context, req *QueryGetLaudoRequest) (*QueryGetLaudoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetLaudo not implemented")
+}
+func (*UnimplementedQueryServer) ListLaudo(ctx context.Context, req *QueryAllLaudoRequest) (*QueryAllLaudoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListLaudo not implemented")
 }
 
 func RegisterQueryServer(s grpc1.Server, srv QueryServer) {
@@ -758,6 +990,42 @@ func _Query_ListMission_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Query_GetLaudo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryGetLaudoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).GetLaudo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/warzonecore.warzone.v1.Query/GetLaudo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).GetLaudo(ctx, req.(*QueryGetLaudoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Query_ListLaudo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryAllLaudoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).ListLaudo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/warzonecore.warzone.v1.Query/ListLaudo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).ListLaudo(ctx, req.(*QueryAllLaudoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var Query_serviceDesc = _Query_serviceDesc
 var _Query_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "warzonecore.warzone.v1.Query",
@@ -782,6 +1050,14 @@ var _Query_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListMission",
 			Handler:    _Query_ListMission_Handler,
+		},
+		{
+			MethodName: "GetLaudo",
+			Handler:    _Query_GetLaudo_Handler,
+		},
+		{
+			MethodName: "ListLaudo",
+			Handler:    _Query_ListLaudo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -1136,6 +1412,153 @@ func (m *QueryAllMissionResponse) MarshalToSizedBuffer(dAtA []byte) (int, error)
 	return len(dAtA) - i, nil
 }
 
+func (m *QueryGetLaudoRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *QueryGetLaudoRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *QueryGetLaudoRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.RequisitionId) > 0 {
+		i -= len(m.RequisitionId)
+		copy(dAtA[i:], m.RequisitionId)
+		i = encodeVarintQuery(dAtA, i, uint64(len(m.RequisitionId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *QueryGetLaudoResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *QueryGetLaudoResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *QueryGetLaudoResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	{
+		size, err := m.Laudo.MarshalToSizedBuffer(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = encodeVarintQuery(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0xa
+	return len(dAtA) - i, nil
+}
+
+func (m *QueryAllLaudoRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *QueryAllLaudoRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *QueryAllLaudoRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Pagination != nil {
+		{
+			size, err := m.Pagination.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintQuery(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *QueryAllLaudoResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *QueryAllLaudoResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *QueryAllLaudoResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Pagination != nil {
+		{
+			size, err := m.Pagination.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintQuery(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Laudo) > 0 {
+		for iNdEx := len(m.Laudo) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Laudo[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintQuery(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintQuery(dAtA []byte, offset int, v uint64) int {
 	offset -= sovQuery(v)
 	base := offset
@@ -1267,6 +1690,62 @@ func (m *QueryAllMissionResponse) Size() (n int) {
 	_ = l
 	if len(m.Mission) > 0 {
 		for _, e := range m.Mission {
+			l = e.Size()
+			n += 1 + l + sovQuery(uint64(l))
+		}
+	}
+	if m.Pagination != nil {
+		l = m.Pagination.Size()
+		n += 1 + l + sovQuery(uint64(l))
+	}
+	return n
+}
+
+func (m *QueryGetLaudoRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.RequisitionId)
+	if l > 0 {
+		n += 1 + l + sovQuery(uint64(l))
+	}
+	return n
+}
+
+func (m *QueryGetLaudoResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = m.Laudo.Size()
+	n += 1 + l + sovQuery(uint64(l))
+	return n
+}
+
+func (m *QueryAllLaudoRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Pagination != nil {
+		l = m.Pagination.Size()
+		n += 1 + l + sovQuery(uint64(l))
+	}
+	return n
+}
+
+func (m *QueryAllLaudoResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.Laudo) > 0 {
+		for _, e := range m.Laudo {
 			l = e.Size()
 			n += 1 + l + sovQuery(uint64(l))
 		}
@@ -2086,6 +2565,377 @@ func (m *QueryAllMissionResponse) Unmarshal(dAtA []byte) error {
 			}
 			m.Mission = append(m.Mission, Mission{})
 			if err := m.Mission[len(m.Mission)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Pagination", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQuery
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthQuery
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthQuery
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Pagination == nil {
+				m.Pagination = &query.PageResponse{}
+			}
+			if err := m.Pagination.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipQuery(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthQuery
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *QueryGetLaudoRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowQuery
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: QueryGetLaudoRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: QueryGetLaudoRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RequisitionId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQuery
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQuery
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQuery
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.RequisitionId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipQuery(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthQuery
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *QueryGetLaudoResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowQuery
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: QueryGetLaudoResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: QueryGetLaudoResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Laudo", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQuery
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthQuery
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthQuery
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Laudo.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipQuery(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthQuery
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *QueryAllLaudoRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowQuery
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: QueryAllLaudoRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: QueryAllLaudoRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Pagination", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQuery
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthQuery
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthQuery
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Pagination == nil {
+				m.Pagination = &query.PageRequest{}
+			}
+			if err := m.Pagination.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipQuery(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthQuery
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *QueryAllLaudoResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowQuery
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: QueryAllLaudoResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: QueryAllLaudoResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Laudo", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQuery
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthQuery
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthQuery
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Laudo = append(m.Laudo, Laudo{})
+			if err := m.Laudo[len(m.Laudo)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

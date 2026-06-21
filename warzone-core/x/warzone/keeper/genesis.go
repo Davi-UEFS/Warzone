@@ -22,6 +22,11 @@ func (k Keeper) InitGenesis(ctx context.Context, genState types.GenesisState) er
 	if err := k.MissionSeq.Set(ctx, genState.MissionCount); err != nil {
 		return err
 	}
+	for _, elem := range genState.LaudoMap {
+		if err := k.Laudo.Set(ctx, elem.RequisitionId, elem); err != nil {
+			return err
+		}
+	}
 
 	return k.Params.Set(ctx, genState.Params)
 }
@@ -51,6 +56,12 @@ func (k Keeper) ExportGenesis(ctx context.Context) (*types.GenesisState, error) 
 
 	genesis.MissionCount, err = k.MissionSeq.Peek(ctx)
 	if err != nil {
+		return nil, err
+	}
+	if err := k.Laudo.Walk(ctx, nil, func(_ string, val types.Laudo) (stop bool, err error) {
+		genesis.LaudoMap = append(genesis.LaudoMap, val)
+		return false, nil
+	}); err != nil {
 		return nil, err
 	}
 

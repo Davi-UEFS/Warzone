@@ -7,6 +7,7 @@ import "cosmos/base/query/v1beta1/pagination.proto";
 import "gogoproto/gogo.proto";
 import "google/api/annotations.proto";
 import "warzonecore/warzone/v1/drone.proto";
+import "warzonecore/warzone/v1/laudo.proto";
 import "warzonecore/warzone/v1/mission.proto";
 import "warzonecore/warzone/v1/params.proto";
 
@@ -21,22 +22,32 @@ service Query {
 
   // ListDrone Queries a list of Drone items.
   rpc GetDrone(QueryGetDroneRequest) returns (QueryGetDroneResponse) {
-    option (google.api.http).get = "/Davi-UEFS/warzone-core/warzone/v1/drone/{drone_id}";
+    option (google.api.http).get = "/blockchain/warzone/drones/{drone_id}";
   }
 
   // ListDrone defines the ListDrone RPC.
-  rpc ListDrone(QueryAllDroneRequest) returns (QueryAllDroneResponse) {
-    option (google.api.http).get = "/Davi-UEFS/warzone-core/warzone/v1/drone";
+    rpc ListDrone(QueryAllDroneRequest) returns (QueryAllDroneResponse) {
+    option (google.api.http).get = "/blockchain/warzone/drones";
   }
 
   // ListMission Queries a list of Mission items.
   rpc GetMission(QueryGetMissionRequest) returns (QueryGetMissionResponse) {
-    option (google.api.http).get = "/Davi-UEFS/warzone-core/warzone/v1/mission/{id}";
+    option (google.api.http).get = "/blockchain/warzone/requisicoes/{id}";
   }
 
   // ListMission defines the ListMission RPC.
   rpc ListMission(QueryAllMissionRequest) returns (QueryAllMissionResponse) {
-    option (google.api.http).get = "/Davi-UEFS/warzone-core/warzone/v1/mission";
+    option (google.api.http).get = "/blockchain/warzone/requisicoes";
+  }
+
+  // ListLaudo Queries a list of Laudo items.
+  rpc GetLaudo(QueryGetLaudoRequest) returns (QueryGetLaudoResponse) {
+    option (google.api.http).get = "/blockchain/warzone/laudos/{requisition_id}";
+  }
+
+  // ListLaudo defines the ListLaudo RPC.
+  rpc ListLaudo(QueryAllLaudoRequest) returns (QueryAllLaudoResponse) {
+    option (google.api.http).get = "/blockchain/warzone/laudos";
   }
 }
 
@@ -91,5 +102,26 @@ message QueryAllMissionRequest {
 // QueryAllMissionResponse defines the QueryAllMissionResponse message.
 message QueryAllMissionResponse {
   repeated Mission mission = 1 [(gogoproto.nullable) = false];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
+
+// QueryGetLaudoRequest defines the QueryGetLaudoRequest message.
+message QueryGetLaudoRequest {
+  string requisition_id = 1;
+}
+
+// QueryGetLaudoResponse defines the QueryGetLaudoResponse message.
+message QueryGetLaudoResponse {
+  Laudo laudo = 1 [(gogoproto.nullable) = false];
+}
+
+// QueryAllLaudoRequest defines the QueryAllLaudoRequest message.
+message QueryAllLaudoRequest {
+  cosmos.base.query.v1beta1.PageRequest pagination = 1;
+}
+
+// QueryAllLaudoResponse defines the QueryAllLaudoResponse message.
+message QueryAllLaudoResponse {
+  repeated Laudo laudo = 1 [(gogoproto.nullable) = false];
   cosmos.base.query.v1beta1.PageResponse pagination = 2;
 }

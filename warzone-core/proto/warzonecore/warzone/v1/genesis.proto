@@ -5,6 +5,7 @@ package warzonecore.warzone.v1;
 import "amino/amino.proto";
 import "gogoproto/gogo.proto";
 import "warzonecore/warzone/v1/drone.proto";
+import "warzonecore/warzone/v1/laudo.proto";
 import "warzonecore/warzone/v1/mission.proto";
 import "warzonecore/warzone/v1/params.proto";
 
@@ -20,4 +21,5 @@ message GenesisState {
   repeated Drone drone_map = 2 [(gogoproto.nullable) = false];
   repeated Mission mission_list = 3 [(gogoproto.nullable) = false];
   uint64 mission_count = 4;
+  repeated Laudo laudo_map = 5 [(gogoproto.nullable) = false];
 }

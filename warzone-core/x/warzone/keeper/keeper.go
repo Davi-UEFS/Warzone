@@ -26,6 +26,7 @@ type Keeper struct {
 	Drone      collections.Map[string, types.Drone]
 	MissionSeq collections.Sequence
 	Mission    collections.Map[uint64, types.Mission]
+	Laudo      collections.Map[string, types.Laudo]
 }
 
 func NewKeeper(
@@ -52,7 +53,7 @@ func NewKeeper(
 		Params:     collections.NewItem(sb, types.ParamsKey, "params", codec.CollValue[types.Params](cdc)),
 		Drone:      collections.NewMap(sb, types.DroneKey, "drone", collections.StringKey, codec.CollValue[types.Drone](cdc)), Mission: collections.NewMap(sb, types.MissionKey, "mission", collections.Uint64Key, codec.CollValue[types.Mission](cdc)),
 		MissionSeq: collections.NewSequence(sb, types.MissionCountKey, "missionSequence"),
-	}
+		Laudo:      collections.NewMap(sb, types.LaudoKey, "laudo", collections.StringKey, codec.CollValue[types.Laudo](cdc))}
 	schema, err := sb.Build()
 	if err != nil {
 		panic(err)

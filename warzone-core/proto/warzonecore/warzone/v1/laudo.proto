@@ -1,0 +1,13 @@
+syntax = "proto3";
+package warzonecore.warzone.v1;
+
+option go_package = "github.com/Davi-UEFS/Warzone/warzone-core/x/warzone/types";
+
+// Laudo defines the Laudo message.
+message Laudo {
+  string requisition_id = 1;
+  string drone_id = 2;
+  string relatorio = 3;
+  string status = 4;
+  string creator = 5;
+}

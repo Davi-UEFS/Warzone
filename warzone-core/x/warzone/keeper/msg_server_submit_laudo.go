@@ -10,8 +10,9 @@ import (
 func (k msgServer) SubmitLaudo(goCtx context.Context, msg *types.MsgSubmitLaudo) (*types.MsgSubmitLaudoResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
-	// 1. Emissão do evento de "Laudo Submetido".
-	// Isso cria um log indexado na blockchain que pode ser consultado via REST API (porta 1317)
+	// ====================================================
+	// 1. Emitir Evento para a Rede
+	// ====================================================
 	ctx.EventManager().EmitEvent(
 		sdk.NewEvent(
 			"laudo_registrado",
@@ -22,6 +23,25 @@ func (k msgServer) SubmitLaudo(goCtx context.Context, msg *types.MsgSubmitLaudo)
 			sdk.NewAttribute("creator", msg.Creator),
 		),
 	)
+
+	// ====================================================
+	// 2. Montar a estrutura do Laudo
+	// ====================================================
+	novoLaudo := types.Laudo{
+		RequisitionId: msg.RequisitionId,
+		DroneId:       msg.DroneId,
+		Relatorio:     msg.Relatorio,
+		Status:        msg.Status,
+		Creator:       msg.Creator,
+	}
+
+	// ====================================================
+	// 3. Salvar no Banco de Dados (KVStore / Collections)
+	// ====================================================
+	// Grava de forma persistente. A chave é o RequisitionId.
+	if err := k.Laudo.Set(ctx, msg.RequisitionId, novoLaudo); err != nil {
+		return nil, err
+	}
 
 	return &types.MsgSubmitLaudoResponse{}, nil
 }

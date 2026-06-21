@@ -127,7 +127,7 @@ func fetchRequisitionsFromBlockchain() ([]shared.Requisition, error) {
 	var lastErr error
 
 	for _, ip := range endpoints {
-		url := strings.TrimSpace(ip) + "/Davi-UEFS/warzone-core/warzone/v1/mission"
+		url := strings.TrimSpace(ip) + "/blockchain/warzone/requisicoes"
 
 		client := http.Client{Timeout: 2 * time.Second}
 		resp, err := client.Get(url)
@@ -196,7 +196,7 @@ func fetchDronesFromBlockchain() ([]shared.Drone, error) {
 	var lastErr error
 
 	for _, ip := range endpoints {
-		url := strings.TrimSpace(ip) + "/Davi-UEFS/warzone-core/warzone/v1/drone"
+		url := strings.TrimSpace(ip) + "/blockchain/warzone/drones"
 
 		client := http.Client{Timeout: 2 * time.Second}
 		resp, err := client.Get(url)
@@ -474,7 +474,7 @@ func enviarReportDeadDroneParaBlockchain(droneID string) {
 func obterEnderecoPorApelido(apelido string) string {
 	binPath := getBinPath()
 	// Consulta o endereço público associado ao apelido no banco de chaves local
-	cmd := exec.Command(binPath, "keys", "show", apelido, "--address", "--home", KeyringDir)
+	cmd := exec.Command(binPath, "keys", "show", apelido, "--address", "--keyring-backend", "test", "--home", KeyringDir)
 	output, err := cmd.Output()
 	if err != nil {
 		log.Printf("[BLOCKCHAIN ERROR] Não foi possível encontrar endereço para o apelido %s: %v\n", apelido, err)

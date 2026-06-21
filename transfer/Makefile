@@ -4,9 +4,9 @@ SHELL := /bin/bash
 IMAGE_NAME ?= daviuefs/client-transfer
 CONTAINER_NAME ?= transfer-client
 
-BROKER_ADDR ?= tcp://127.0.0.1:1883
-FROM_ALIAS ?= Setor-A
-TO_ADDR ?= cosmos1enderecoficticio1234567890
+BROKER_ADDR ?= tcp://127.0.0.1:1884
+FROM_ALIAS ?= pais_eua
+TO_ADDR ?= cosmos15umhrhht64cpejk0entstm7aqhcf2t2nvsyx8x
 AMOUNT ?= 100stake
 
 .PHONY: help build run run-go run-prompt clean

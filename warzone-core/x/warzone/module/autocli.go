@@ -41,6 +41,18 @@ func (am AppModule) AutoCLIOptions() *autocliv1.ModuleOptions {
 					Alias:          []string{"show-mission"},
 					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "id"}},
 				},
+				{
+					RpcMethod: "ListLaudo",
+					Use:       "list-laudo",
+					Short:     "List all laudo",
+				},
+				{
+					RpcMethod:      "GetLaudo",
+					Use:            "get-laudo [id]",
+					Short:          "Gets a laudo",
+					Alias:          []string{"show-laudo"},
+					PositionalArgs: []*autocliv1.PositionalArgDescriptor{{ProtoField: "requisition_id"}},
+				},
 			},
 		},
 		Tx: &autocliv1.ServiceCommandDescriptor{

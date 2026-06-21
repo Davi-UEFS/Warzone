@@ -9,6 +9,7 @@ sector-manager/dataRaft
 broker/data/
 warzone-core/data/
 sector-manager/warzone-cored
+sector-manager/sector-manager.tar
 
 
 # Local editor files

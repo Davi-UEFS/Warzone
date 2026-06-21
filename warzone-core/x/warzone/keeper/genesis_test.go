@@ -13,7 +13,7 @@ func TestGenesis(t *testing.T) {
 		Params:   types.DefaultParams(),
 		DroneMap: []types.Drone{{DroneId: "0"}, {DroneId: "1"}}, MissionList: []types.Mission{{Id: 0}, {Id: 1}},
 		MissionCount: 2,
-	}
+		LaudoMap:     []types.Laudo{{RequisitionId: "0"}, {RequisitionId: "1"}}}
 	f := initFixture(t)
 	err := f.keeper.InitGenesis(f.ctx, genesisState)
 	require.NoError(t, err)
@@ -25,5 +25,6 @@ func TestGenesis(t *testing.T) {
 	require.EqualExportedValues(t, genesisState.DroneMap, got.DroneMap)
 	require.EqualExportedValues(t, genesisState.MissionList, got.MissionList)
 	require.Equal(t, genesisState.MissionCount, got.MissionCount)
+	require.EqualExportedValues(t, genesisState.LaudoMap, got.LaudoMap)
 
 }

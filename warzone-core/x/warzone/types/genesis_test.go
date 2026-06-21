@@ -20,7 +20,7 @@ func TestGenesisState_Validate(t *testing.T) {
 		},
 		{
 			desc:     "valid genesis state",
-			genState: &types.GenesisState{DroneMap: []types.Drone{{DroneId: "0"}, {DroneId: "1"}}, MissionList: []types.Mission{{Id: 0}, {Id: 1}}, MissionCount: 2}, valid: true,
+			genState: &types.GenesisState{DroneMap: []types.Drone{{DroneId: "0"}, {DroneId: "1"}}, MissionList: []types.Mission{{Id: 0}, {Id: 1}}, MissionCount: 2, LaudoMap: []types.Laudo{{RequisitionId: "0"}, {RequisitionId: "1"}}}, valid: true,
 		}, {
 			desc: "duplicated drone",
 			genState: &types.GenesisState{
@@ -33,7 +33,7 @@ func TestGenesisState_Validate(t *testing.T) {
 					},
 				},
 				MissionList: []types.Mission{{Id: 0}, {Id: 1}}, MissionCount: 2,
-			}, valid: false,
+				LaudoMap: []types.Laudo{{RequisitionId: "0"}, {RequisitionId: "1"}}}, valid: false,
 		}, {
 			desc: "duplicated mission",
 			genState: &types.GenesisState{
@@ -45,7 +45,7 @@ func TestGenesisState_Validate(t *testing.T) {
 						Id: 0,
 					},
 				},
-			},
+				LaudoMap: []types.Laudo{{RequisitionId: "0"}, {RequisitionId: "1"}}},
 			valid: false,
 		}, {
 			desc: "invalid mission count",
@@ -56,6 +56,19 @@ func TestGenesisState_Validate(t *testing.T) {
 					},
 				},
 				MissionCount: 0,
+				LaudoMap:     []types.Laudo{{RequisitionId: "0"}, {RequisitionId: "1"}}},
+			valid: false,
+		}, {
+			desc: "duplicated laudo",
+			genState: &types.GenesisState{
+				LaudoMap: []types.Laudo{
+					{
+						RequisitionId: "0",
+					},
+					{
+						RequisitionId: "0",
+					},
+				},
 			},
 			valid: false,
 		},

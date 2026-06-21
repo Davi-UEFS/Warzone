@@ -160,7 +160,7 @@ message MsgAddReq {
   string reqType = 4;
   string coord = 5;
   string payer = 6;
-  string alertId  = 7;
+  string alertId = 7;
 }
 
 // MsgAddReqResponse defines the MsgAddReqResponse message.
