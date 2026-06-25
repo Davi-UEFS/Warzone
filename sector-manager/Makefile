@@ -214,3 +214,24 @@ run-sectorD-blockchain:
 stop-blockchain:
 	-docker stop manager-a manager-b manager-c manager-d 2>/dev/null || true
 	-docker rm manager-a manager-b manager-c manager-d 2>/dev/null || true
+
+# ==========================================
+# DASHBOARD TÁTICO E SECTOR MANAGER
+# ==========================================
+SECTOR_ID ?= Setor-A
+BLOCKCHAIN_URL ?= http://localhost:1317
+BROKER_URL ?= tcp://localhost:1883
+PORT ?= 8080
+
+.PHONY: run-dashboard
+
+run-dashboard:
+	@echo "\033[1;34m======================================================\033[0m"
+	@echo "\033[1;32m🚀 INICIANDO SECTOR MANAGER E DASHBOARD TÁTICO\033[0m"
+	@echo "📡 Setor Alvo: $(SECTOR_ID)"
+	@echo "🔗 Blockchain: $(BLOCKCHAIN_URL)"
+	@echo "🌐 Painel Web: http://localhost:$(PORT)"
+	@echo "\033[1;34m======================================================\033[0m"
+	SECTOR_ID="$(SECTOR_ID)" \
+	BLOCKCHAIN_REST_URLS="$(BLOCKCHAIN_URL)" \
+	go run . -broker="$(BROKER_URL)" -port=$(PORT)

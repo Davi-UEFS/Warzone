@@ -2,13 +2,12 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>Estreito de Ormuz</title>
-
+  <title>Estreito de Ormuz — Operações Globais</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-
   <style>
-    #mapa { width: 100%; height: 100vh; }
+    #mapa { width: 100%; height: 100vh; margin: 0; padding: 0; }
+    body { margin: 0; padding: 0; }
   </style>
 </head>
 <body>
@@ -16,83 +15,94 @@
   <div id="mapa"></div>
 
   <script>
-
-    // 1. CRIA O MAPA
+    // 1. INICIALIZA O MAPA TRAVADO NO ESTREITO
     var mapa = L.map('mapa', {
-      dragging: false,           // desativa arrastar
-      scrollWheelZoom: false,    // desativa zoom com scroll
-      doubleClickZoom: false,    // desativa zoom com duplo clique
-      zoomControl: false,        // remove os botões + e -
-      minZoom: 8,                // não deixa afastar demais
-      maxZoom: 8,                // não deixa aproximar demais (trava o zoom)
-    }).setView([26.5, 56.8,], 8);
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      zoomControl: false,
+      minZoom: 8,
+      maxZoom: 8,
+    }).setView([26.5, 56.8], 8);
+    
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapa);
 
+    // Camada para podermos limpar e redesenhar os elementos dinamicamente
+    var camadaElementos = L.layerGroup().addTo(mapa);
 
-    // 2. DEFINE OS 4 SETORES
-    //    bounds: [[lat_sul, lng_oeste], [lat_norte, lng_leste]]
-    //    status: "online" (azul) ou "down" (vermelho)
-    //    drones: quantidade de drones no setor
-    var setores = [
-      {
-        nome: "Setor 1 — Oeste",
-        status: "online",
-        drones: 4,
-        bounds: [[25.0, 54.5], [27.0, 56.2]]
-      },
-      {
-        nome: "Setor 2 — Centro-Norte",
-        status: "down",
-        drones: 2,
-        bounds: [[26.0, 56.2], [27.5, 57.8]]
-      },
-      {
-        nome: "Setor 3 — Centro-Sul",
-        status: "online",
-        drones: 3,
-        bounds: [[25.0, 56.2], [26.0, 57.8]]
-      },
-      {
-        nome: "Setor 4 — Leste",
-        status: "down",
-        drones: 1,
-        bounds: [[25.0, 57.8], [26.2, 59.5]]
-      },
-    ];
+    // Coordenadas geográficas fixas dos 4 setores no Estreito
+    var limitesSetores = {
+      "Setor-A": [[25.0, 54.5], [27.0, 56.2]],
+      "Setor-B": [[26.0, 56.2], [27.5, 57.8]],
+      "Setor-C": [[25.0, 56.2], [26.0, 57.8]],
+      "Setor-D": [[25.0, 57.8], [26.2, 59.5]]
+    };
 
+    async function atualizarMapa() {
+      try {
+        const response = await fetch("/api/state", { cache: "no-store" });
+        if (!response.ok) throw new Error("Falha ao ler API");
+        const data = await response.json();
 
-    // 3. DESENHA CADA SETOR E SEU MARCADOR DE DRONE
-    for (var i = 0; i < setores.length; i++) {
-      var setor = setores[i];
+        // Limpa o mapa anterior para não acumular marcadores duplicados
+        camadaElementos.clearLayers();
 
-      // Escolhe a cor conforme o status
-      var cor = setor.status === "down" ? "red" : "blue";
+        // Inicializa o contador de drones por setor
+        var contagemDrones = { "Setor-A": 0, "Setor-B": 0, "Setor-C": 0, "Setor-D": 0 };
 
-      // Desenha o retângulo
-      L.rectangle(setor.bounds, {
-        color: cor,
-        fillColor: cor,
-        fillOpacity: 0.3
-      })
-      .addTo(mapa)
-      .bindPopup(setor.nome + "<br>Status: " + setor.status + "<br>Drones: " + setor.drones);
+        // 2. CONTA OS DRONES REAIS QUE ESTÃO NA BLOCKCHAIN/MEMÓRIA
+        if (data.drones && data.drones.length > 0) {
+          data.drones.forEach(drone => {
+            if (contagemDrones[drone.sector] !== undefined) {
+              contagemDrones[drone.sector]++;
+            }
+          });
+        }
 
-      // Calcula o centro do retângulo para colocar o marcador
-      var latCentro = (setor.bounds[0][0] + setor.bounds[1][0]) / 2;
-      var lngCentro = (setor.bounds[0][1] + setor.bounds[1][1]) / 2;
+        // 3. DESENHA OS SETORES COM OS DADOS VIVOS
+        for (var nomeSetor in limitesSetores) {
+          var bounds = limitesSetores[nomeSetor];
+          var qtdDrones = contagemDrones[nomeSetor];
+          
+          // Se o nó local perdeu a conexão com a rede, pintamos de vermelho (Down)
+          var statusSetor = response.ok ? "ONLINE" : "DOWN";
+          var cor = statusSetor === "DOWN" ? "red" : "#4dd4b0";
 
-      // Cria um ícone circular verde com o número de drones
-      var iconeDrone = L.divIcon({
-        html: '<div style="background:green; color:white; border-radius:50%; width:28px; height:28px; text-align:center; line-height:28px; font-weight:bold; font-size:14px; border: 2px solid white;">' + setor.drones + '</div>',
-        iconSize: [28, 28],
-        iconAnchor: [14, 14]
-      });
+          // Desenha o retângulo do Setor
+          L.rectangle(bounds, {
+            color: cor,
+            fillColor: cor,
+            fillOpacity: 0.15,
+            weight: 2
+          })
+          .addTo(camadaElementos)
+          .bindPopup(`<b>${nomeSetor}</b><br>Status: ${statusSetor}<br>Drones Ativos: ${qtdDrones}`);
 
-      L.marker([latCentro, lngCentro], { icon: iconeDrone })
-        .addTo(mapa)
-        .bindPopup(setor.nome + " — " + setor.drones + " drone(s)");
+          // Calcula o centro para posicionar o indicador numérico
+          var latCentro = (bounds[0][0] + bounds[1][0]) / 2;
+          var lngCentro = (bounds[0][1] + bounds[1][1]) / 2;
+
+          // Cria o círculo com o total de drones do setor
+          var corCirculo = qtdDrones > 0 ? "#4dd4b0" : "#8ba2b8";
+          var iconeDrone = L.divIcon({
+            html: `<div style="background:${corCirculo}; color:#0a0f14; border-radius:50%; width:30px; height:30px; text-align:center; line-height:30px; font-weight:bold; font-size:14px; border: 2px solid white; box-shadow: 0 0 8px rgba(0,0,0,0.5);">${qtdDrones}</div>`,
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+          });
+
+          L.marker([latCentro, lngCentro], { icon: iconeDrone })
+            .addTo(camadaElementos)
+            .bindPopup(`<b>${nomeSetor}</b><br>${qtdDrones} drone(s) em patrulha.`);
+        }
+
+      } catch (err) {
+        console.log("Aguardando conexão com o servidor do setor...", err);
+      }
     }
 
+    // Executa a atualização a cada 2 segundos
+    setInterval(atualizarMapa, 2000);
+    atualizarMapa();
   </script>
 
 </body>

@@ -2,43 +2,51 @@ package main
 
 import (
 	_ "embed"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/Davi-UEFS/Warzone/shared"
 )
 
-/* DEPRECATED. VO VER O QUE FACO DPS
-// DashboardState contém os campos de interesse do setor para visualização em HTML.
+// Estruturas auxiliares para a API da Blockchain
+type Coin struct {
+	Denom  string `json:"denom"`
+	Amount string `json:"amount"`
+}
+
+type BalancesResponse struct {
+	Balances []Coin `json:"balances"`
+}
+
+// CompanyBalance representa os fundos de um país no dashboard
+type CompanyBalance struct {
+	Name    string `json:"name"`
+	Address string `json:"address"`
+	Balance string `json:"balance"`
+}
+
+// DashboardState contém os campos para visualização em HTML.
 type DashboardState struct {
 	Pending     []shared.Requisition `json:"pending"`
 	InProgress  []shared.Requisition `json:"in_progress"`
 	Logs        []string             `json:"logs"`
-	Drones      []DashboardDrone     `json:"drones"`
+	Drones      []shared.Drone       `json:"drones"` // Agora usa o Drone compartilhado diretamente
 	Sensors     []string             `json:"sensors"`
+	Balances    []CompanyBalance     `json:"balances"` // NOVO: Saldos da Blockchain
 	GeneratedAt int64                `json:"generated_at"`
 	Sector      string               `json:"sector"`
-	Leader      bool                 `json:"leader"`
-	RaftState   string               `json:"raft_state"`
-}
-
-// DashboardDrone contém os campos do drone para visualização em HTML.
-type DashboardDrone struct {
-	ID       string             `json:"id"`
-	Status   shared.DroneStatus `json:"status"`
-	Mission  string             `json:"mission"`
-	Battery  int                `json:"battery"`
-	LastSeen int64              `json:"last_seen"`
-	Broker   string             `json:"broker"`
-	Sector   string             `json:"sector"`
 }
 
 //go:embed GUI/dashboard.html
 var dashboardHTML []byte
 
-// dashboardIndexHandler serve a página HTML do dashboard.
-//
-// Browsers normalmente fazem uma requisição automática para "/favicon.ico".
-// Para evitar erro 404, responde 204 (No Content).
-//
-// O r.URL.Path é verificado manualmente e retorna 404 para caminhos desconhecidos.
-// O HTML é servido a partir de um arquivo embutido no binário via go:embed (variável dashboardHTML).
 func dashboardIndexHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/favicon.ico" {
 		w.WriteHeader(http.StatusNoContent)
@@ -50,18 +58,10 @@ func dashboardIndexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. REMOVA O http.ServeFile E USE O HTML EMBUTIDO!
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(dashboardHTML)
 }
 
-// startDashboardServer inicia o servidor HTTP do dashboard e registra as rotas.
-// Rotas usadas:
-//   - GET /api/state  -> dashboardStateHandler (API em JSON)
-//   - GET / e /dashboard (e fallback "/") -> dashboardIndexHandler (HTML)
-//
-// Params:
-// port: A porta usada pelo HTTP.
 func startDashboardServer(port int) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/state", dashboardStateHandler)
@@ -75,7 +75,6 @@ func startDashboardServer(port int) {
 	}
 }
 
-// dashboardStateHandler expõe o estado atual do setor em JSON para o dashboard.
 func dashboardStateHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -88,82 +87,113 @@ func dashboardStateHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(state)
 }
 
-// buildDashboardState monta uma visão consolidada do setor para consumo do dashboard.
+// buildDashboardState consolida dados locais (Memória) + dados globais (Blockchain)
+// buildDashboardState consolida dados locais (Memória) + dados globais (Blockchain)
 func buildDashboardState() DashboardState {
 	state := DashboardState{
 		GeneratedAt: time.Now().Unix(),
+		Sector:      os.Getenv("SECTOR_ID"),
+	}
+	if state.Sector == "" {
+		state.Sector = "Setor-Desconhecido"
 	}
 
-	if raftNode != nil {
-		state.RaftState = fmt.Sprintf("%v", raftNode.State())
-		state.Leader = raftNode.State() == raft.Leader
+	// 1. DADOS DA BLOCKCHAIN: Busca Drones registrados na rede
+	if drones, err := fetchDronesFromBlockchain(); err == nil {
+		state.Drones = drones
 	}
 
-	sensorsList := make([]string, 0)
-	ConnectedSensors.Range(func(key, value interface{}) bool {
-		sensorsList = append(sensorsList, key.(string))
-		return true
-	})
-
-	sort.Strings(sensorsList)
-	state.Sensors = sensorsList
-
-	if sectorFSM == nil {
-		return state
+	// 2. DADOS DA BLOCKCHAIN: Busca Requisições (Missões)
+	if reqs, err := fetchRequisitionsFromBlockchain(); err == nil {
+		// A sua função fetchRequisitionsFromBlockchain já filtra as PENDENTES
+		state.Pending = reqs
 	}
 
-	sectorFSM.Mu.Lock()
+	// 3. DADOS DA BLOCKCHAIN: Consulta Saldos dos Países
+	state.Balances = fetchCompanyBalances()
 
-	pending := sectorFSM.PendingReqsQueue.ToSlice()
-	inProgress := make([]shared.Requisition, 0, len(sectorFSM.InProgressReqs))
+	// 4. DADOS LOCAIS: Sensores e Logs (Lidos da Memória RAM do Manager)
+	// Como os sensores se conectam via MQTT localmente, usamos as variáveis do Go.
+	// Se você tiver as variáveis globais 'ConnectedSensors' e 'ActionLogs',
+	// basta descomentar o bloco abaixo:
 
-	for _, req := range sectorFSM.InProgressReqs {
-		inProgress = append(inProgress, req)
-	}
-
-	drones := make([]DashboardDrone, 0, len(sectorFSM.DroneMap))
-	for _, drone := range sectorFSM.DroneMap {
-		mission := drone.CurrentMission
-		drones = append(drones, DashboardDrone{
-			ID:       drone.ID,
-			Status:   drone.Status,
-			Mission:  mission,
-			Battery:  drone.BatteryLevel,
-			LastSeen: drone.LastSeen,
-			Broker:   drone.CurrentBroker,
-			Sector:   drone.CurrentSector,
+	/*
+		sensorsList := make([]string, 0)
+		ConnectedSensors.Range(func(key, value interface{}) bool {
+			sensorsList = append(sensorsList, key.(string))
+			return true
 		})
-	}
+		sort.Strings(sensorsList)
+		state.Sensors = sensorsList
 
-	sector := sectorFSM.Sector
-	sectorFSM.Mu.Unlock()
-
-	sort.Slice(pending, func(i, j int) bool {
-		if pending[i].Priority != pending[j].Priority {
-			return pending[i].Priority > pending[j].Priority
-		}
-		return pending[i].LamportTime < pending[j].LamportTime
-	})
-
-	sort.Slice(inProgress, func(i, j int) bool {
-		if inProgress[i].Priority != inProgress[j].Priority {
-			return inProgress[i].Priority > inProgress[j].Priority
-		}
-		return inProgress[i].LamportTime < inProgress[j].LamportTime
-	})
-
-	sort.Slice(drones, func(i, j int) bool {
-		return drones[i].ID < drones[j].ID
-	})
-
-	state.Pending = pending
-	state.InProgress = inProgress
-	state.Drones = drones
-	state.Sector = sector
-	logCpy := make([]string, len(sectorFSM.ActionLogs))
-	copy(logCpy, sectorFSM.ActionLogs)
-	state.Logs = logCpy
+		// Adiciona os logs locais
+		state.Logs = []string{"Sistema operando via Cosmos SDK. Consultando ledger..."}
+	*/
 
 	return state
 }
-*/
+
+// fetchCompanyBalances lê o arquivo paises.json e faz a consulta viva na blockchain
+func fetchCompanyBalances() []CompanyBalance {
+	var balances []CompanyBalance
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return balances
+	}
+	paisesPath := filepath.Join(homeDir, "warzone-data", "setorA", "paises.json")
+
+	file, err := os.ReadFile(paisesPath)
+	if err != nil {
+		return balances // Arquivo não existe ainda
+	}
+
+	var paises map[string]string
+	if err := json.Unmarshal(file, &paises); err != nil {
+		return balances
+	}
+
+	nodeURL := os.Getenv("BLOCKCHAIN_REST_URLS")
+	if nodeURL == "" {
+		nodeURL = "http://localhost:1317"
+	}
+	// Pega apenas o primeiro IP caso haja vários
+	nodeURL = strings.Split(nodeURL, ",")[0]
+
+	// Faz um GET na blockchain para cada país
+	for pais, address := range paises {
+		url := fmt.Sprintf("%s/cosmos/bank/v1beta1/balances/%s", nodeURL, address)
+
+		client := http.Client{Timeout: 2 * time.Second}
+		resp, err := client.Get(url)
+
+		saldoAtual := "FALHA API"
+		if err == nil && resp.StatusCode == http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			var data BalancesResponse
+			json.Unmarshal(body, &data)
+
+			saldoAtual = "0"
+			for _, coin := range data.Balances {
+				if coin.Denom == "stake" {
+					saldoAtual = coin.Amount
+					break
+				}
+			}
+			resp.Body.Close()
+		}
+
+		balances = append(balances, CompanyBalance{
+			Name:    strings.ToUpper(pais),
+			Address: address,
+			Balance: saldoAtual,
+		})
+	}
+
+	// Ordena os países em ordem alfabética para o dashboard ficar bonito
+	sort.Slice(balances, func(i, j int) bool {
+		return balances[i].Name < balances[j].Name
+	})
+
+	return balances
+}

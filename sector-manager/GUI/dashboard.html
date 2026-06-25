@@ -130,6 +130,11 @@
         background: linear-gradient(135deg, rgba(255, 90, 90, 0.2) 0%, rgba(8, 12, 18, 0.8) 100%) !important;
       }
 
+      .card.balance {
+        border-color: rgba(77, 163, 255, 0.2);
+        background: linear-gradient(135deg, rgba(77, 163, 255, 0.05) 0%, rgba(8, 12, 18, 0.8) 100%);
+      }
+
       .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
       
       .badge {
@@ -148,10 +153,7 @@
       .empty { color: var(--muted); font-size: 13px; padding: 18px 0; }
       .footer { padding: 0 6vw 28px; color: var(--muted); font-size: 12px; }
 
-      /* =========================================
-         EFEITOS DE ESTADO OFFLINE (GLITCH & CRT)
-         ========================================= */
-      
+      /* EFEITOS DE ESTADO OFFLINE */
       #offline-overlay {
         position: fixed;
         top: 0; left: 0; width: 100vw; height: 100vh;
@@ -170,9 +172,7 @@
         );
       }
 
-      body.offline-mode #offline-overlay {
-        display: flex;
-      }
+      body.offline-mode #offline-overlay { display: flex; }
 
       body.offline-mode .grid, body.offline-mode .panel {
         filter: grayscale(100%) blur(4px) brightness(0.6);
@@ -181,9 +181,7 @@
         animation: flicker 0.15s infinite;
       }
 
-      body.offline-mode header {
-        filter: grayscale(100%) brightness(0.6);
-      }
+      body.offline-mode header { filter: grayscale(100%) brightness(0.6); }
 
       .glitch-text {
         font-size: clamp(32px, 6vw, 64px);
@@ -233,7 +231,7 @@
     <header>
       <div class="title">
         <h1 id="dash-title">Carregando Setor...</h1>
-        <p>Visão em tempo real de requisições, drones e sensores</p>
+        <p>Visão em tempo real de requisições, drones, sensores e fundos operativos</p>
       </div>
       <div class="pill live" id="status-pill">CONECTANDO</div>
     </header>
@@ -245,6 +243,12 @@
     </div>
 
     <section class="grid">
+      <div class="panel" id="balances-panel">
+        <h2 style="color: var(--accent-3);">Economia Global (Saldos)</h2>
+        <div class="count" id="balances-count">0 países</div>
+        <ul class="list" id="balances-list"></ul>
+      </div>
+
       <div class="panel" id="pending-panel">
         <h2>Fila de Pendentes</h2>
         <div class="count" id="pending-count">0 itens</div>
@@ -278,10 +282,14 @@
       const progressList = document.getElementById("progress-list");
       const dronesList = document.getElementById("drones-list");
       const sensorsList = document.getElementById("sensors-list");
+      const balancesList = document.getElementById("balances-list"); // Nova Lista
+      
       const pendingCount = document.getElementById("pending-count");
       const progressCount = document.getElementById("progress-count");
       const dronesCount = document.getElementById("drones-count");
       const sensorsCount = document.getElementById("sensors-count");
+      const balancesCount = document.getElementById("balances-count"); // Novo Contador
+      
       const statusPill = document.getElementById("status-pill");
       const footer = document.getElementById("footer");
       const dashTitle = document.getElementById("dash-title");
@@ -308,20 +316,26 @@
 
       function renderRequisition(req) {
         const item = document.createElement("li");
-        const isRecovered = req.priority >= 1000;
+        
+        // Blindagem contra maiúsculas/minúsculas do Go JSON
+        const priority = req.priority || req.Priority || 0;
+        const id = req.id || req.ID || "?";
+        const type = req.type || req.Type || "-";
+        const coord = req.coord || req.Coord || null;
+
+        const isRecovered = priority >= 1000;
         item.className = isRecovered ? "card urgent" : "card";
         
-        const prioText = isRecovered ? `RESGATADA` : `prio ${req.priority}`;
+        const prioText = isRecovered ? `RESGATADA` : `prio ${priority}`;
         const prioColor = isRecovered ? `color: var(--danger); font-weight: bold;` : `color: var(--text);`;
 
         item.innerHTML = `
           <div class="row">
-            <strong>${req.id}</strong>
+            <strong>${id}</strong>
             <span class="badge" style="${prioColor}">${prioText}</span>
           </div>
-          <div class="muted">tipo: ${req.type || "-"}</div>
-          <div class="muted">coord: ${formatCoord(req.coord)}</div>
-          <div class="muted">lamport: ${req.lamport_time}</div>
+          <div class="muted">tipo: ${type}</div>
+          <div class="muted">coord: ${formatCoord(coord)}</div>
         `;
         return item;
       }
@@ -329,30 +343,44 @@
       function renderDrone(drone, now, currentSector) {
         const item = document.createElement("li");
         
-        const statusType = badgeClass(drone.status);
+        // Blindagem contra maiúsculas/minúsculas do Go JSON
+        const id = drone.id || drone.ID || "?";
+        const status = drone.status || drone.Status || "idle";
+        const mission = drone.mission || drone.CurrentMission || "-";
+        const battery = drone.battery !== undefined ? drone.battery : (drone.BatteryLevel || 0);
+        const sector = drone.sector || drone.CurrentSector || "-";
+        const lastSeen = drone.last_seen || drone.LastSeen; 
+
+        const statusType = badgeClass(status);
         let finalClass = `card ${statusType}`;
         let alertBadge = "";
         
-        const diff = Math.max(0, now - drone.last_seen);
-        if (diff >= 10) {
-            finalClass += " warning";
-            alertBadge = `<span style="color: var(--accent-2); font-size: 11px; margin-left: 8px;"> SINAL FRACO</span>`;
+        // Como a blockchain não regista os "pings" a cada segundo, o lastSeen virá vazio. 
+        // Desativamos o aviso de 'SINAL FRACO' se lastSeen for undefined para não ficar a piscar injustamente.
+        let ageText = "nunca (sincronizado na rede)";
+        if (lastSeen) {
+            const diff = Math.max(0, now - lastSeen);
+            if (diff >= 10) {
+                finalClass += " warning";
+                alertBadge = `<span style="color: var(--accent-2); font-size: 11px; margin-left: 8px;"> SINAL FRACO</span>`;
+            }
+            ageText = formatAge(lastSeen, now);
         }
 
         item.className = finalClass;
         
-        const isLocal = drone.sector === currentSector;
+        const isLocal = sector === currentSector;
         const medal = isLocal ? '<span style="font-size: 14px; margin-left: 6px;" title="Neste Setor"> LOCAL</span>' : '';
 
         item.innerHTML = `
           <div class="row">
-            <strong>${drone.id}${medal}${alertBadge}</strong>
-            <span class="badge ${statusType}">${drone.status}</span>
+            <strong>${id}${medal}${alertBadge}</strong>
+            <span class="badge ${statusType}">${status}</span>
           </div>
-          <div class="muted">missão: ${drone.mission || "-"}</div>
-          <div class="muted">bateria: ${drone.battery}%</div>
-          <div class="muted" style="${diff >= 10 ? 'color: var(--accent-2); font-weight: 600;' : ''}">último sinal: ${formatAge(drone.last_seen, now)}</div>
-          <div class="muted">setor: ${drone.sector || "-"}</div>
+          <div class="muted">missão: ${mission}</div>
+          <div class="muted">bateria: ${battery}%</div>
+          <div class="muted">último sinal: ${ageText}</div>
+          <div class="muted">setor: ${sector}</div>
         `;
         return item;
       }
@@ -366,6 +394,20 @@
             <span class="badge idle">Online</span>
           </div>
           <div class="muted">Reportando incidentes</div>
+        `;
+        return item;
+      }
+
+      // Função para renderizar os saldos das companhias lidos da blockchain
+      function renderBalance(empresa) {
+        const item = document.createElement("li");
+        item.className = "card balance";
+        item.innerHTML = `
+          <div class="row">
+            <strong>${empresa.name}</strong>
+            <span style="color: var(--accent-3); font-weight: bold;">${empresa.balance} STAKE</span>
+          </div>
+          <div class="muted" style="font-size: 10px; word-break: break-all; margin-top: 4px;">${empresa.address}</div>
         `;
         return item;
       }
@@ -390,19 +432,18 @@
           const data = await response.json();
           const now = data.generated_at || Math.floor(Date.now() / 1000);
 
-          // Remove o modo offline caso ele estivesse ativado
           document.body.classList.remove('offline-mode');
           statusPill.classList.remove('offline');
           statusPill.classList.add('live');
 
           dashTitle.textContent = `Setor ${data.sector || "Desconhecido"}`;
-          const raftStatus = (data.raft_state || "").toLowerCase() === "leader" ? "LÍDER" : "SEGUIDOR";
-          statusPill.textContent = raftStatus;
+          statusPill.textContent = "CONECTADO À REDE";
 
-          pendingCount.textContent = `${data.pending.length} itens`;
-          progressCount.textContent = `${data.in_progress.length} itens`;
-          dronesCount.textContent = `${data.drones.length} itens`;
+          pendingCount.textContent = `${(data.pending || []).length} itens`;
+          progressCount.textContent = `${(data.in_progress || []).length} itens`;
+          dronesCount.textContent = `${(data.drones || []).length} itens`;
           sensorsCount.textContent = `${(data.sensors || []).length} itens`;
+          balancesCount.textContent = `${(data.balances || []).length} países`;
 
           const logConsole = document.getElementById("log-console");
           logConsole.innerHTML = "";
@@ -410,7 +451,6 @@
           if (data.logs && data.logs.length > 0) {
             data.logs.forEach(logText => {
                 const li = document.createElement("li");
-                // Se a mensagem contiver ALERTA, pintamos de vermelho
                 if (logText.includes("ALERTA")) {
                     li.style.color = "var(--danger)";
                     li.style.textShadow = "0 0 5px rgba(255, 90, 90, 0.6)";
@@ -420,26 +460,26 @@
             });
           } else {
             const li = document.createElement("li");
-            li.textContent = "> Sistema inicializado. Aguardando novos eventos...";
+            li.textContent = "> Ledger de eventos sincronizado. Aguardando operações...";
             li.style.color = "var(--muted)";
             logConsole.appendChild(li);
           }
 
+          renderList(balancesList, data.balances || [], renderBalance);
           renderList(pendingList, data.pending, renderRequisition);
           renderList(progressList, data.in_progress, renderRequisition);
           renderList(dronesList, data.drones, (drone) => renderDrone(drone, now, data.sector));
           renderList(sensorsList, data.sensors || [], renderSensor);
 
-          footer.textContent = `Setor: ${data.sector || "-"} | Última atualização: ${new Date(now * 1000).toLocaleTimeString('pt-BR')}`;
+          footer.textContent = `Setor: ${data.sector || "-"} | Ledger Block Sync | Última atualização: ${new Date(now * 1000).toLocaleTimeString('pt-BR')}`;
         } catch (err) {
-          // ATIVA O MODO DE SINAL PERDIDO
           document.body.classList.add('offline-mode');
           
           statusPill.textContent = "OFFLINE";
           statusPill.classList.remove('live');
           statusPill.classList.add('offline');
           
-          footer.textContent = `Erro de conexão com o painel: O servidor local parou de responder.`;
+          footer.textContent = `Erro de conexão com o painel: O nó local parou de responder.`;
         }
       }
 
