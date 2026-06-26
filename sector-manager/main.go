@@ -22,9 +22,6 @@ func carregarEnderecosPaises() error {
 		return fmt.Errorf("erro ao ler paises.json: %v", err)
 	}
 
-	// TODO: DEBUG
-	log.Printf("Endereços dos países carregados: %v\n", data)
-
 	return json.Unmarshal(data, &EnderecosPaises)
 }
 
@@ -60,7 +57,7 @@ func main() {
 	fmt.Printf("%s              %d                    %t\n", brokerAddr, *dashboardPortFlag, *debugFlag)
 
 	// 4. Inicia as rotinas paralelas (Dashboard e o Coração do Sistema)
-	//go startDashboardServer(*dashboardPortFlag)
+	go startDashboardServer(*dashboardPortFlag)
 	go startManagerLoop()
 
 	// 5. Trava a thread principal para o servidor não morrer
