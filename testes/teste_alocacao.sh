@@ -9,7 +9,7 @@ docker exec node-a warzone-cored keys add pais_falido --keyring-backend test --h
 ADDR_FALIDO=$(docker exec node-a warzone-cored keys show pais_falido -a --keyring-backend test --home /warzone)
 
 echo "Tentando pagar uma requisição usando uma carteira sem fundos ($ADDR_FALIDO)..."
-docker exec node-a warzone-cored tx warzone add-req Setor-A 100 resgate "25,56" req-sem-fundo \
+docker exec node-a warzone-cored tx warzone add-req Setor-A 3 WATER "25,56" req-sem-fundo \
   --payer $ADDR_FALIDO --from key_a --keyring-backend test --home /warzone --chain-id warzone-rede \
   --fees 20stake -y 2>&1 | grep "insufficient funds"
 
@@ -26,12 +26,12 @@ sleep 6 # Espera o bloco ser gerado
 echo "Disparando duas ordens SIMULTÂNEAS de setores diferentes para assumir o mesmo drone ($DRONE_TESTE)..."
 
 # Node A tenta alocar para a Missão 1
-docker exec node-a warzone-cored tx warzone assign-drone missao-1 $DRONE_TESTE \
+docker exec node-a warzone-cored tx warzone assign-drone 1 $DRONE_TESTE \
   --from key_a --keyring-backend test --home /warzone --chain-id warzone-rede \
   --fees 20stake -y &
 
 # Node B tenta alocar para a Missão 2 no mesmo milissegundo
-docker exec node-b warzone-cored tx warzone assign-drone missao-2 $DRONE_TESTE \
+docker exec node-b warzone-cored tx warzone assign-drone 2 $DRONE_TESTE \
   --from key_b --keyring-backend test --home /warzone --chain-id warzone-rede \
   --fees 20stake -y &
 
