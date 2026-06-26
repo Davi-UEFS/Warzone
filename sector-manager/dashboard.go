@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -137,19 +137,9 @@ func buildDashboardState() DashboardState {
 func fetchCompanyBalances() []CompanyBalance {
 	var balances []CompanyBalance
 
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return balances
-	}
-	paisesPath := filepath.Join(homeDir, "warzone-data", "setorA", "paises.json")
-
-	file, err := os.ReadFile(paisesPath)
-	if err != nil {
-		return balances // Arquivo não existe ainda
-	}
-
-	var paises map[string]string
-	if err := json.Unmarshal(file, &paises); err != nil {
+	// Usa a função que já existe em vez de ler o arquivo manualmente
+	if err := carregarEnderecosPaises(); err != nil {
+		log.Printf("[WARN] fetchCompanyBalances: %v", err)
 		return balances
 	}
 
@@ -157,22 +147,17 @@ func fetchCompanyBalances() []CompanyBalance {
 	if nodeURL == "" {
 		nodeURL = "http://localhost:1317"
 	}
-	// Pega apenas o primeiro IP caso haja vários
 	nodeURL = strings.Split(nodeURL, ",")[0]
 
-	// Faz um GET na blockchain para cada país
-	for pais, address := range paises {
+	for pais, address := range EnderecosPaises {
 		url := fmt.Sprintf("%s/cosmos/bank/v1beta1/balances/%s", nodeURL, address)
-
 		client := http.Client{Timeout: 2 * time.Second}
 		resp, err := client.Get(url)
-
 		saldoAtual := "FALHA API"
 		if err == nil && resp.StatusCode == http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
 			var data BalancesResponse
 			json.Unmarshal(body, &data)
-
 			saldoAtual = "0"
 			for _, coin := range data.Balances {
 				if coin.Denom == "stake" {
@@ -182,7 +167,6 @@ func fetchCompanyBalances() []CompanyBalance {
 			}
 			resp.Body.Close()
 		}
-
 		balances = append(balances, CompanyBalance{
 			Name:    strings.ToUpper(pais),
 			Address: address,
@@ -190,10 +174,8 @@ func fetchCompanyBalances() []CompanyBalance {
 		})
 	}
 
-	// Ordena os países em ordem alfabética para o dashboard ficar bonito
 	sort.Slice(balances, func(i, j int) bool {
 		return balances[i].Name < balances[j].Name
 	})
-
 	return balances
 }

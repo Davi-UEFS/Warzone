@@ -31,10 +31,11 @@ type BlockchainMission struct {
 
 // BlockchainDrone mapeia EXATAMENTE como a blockchain devolve os dados
 type BlockchainDrone struct {
-	DroneId string `json:"drone_id"`
-	Sector  string `json:"sector"`
-	Status  string `json:"status"`
-	Battery string `json:"battery"` // Blockchain devolve string
+	DroneId          string `json:"drone_id"`
+	Sector           string `json:"sector"`
+	Status           string `json:"status"`
+	Battery          string `json:"battery"` // Blockchain devolve string
+	CurrentMissionId string `json:"currentMissionId"`
 }
 
 type RequisitionsResponse struct {
@@ -90,7 +91,7 @@ func verificarTx(txhash string) (bool, string) {
 	}
 
 	// Aguarda ~1 bloco para a tx ser incluída (~5s no Tendermint)
-	time.Sleep(6 * time.Second)
+	time.Sleep(6500 * time.Millisecond)
 
 	binPath := getBinPath()
 	cmd := exec.Command(binPath, "query", "tx", txhash,
@@ -231,10 +232,11 @@ func fetchDronesFromBlockchain() ([]shared.Drone, error) {
 			}
 
 			novoDrone := shared.Drone{
-				ID:            blockDrone.DroneId,
-				BatteryLevel:  batteryLvl,
-				Status:        status,
-				CurrentSector: blockDrone.Sector,
+				ID:             blockDrone.DroneId,
+				BatteryLevel:   batteryLvl,
+				Status:         status,
+				CurrentSector:  blockDrone.Sector,
+				CurrentMission: blockDrone.CurrentMissionId,
 			}
 			drones = append(drones, novoDrone)
 		}
