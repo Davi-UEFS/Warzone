@@ -166,7 +166,7 @@ run-sectorA-blockchain:
 		-e BLOCKCHAIN_REST_URLS="$(BLOCKCHAIN_REST_URLS)" \
 		-e BLOCKCHAIN_RPC_URL="$(BLOCKCHAIN_RPC_URL)" \
 		-e CHAIN_ID="$(CHAIN_ID)" \
-		$(IMAGE_NAME) --id setor-a --broker-port=1884
+		$(IMAGE_NAME) --id setor-a --broker-port=1884 --dashboard-port=8080
 	docker logs -f manager-a
 
 run-sectorB-blockchain:
@@ -180,7 +180,7 @@ run-sectorB-blockchain:
 		-e BLOCKCHAIN_REST_URLS="$(BLOCKCHAIN_REST_URLS)" \
 		-e BLOCKCHAIN_RPC_URL="$(BLOCKCHAIN_RPC_URL)" \
 		-e CHAIN_ID="$(CHAIN_ID)" \
-		$(IMAGE_NAME) --id setor-b --broker-port=1884
+		$(IMAGE_NAME) --id setor-b --broker-port=1885 --dashboard-port=8081
 	docker logs -f manager-b
 
 run-sectorC-blockchain:
@@ -194,7 +194,7 @@ run-sectorC-blockchain:
 		-e BLOCKCHAIN_REST_URLS="$(BLOCKCHAIN_REST_URLS)" \
 		-e BLOCKCHAIN_RPC_URL="$(BLOCKCHAIN_RPC_URL)" \
 		-e CHAIN_ID="$(CHAIN_ID)" \
-		$(IMAGE_NAME) --id setor-c --broker-port=1884
+		$(IMAGE_NAME) --id setor-c --broker-port=1886 --dashboard-port=8082
 	docker logs -f manager-c
 
 run-sectorD-blockchain:
@@ -208,7 +208,7 @@ run-sectorD-blockchain:
 		-e BLOCKCHAIN_REST_URLS="$(BLOCKCHAIN_REST_URLS)" \
 		-e BLOCKCHAIN_RPC_URL="$(BLOCKCHAIN_RPC_URL)" \
 		-e CHAIN_ID="$(CHAIN_ID)" \
-		$(IMAGE_NAME) --id setor-d
+		$(IMAGE_NAME) --id setor-d --broker-port=1887 --dashboard-port=8083
 	docker logs -f manager-d
 
 stop-blockchain:
