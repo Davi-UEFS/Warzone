@@ -20,6 +20,6 @@ var (
 	globalClient    mqtt.Client
 	brokerAddr      string
 	DebugMode       bool
-	KeyringDir      string
-	EnderecosPaises map[string]string
+	KeyringDir      string            // Diretório do Keyring do Setor com as chaves privadas dos países
+	EnderecosPaises map[string]string // Mapa de país -> endereço público na blockchain
 )

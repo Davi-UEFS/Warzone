@@ -21,7 +21,7 @@ var onConnect = func(client mqtt.Client) {
 	client.Subscribe("finance/transfer", 1, onTransferHandler)
 }
 
-// onTransferHandler permite que você dispare transferências via MQTT
+// onTransferHandler é o handler que escuta mensagens de transferências de saldo.
 var onTransferHandler = func(client mqtt.Client, msg mqtt.Message) {
 	var req shared.TransferRequest
 	if err := json.Unmarshal(msg.Payload(), &req); err != nil {
@@ -31,7 +31,7 @@ var onTransferHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 	fmt.Printf("\033[1;94m[MQTT]:\033[0m Recebido pedido de transferência de %s para %s\n", req.FromAlias, req.ToAddress)
 
-	// Chama a função que criamos no blockchainclient.go
+	// Chama a função de transação em uma goroutine separada para não bloquear o loop principal do MQTT.
 	go func() {
 		err := enviarTransferenciaParaBlockchain(req.FromAlias, req.ToAddress, req.Amount)
 		if err != nil {
@@ -65,12 +65,10 @@ var onDoneHandler = func(client mqtt.Client, msg mqtt.Message) {
 		// B. Intervalo de segurança para garantir que o bloco do laudo foi processado
 		time.Sleep(2 * time.Second)
 
-		// C. Remove a requisição antiga na blockchain (O que forçaria o IDLE na rede)
+		// C. Remove a requisição antiga na blockchain
 		enviarRmvReqParaBlockchain(idNumerico, result.DroneID, "Concluido com sucesso")
 
-		// =========================================================================
-		// A CORREÇÃO: O drone SÓ FICA LIVRE na RAM local após a blockchain fechar a missão!
-		// =========================================================================
+		// O drone só fica livre na RAM local após a blockchain fechar a missão!
 		GlobalState.Mu.Lock()
 		if drone, exists := GlobalState.DroneMap[result.DroneID]; exists {
 			drone.Status = shared.DRONE_IDLE
@@ -91,11 +89,11 @@ var onAlertHandler = func(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
-	// Enviamos apenas o alerta para a rede. A Blockchain gera o ID oficial!
+	// Enviamos apenas o alerta para a rede.
 	go enviarRequisicaoParaBlockchain(alert)
 }
 
-// onNewDroneHandler registra o drone na memória local E na blockchain
+// onNewDroneHandler registra o drone na memória local e na blockchain
 var onNewDroneHandler = func(client mqtt.Client, msg mqtt.Message) {
 	var drone shared.Drone
 
@@ -108,6 +106,8 @@ var onNewDroneHandler = func(client mqtt.Client, msg mqtt.Message) {
 	if sectorID == "" {
 		sectorID = "Setor-A"
 	}
+
+	// Carimba o drone com o setor e o broker local. Isso é necessário para que o watchdog funcione.
 	drone.SetPhysicalLocation(sectorID, brokerAddr)
 	drone.LastSeen = time.Now().Unix()
 	drone.Status = shared.DRONE_IDLE
@@ -117,9 +117,6 @@ var onNewDroneHandler = func(client mqtt.Client, msg mqtt.Message) {
 	GlobalState.Mu.Lock()
 	GlobalState.DroneMap[drone.ID] = &drone
 	GlobalState.Mu.Unlock()
-
-	//TODO: DEBUG
-	fmt.Println(drone)
 
 	fmt.Printf("\033[1;94m[LOCAL]:\033[0m Drone %s registrado na RAM. Sincronizando com Blockchain...\n", drone.ID)
 
@@ -137,13 +134,16 @@ var onHeartbeatHandler = func(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
-	GlobalState.Mu.Lock() // Tranca o NOVO cofre
+	GlobalState.Mu.Lock()
+
+	// O campo Verified é utilizado para garantir que o drone está ativo e confiável.
+	// Se o drone não estiver registrado, ele será ignorado.
 
 	if drone, exists := GlobalState.DroneMap[droneHeartbeat.ID]; exists {
 		drone.LastSeen = time.Now().Unix()
-		drone.Verified = true // O drone provou que está vivo!
+		drone.Verified = true // Marca o drone como verificado, pois ele enviou um heartbeat válido.
 		drone.BatteryLevel = droneHeartbeat.BatteryLevel
 	}
 
-	GlobalState.Mu.Unlock() // Destranca imediatamente
+	GlobalState.Mu.Unlock()
 }

@@ -112,32 +112,14 @@ func buildDashboardState() DashboardState {
 	// 3. DADOS DA BLOCKCHAIN: Consulta Saldos dos Países
 	state.Balances = fetchCompanyBalances()
 
-	// 4. DADOS LOCAIS: Sensores e Logs (Lidos da Memória RAM do Manager)
-	// Como os sensores se conectam via MQTT localmente, usamos as variáveis do Go.
-	// Se você tiver as variáveis globais 'ConnectedSensors' e 'ActionLogs',
-	// basta descomentar o bloco abaixo:
-
-	/*
-		sensorsList := make([]string, 0)
-		ConnectedSensors.Range(func(key, value interface{}) bool {
-			sensorsList = append(sensorsList, key.(string))
-			return true
-		})
-		sort.Strings(sensorsList)
-		state.Sensors = sensorsList
-
-		// Adiciona os logs locais
-		state.Logs = []string{"Sistema operando via Cosmos SDK. Consultando ledger..."}
-	*/
-
 	return state
 }
 
-// fetchCompanyBalances lê o arquivo paises.json e faz a consulta viva na blockchain
+// fetchCompanyBalances lê o arquivo paises.json e faz a consulta na blockchain
 func fetchCompanyBalances() []CompanyBalance {
 	var balances []CompanyBalance
 
-	// Usa a função que já existe em vez de ler o arquivo manualmente
+	// Carrega o endereço público dos países do arquivo JSON
 	if err := carregarEnderecosPaises(); err != nil {
 		log.Printf("[WARN] fetchCompanyBalances: %v", err)
 		return balances
@@ -150,7 +132,7 @@ func fetchCompanyBalances() []CompanyBalance {
 	nodeURL = strings.Split(nodeURL, ",")[0]
 
 	for pais, address := range EnderecosPaises {
-		url := fmt.Sprintf("%s/cosmos/bank/v1beta1/balances/%s", nodeURL, address)
+		url := fmt.Sprintf("%s/cosmos/bank/v1beta1/balances/%s", nodeURL, address) // Endpoint da API REST do Cosmos SDK para consultar saldos
 		client := http.Client{Timeout: 2 * time.Second}
 		resp, err := client.Get(url)
 		saldoAtual := "FALHA API"

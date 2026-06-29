@@ -11,6 +11,7 @@ import (
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 )
 
+// RmvReq é chamado quando um drone conclui uma missão. Ele atualiza o status do drone para "IDLE" e a missão para "DONE".
 func (k msgServer) RmvReq(goCtx context.Context, msg *types.MsgRmvReq) (*types.MsgRmvReqResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
@@ -29,24 +30,19 @@ func (k msgServer) RmvReq(goCtx context.Context, msg *types.MsgRmvReq) (*types.M
 	}
 
 	// ====================================================
-	// 2. Atualizar a Requisição para "COMPLETED"
+	// 2. Atualizar a Requisição para "DONE"
 	// ====================================================
-	// A nossa struct unificada atua exatamente como a sua antiga "Requisition"
+
 	requisicao, err := k.Mission.Get(ctx, msg.MissionId)
 	if err != nil {
 		return nil, errorsmod.Wrapf(sdkerrors.ErrKeyNotFound, "requisição %d não encontrada", msg.MissionId)
 	}
-
-	// Mantemos no banco para o histórico/dashboard HTML, mas sai da fila de "IN_PROGRESS"
 	requisicao.Status = shared.DONE
 
 	if err := k.Mission.Set(ctx, msg.MissionId, requisicao); err != nil {
 		return nil, err
 	}
 
-	// ====================================================
-	// 3. Emitir Evento Imutável com o Laudo
-	// ====================================================
 	ctx.EventManager().EmitEvent(
 		sdk.NewEvent(
 			"requisicao_concluida",

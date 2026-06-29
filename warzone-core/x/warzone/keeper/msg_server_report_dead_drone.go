@@ -9,6 +9,8 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
+// ReportDeadDrone é chamado quando um drone é reportado como inoperante.
+// Ele remove o drone da blockchain e recupera a missão que estava em andamento, devolvendo-a para a fila de pendentes.
 func (k msgServer) ReportDeadDrone(goCtx context.Context, msg *types.MsgReportDeadDrone) (*types.MsgReportDeadDroneResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 

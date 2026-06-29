@@ -11,7 +11,7 @@ import (
 )
 
 // createAlertPayload cria o payload do alerta a ser enviado ao setor manager.
-// Ele inclui o ID do sensor, a coordenada gerada aleatoriamente, o tipo de alerta e o tempo de Lamport atual.
+// Ele inclui o ID do sensor, a coordenada gerada aleatoriamente, o tipo de alerta, o tempo de Lamport atual e o país dono.
 //
 // Params:
 //   - SENSOR_TYPE: o tipo do sensor que gerou o alerta.

@@ -7,7 +7,7 @@ import (
 	"github.com/Davi-UEFS/Warzone/shared"
 )
 
-// SyncStateWithBlockchain puxa a verdade global e atualiza a RAM com segurança
+// SyncStateWithBlockchain puxa os dados da blockchain e atualiza a RAM local. Isso é feito periodicamente pelo Poller.
 func SyncStateWithBlockchain() {
 	// 1. Atualiza as Missões (Requisições)
 	reqs, err := fetchRequisitionsFromBlockchain()
@@ -36,8 +36,9 @@ func SyncStateWithBlockchain() {
 	now := time.Now().Unix()
 
 	for _, blockDrone := range drones {
-		// A MÁGICA DA NOVA ARQUITETURA: O Portão do Cemitério
-		// Usamos o método limpo do state.go. Se ele for um fantasma recente, a iteração salta-o!
+		// Usamos o método limpo do state.go. Se ele for um fantasma, pulamos.
+		// Um drone fantasma é um drone que foi marcado como morto pelo Watchdog,
+		//  mas que ainda está vivo na blockchain (devido ao atraso na sincronização).
 		if GlobalState.IsGhost(blockDrone.ID, now) {
 			continue
 		}

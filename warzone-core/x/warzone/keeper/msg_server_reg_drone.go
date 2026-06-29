@@ -10,6 +10,7 @@ import (
 	"github.com/Davi-UEFS/Warzone/shared"
 )
 
+// RegDrone registra um novo drone na blockchain. Só isso mesmo.
 func (k msgServer) RegDrone(goCtx context.Context, msg *types.MsgRegDrone) (*types.MsgRegDroneResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 

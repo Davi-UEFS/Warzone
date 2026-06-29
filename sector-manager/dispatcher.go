@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/Davi-UEFS/Warzone/shared"
@@ -16,7 +15,7 @@ func ProcessRequisitions() {
 	// 1. Há missões na fila?
 	if len(GlobalState.PendingReqsQueue) == 0 {
 		GlobalState.Mu.Unlock()
-		return // Silêncio, nada a fazer.
+		return // Não faz nada
 	}
 
 	req := GlobalState.PendingReqsQueue.Peek()
@@ -31,7 +30,7 @@ func ProcessRequisitions() {
 	var freeDroneID string = ""
 	now := time.Now().Unix()
 
-	// 2. Busca o drone perfeito diretamente no nosso Cofre de RAM
+	// 2. Busca o drone. Procura um livre, verificado e que tenha enviado heartbeat recentemente (20s)
 	for id, localDrone := range GlobalState.DroneMap {
 		isIdle := localDrone.Status == shared.DRONE_IDLE
 		isAlive := (now - localDrone.LastSeen) <= 20
@@ -45,16 +44,16 @@ func ProcessRequisitions() {
 	// 3. Se achou um drone, aplica o bloqueio otimista e remove a missão da fila
 	if freeDroneID != "" {
 
-		// Tranca o drone imediatamente para que o próximo ciclo não o use!
+		// Tranca o drone imediatamente para que o próximo ciclo não o use! Isso por quê a blockchain pode demorar para atualizar.
 		GlobalState.DroneMap[freeDroneID].Status = shared.DRONE_BUSY
 		GlobalState.PendingReqsQueue.Pop()
+		// Marca a missão como despachada para não ser reprocessada.
+		// Pelo mesmo motivo do drone (blockchain demora).
 		GlobalState.DispatchedSet[req.ID] = time.Now().Unix()
-		GlobalState.Mu.Unlock() // Liberta a RAM o mais rápido possível
 
-		// TODO: DEBUG
-		log.Printf("\033[1;35m[DEBUG DESPACHO]\033[0m Tentando alocar missão %s para o drone %s na blockchain...\n", req.ID, freeDroneID)
+		GlobalState.Mu.Unlock()
 
-		// 4. Despacha a missão (Blockchain PRIMEIRO, Físico depois)
+		// 4. Despacha a missão
 		dispatch(freeDroneID, req)
 		return
 	}
@@ -64,9 +63,7 @@ func ProcessRequisitions() {
 
 // dispatch cria o payload, avisa a Blockchain e, SE aprovado, envia para o MQTT
 func dispatch(droneID string, req shared.Requisition) {
-	// =========================================================================
-	// 1. A BLOCKCHAIN ATUA COMO JUÍZA (Síncrono)
-	// =========================================================================
+
 	err := enviarAssignDroneParaBlockchain(req.ID, droneID)
 
 	if err != nil {
@@ -84,7 +81,7 @@ func dispatch(droneID string, req shared.Requisition) {
 	}
 
 	// =========================================================================
-	// 2. SÓ ENVIA O SINAL DE RÁDIO (MQTT) SE A BLOCKCHAIN AUTORIZOU
+	// SÓ ENVIA POR MQTT SE A BLOCKCHAIN AUTORIZOU
 	// =========================================================================
 	mission := shared.DroneMission{
 		RequisitionID: req.ID,
@@ -102,14 +99,13 @@ func dispatch(droneID string, req shared.Requisition) {
 
 	topic := fmt.Sprintf("drones/%s/mission", droneID)
 
-	// globalClient é o cliente MQTT configurado no seu vars.go / init
+	// globalClient é o cliente MQTT usado pelo setor.
 	token := globalClient.Publish(topic, 1, false, payload)
 	token.Wait()
 
 	if token.Error() != nil {
 		fmt.Printf("\033[1;31m[DISPATCHER]\033[0m Erro ao enviar missão via MQTT: %v\n", token.Error())
-		// Nota: Aqui a blockchain já marcou o drone como ocupado.
-		// O poller futuramente pode sincronizar isso, ou o drone dar timeout.
+
 	} else {
 		fmt.Printf("\033[1;32m[DISPATCHER]\033[0m Missão %s despachada fisicamente para o drone %s!\n", req.ID, droneID)
 	}

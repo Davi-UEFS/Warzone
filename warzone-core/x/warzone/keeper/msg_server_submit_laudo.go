@@ -7,6 +7,8 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
+// SubmitLaudo é chamado quando um drone envia um laudo de missão ao terminar.
+// Ele registra o laudo na blockchain e emite um evento para a rede.
 func (k msgServer) SubmitLaudo(goCtx context.Context, msg *types.MsgSubmitLaudo) (*types.MsgSubmitLaudoResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 

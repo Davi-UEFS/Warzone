@@ -19,11 +19,7 @@ var typesMap = map[int]string{
 	1: shared.FIRE, 2: shared.OIL, 3: shared.WRECKAGE, 4: shared.INSPECTION, 5: shared.UNKNOWN_OBJECT, 6: shared.BOTTLENECK,
 }
 
-// main inicializa o cliente MQTT usado para testes. Ele apresenta um menu interativo para o usuário escolher diferentes
-// tipos de simulações, como enviar alertas manuais, em lote, testar latência e estresse com drones autônomos.
-//
-// O cliente se conecta ao broker MQTT especificado pelo usuário e publica mensagens nos tópicos
-// usados pelo sistema Warzone para simular o comportamento de sensores e drones.
+// main inicializa o cliente MQTT usado para testes.
 func main() {
 	reader := bufio.NewReader(os.Stdin)
 
@@ -42,7 +38,7 @@ func main() {
 		fmt.Println("\033[1;31mO endereço do Broker não pode ser vazio!\033[0m")
 	}
 
-	opts := mqtt.NewClientOptions().AddBroker(brokerInput).SetClientID("warzone-chaos-simulator")
+	opts := mqtt.NewClientOptions().AddBroker(brokerInput).SetClientID("warzone-chaos-simulator-" + strconv.Itoa(rand.Intn(1000)))
 	client := mqtt.NewClient(opts)
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		fmt.Printf("\033[1;31mErro ao conectar no Broker %s: %v\033[0m\n", brokerInput, token.Error())
@@ -58,11 +54,11 @@ func main() {
 
 		switch option {
 		case 1:
-			enviarAlertaManual(client, reader, "sensor-manual-01")
+			enviarAlertaManual(client, reader)
 		case 2:
 			enviarEmLote(client, reader)
 		case 3:
-			enviarSensorLento(client)
+			enviarSensorLento(client, reader)
 		case 4:
 			testeEstresseSensores(reader, brokerInput)
 		case 5:
@@ -90,7 +86,12 @@ func showMenu() {
 }
 
 // enviarAlertaManual publica um alerta simples no tópico do sensor informado.
-func enviarAlertaManual(client mqtt.Client, reader *bufio.Reader, id string) {
+func enviarAlertaManual(client mqtt.Client, reader *bufio.Reader) {
+	fmt.Print("A partir de qual número de ID (n)? ")
+	nStr, _ := reader.ReadString('\n')
+	n, _ := strconv.Atoi(strings.TrimSpace(nStr))
+	id := fmt.Sprintf("sensor-manual-%02d", n)
+
 	fmt.Println("\nTipos: 1-Fogo, 2-Óleo, 3-Mantimentos, 4-Inspeção, 5-Objeto Suspeito, 6-Tráfego")
 	fmt.Print("Escolha o tipo (1-6): ")
 	tStr, _ := reader.ReadString('\n')
@@ -121,8 +122,12 @@ func enviarEmLote(client mqtt.Client, reader *bufio.Reader) {
 	qtdStr, _ := reader.ReadString('\n')
 	qtd, _ := strconv.Atoi(strings.TrimSpace(qtdStr))
 
+	fmt.Print("A partir de qual número de ID (n)? ")
+	nStr, _ := reader.ReadString('\n')
+	n, _ := strconv.Atoi(strings.TrimSpace(nStr))
+
 	fmt.Println("Enviando lote...")
-	for i := 1; i <= qtd; i++ {
+	for i := n; i < n+qtd; i++ {
 		alert := shared.Alert{
 			ID:          fmt.Sprintf("alerta-lote-%d", i),
 			SensorID:    fmt.Sprintf("sensor-lote-%d", i),
@@ -135,29 +140,39 @@ func enviarEmLote(client mqtt.Client, reader *bufio.Reader) {
 		topic := fmt.Sprintf("sensors/%s/incidents", alert.SensorID)
 		client.Publish(topic, 1, false, payload).Wait()
 	}
-	fmt.Printf("\033[1;32m[SUCESSO]\033[0m %d alertas enviados sequencialmente.\n", qtd)
+	fmt.Printf("\033[1;32m[SUCESSO]\033[0m %d alertas enviados sequencialmente a partir do ID %d.\n", qtd, n)
 }
 
 // enviarSensorLento publica um alerta preparado para testar latência no manager.
-func enviarSensorLento(client mqtt.Client) {
+func enviarSensorLento(client mqtt.Client, reader *bufio.Reader) {
+	fmt.Print("A partir de qual número de ID (n)? ")
+	nStr, _ := reader.ReadString('\n')
+	n, _ := strconv.Atoi(strings.TrimSpace(nStr))
+	sensorID := fmt.Sprintf("sensor-lento-%02d", n)
+
 	alert := shared.Alert{
-		SensorID:    "sensor-lento",
+		SensorID:    sensorID,
 		Coordinate:  shared.Coordinate{Latitude: 111, Longitude: 222},
 		Type:        shared.FIRE,
 		LamportTime: 10,
 	}
 	payload, _ := json.Marshal(alert)
-	client.Publish("sensors/sensor-lento/incidents", 1, false, payload).Wait()
-	fmt.Println("\033[1;33m[GATILHO]\033[0m Alerta do 'sensor-lento' publicado! O Manager configurado com -debug vai retê-lo por 10s.")
+	topic := fmt.Sprintf("sensors/%s/incidents", sensorID)
+	client.Publish(topic, 1, false, payload).Wait()
+	fmt.Printf("\033[1;33m[GATILHO]\033[0m Alerta do '%s' publicado! O Manager configurado com -debug vai retê-lo por 10s.\n", sensorID)
 }
 
-// testeEstresseSensores conecta vários sensores no MQTT para simular um ataque de estresse, inundando o broker com conexões ativas. Cada sensor se desconecta após 1 minuto.
+// testeEstresseSensores conecta vários sensores no MQTT para simular um ataque de estresse.
 func testeEstresseSensores(reader *bufio.Reader, sensorTarget string) {
 	fmt.Print("Quantos sensores no ataque de estresse? ")
 	qtdStr, _ := reader.ReadString('\n')
 	qtd, _ := strconv.Atoi(strings.TrimSpace(qtdStr))
 
-	for i := 0; i < qtd; i++ {
+	fmt.Print("A partir de qual número de ID (n)? ")
+	nStr, _ := reader.ReadString('\n')
+	n, _ := strconv.Atoi(strings.TrimSpace(nStr))
+
+	for i := n; i < n+qtd; i++ {
 		go func(idx int) {
 			sensorID := fmt.Sprintf("sensor-%d", idx)
 			testClient, err := shared.MakeClient(sensorTarget, sensorID, nil, true)
@@ -165,7 +180,7 @@ func testeEstresseSensores(reader *bufio.Reader, sensorTarget string) {
 				fmt.Printf("\033[1;31m[ERRO]\033[0m Falha ao conectar sensor %s: %v\n", sensorID, err)
 				return
 			} else {
-				fmt.Printf("\033[1;34m[CONEXÃO]\033[0m Sensor %s conectado para teste de estresse.\nDesconectando em 1 minuto.", sensorID)
+				fmt.Printf("\033[1;34m[CONEXÃO]\033[0m Sensor %s conectado para teste de estresse.\n", sensorID)
 			}
 
 			defer func() {
@@ -174,7 +189,7 @@ func testeEstresseSensores(reader *bufio.Reader, sensorTarget string) {
 			}()
 		}(i)
 	}
-	fmt.Printf("\033[1;32m[TESTE CONCLUÍDO]\033[0m %d sensores conectados.\n", qtd)
+	fmt.Printf("\033[1;32m[TESTE CONCLUÍDO]\033[0m %d sensores instanciados. Desconectando em 1 minuto.\n", qtd)
 }
 
 // testeEstresseDronesAutonomos cria drones virtuais que registram, recebem missões e enviam conclusão.
@@ -183,9 +198,13 @@ func testeEstresseDronesAutonomos(reader *bufio.Reader, brokerTarget string) {
 	qtdStr, _ := reader.ReadString('\n')
 	qtd, _ := strconv.Atoi(strings.TrimSpace(qtdStr))
 
+	fmt.Print("A partir de qual número de ID (n)? ")
+	nStr, _ := reader.ReadString('\n')
+	n, _ := strconv.Atoi(strings.TrimSpace(nStr))
+
 	fmt.Printf("\033[1;34mInstanciando %d drones funcionais em segundo plano...\033[0m\n", qtd)
 
-	for i := 1; i <= qtd; i++ {
+	for i := n; i < n+qtd; i++ {
 		go func(idx int) {
 			droneID := fmt.Sprintf("virtual-drone-%02d", idx)
 
@@ -260,5 +279,5 @@ func testeEstresseDronesAutonomos(reader *bufio.Reader, brokerTarget string) {
 		}(i)
 	}
 
-	fmt.Printf("\033[1;32m[SUCESSO]\033[0m %d drones ativos e ouvindo missões. Serão derrubados em 5 minutos.\n", qtd)
+	fmt.Printf("\033[1;32m[SUCESSO]\033[0m %d drones ativos a partir do ID %d. Serão derrubados em 5 minutos.\n", qtd, n)
 }

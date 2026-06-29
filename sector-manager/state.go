@@ -6,13 +6,13 @@ import (
 	"github.com/Davi-UEFS/Warzone/shared"
 )
 
-// SectorMemory centraliza o estado da RAM para evitar corridas de concorrência (Race Conditions)
+// SectorMemory são os dados em memória RAM do Setor. É a antiga sectorFSM.
 type SectorMemory struct {
 	Mu               sync.Mutex
-	DroneMap         map[string]*shared.Drone
-	PendingReqsQueue ReqHeap          // Certifique-se de que o nome bate com o seu Heap
-	Graveyard        map[string]int64 // ID do Drone -> Timestamp da morte
-	DispatchedSet    map[string]int64
+	DroneMap         map[string]*shared.Drone // Drones conhecidos
+	PendingReqsQueue ReqHeap                  // Fila de prioridade de requisições pendentes
+	Graveyard        map[string]int64         // ID do Drone -> Timestamp da morte
+	DispatchedSet    map[string]int64         // ID da Requisição -> Timestamp da execução
 }
 
 // GlobalState é a nossa única fonte da verdade na memória RAM
@@ -22,9 +22,8 @@ var GlobalState = SectorMemory{
 	DispatchedSet: make(map[string]int64),
 }
 
-// --- Métodos Auxiliares de Segurança ---
-
-// IsGhost verifica se o drone morreu há menos de 30 segundos
+// IsGhost verifica se o drone morreu há menos de 30 segundos. Usado para encontrar drones fantasmas que ainda estão vivos na blockchain,
+// mas que já foram mortos pelo Watchdog.
 func (s *SectorMemory) IsGhost(droneID string, currentTime int64) bool {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
@@ -39,7 +38,7 @@ func (s *SectorMemory) IsGhost(droneID string, currentTime int64) bool {
 	return false
 }
 
-// BuryDrone remove da RAM e adiciona ao cemitério de forma segura
+// BuryDrone remove da RAM e adiciona ao cemitério.
 func (s *SectorMemory) BuryDrone(droneID string, currentTime int64) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()

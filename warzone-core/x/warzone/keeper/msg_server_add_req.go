@@ -11,6 +11,7 @@ import (
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 )
 
+// Preço de cada tipo de requisição em tokens da blockchain.
 var prices = map[string]string{
 	shared.FIRE:           "10stake",
 	shared.OIL:            "8stake",
@@ -20,16 +21,20 @@ var prices = map[string]string{
 	shared.BOTTLENECK:     "4stake",
 }
 
+// AddReq adiciona uma requisição de missão à blockchain. Ele valida o pagamento,
+//
+//	registra a missão e garante que alertas duplicados não sejam processados.
 func (k msgServer) AddReq(goCtx context.Context, msg *types.MsgAddReq) (*types.MsgAddReqResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
-	// Abre uma conexão direta com o banco de dados interno da sua blockchain
+	// Abre uma conexão direta com o banco de dados interno da sua blockchain (lib faz para mim)
 	store := k.storeService.OpenKVStore(ctx)
 
-	// Cria uma chave única de rastreio para este alerta específico
+	// Cria uma chave única de rastreio para este alerta específico. Aqui usamos o ID do alerta.
+	// que vimos no manager.
 	alertaKey := []byte("alerta_processado_" + msg.AlertId)
 
-	// Verifica se algum outro Manager já cravou esta chave no bloco milissegundos antes
+	// Verifica se algum outro Manager já cravou esta chave no bloco antes.
 	jaProcessado, _ := store.Has(alertaKey)
 	if jaProcessado {
 		// Se a chave já existe, a blockchain rejeita a transação.
@@ -47,12 +52,14 @@ func (k msgServer) AddReq(goCtx context.Context, msg *types.MsgAddReq) (*types.M
 	// Transforma a string do PAYER (País Pagante) em um endereço válido
 	paganteAddr, err := sdk.AccAddressFromBech32(msg.Payer)
 	if err != nil {
+		// Falha se o endereço do país pagante não for válido. Isso impede que a missão entre na rede.
 		return nil, errorsmod.Wrap(err, "endereço da carteira do país pagante é inválido")
 	}
 
 	// Pega o custo do serviço com base no tipo de requisição
 	custoStr, exists := prices[msg.ReqType]
 	if !exists {
+		// Falha se o tipo de requisição não estiver no mapa de preços.
 		return nil, errorsmod.Wrap(sdkerrors.ErrInvalidRequest, "tipo de requisição não suportado")
 	}
 
@@ -62,14 +69,13 @@ func (k msgServer) AddReq(goCtx context.Context, msg *types.MsgAddReq) (*types.M
 		return nil, errorsmod.Wrap(err, "erro ao formatar a moeda de cobrança")
 	}
 
-	// TENTA RETIRAR OS FUNDOS DO PAÍS E MOVER PARA O MÓDULO
-	// Se o país não tiver dinheiro, a função devolve erro aqui e a missão NUNCA entra na rede!
+	// Se o país não tiver dinheiro, a função devolve erro aqui e a missão não entra na rede!
 	err = k.bankKeeper.SendCoinsFromAccountToModule(ctx, paganteAddr, types.ModuleName, custo)
 	if err != nil {
 		return nil, errorsmod.Wrap(err, "alerta rejeitado: o país não tem saldo suficiente para despachar o drone")
 	}
 
-	// QUEIMA AS MOEDAS (Retira do suprimento total da rede)
+	// Queima as moedas para não serem mais usadas.
 	err = k.bankKeeper.BurnCoins(ctx, types.ModuleName, custo)
 	if err != nil {
 		return nil, errorsmod.Wrap(err, "falha crítica ao queimar os tokens do país")
@@ -79,13 +85,14 @@ func (k msgServer) AddReq(goCtx context.Context, msg *types.MsgAddReq) (*types.M
 	// 2. Registo da Missão no Banco de Dados
 	// ====================================================
 
-	// Pega o próximo ID automático da fila
+	// Pega o próximo ID automático da fila. Esse é o ID que aparece na REST.
+	// Não usamos mais Lamport porque a blockchain já garante ordem de chegada e imutabilidade.
 	nextId, err := k.MissionSeq.Next(ctx)
 	if err != nil {
 		return nil, errorsmod.Wrap(sdkerrors.ErrInvalidRequest, "falha ao gerar o ID da missão")
 	}
 
-	// Monta a estrutura da missão
+	// Monta a estrutura da missão/requisição
 	novaMissao := types.Mission{
 		Id:              nextId,
 		Creator:         msg.Creator, // O Manager que assinou a transação

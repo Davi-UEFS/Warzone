@@ -16,9 +16,10 @@ import (
 	"github.com/Davi-UEFS/Warzone/shared"
 )
 
+// Qualquer tx enviada para a blockchain precisa pagar uma taxa mínima (fees) para ser aceita no bloco.
 const FEES = "20stake"
 
-// BlockchainMission mapeia EXATAMENTE como a blockchain devolve os dados
+// BlockchainMission mapeia como a blockchain devolve os dados. Devemos converter para o formato interno (shared.Requisition) antes de usar.
 type BlockchainMission struct {
 	Id              string `json:"id"`
 	Sector          string `json:"sector"`
@@ -29,7 +30,7 @@ type BlockchainMission struct {
 	AssignedDroneId string `json:"assignedDroneId"`
 }
 
-// BlockchainDrone mapeia EXATAMENTE como a blockchain devolve os dados
+// BlockchainDrone mapeia como a blockchain devolve os dados. Devemos converter para o formato interno (shared.Drone) antes de usar.
 type BlockchainDrone struct {
 	DroneId          string `json:"drone_id"`
 	Sector           string `json:"sector"`
@@ -38,14 +39,17 @@ type BlockchainDrone struct {
 	CurrentMissionId string `json:"currentMissionId"`
 }
 
+// RequisitionsResponse mapeia a resposta REST da blockchain para requisitions
 type RequisitionsResponse struct {
 	Missions []BlockchainMission `json:"mission"`
 }
 
+// DronesResponse mapeia a resposta REST da blockchain para drones
 type DronesResponse struct {
 	APIReturnedDrones []BlockchainDrone `json:"drone"`
 }
 
+// Retorna o caminho do binário da blockchain (warzone-cored) a partir da variável de ambiente WARZONE_BIN.
 func getBinPath() string {
 	bin := os.Getenv("WARZONE_BIN")
 	if bin == "" {
@@ -54,6 +58,7 @@ func getBinPath() string {
 	return bin
 }
 
+// Retorna o chain-id da blockchain a partir da variável de ambiente CHAIN_ID, ou usa o padrão "warzone-rede" se não estiver definido.
 func getChainID() string {
 	chainID := os.Getenv("CHAIN_ID")
 	if chainID == "" {
@@ -62,6 +67,7 @@ func getChainID() string {
 	return chainID
 }
 
+// Retorna a URL do RPC da blockchain a partir da variável de ambiente BLOCKCHAIN_RPC_URL, ou usa o padrão "http://localhost:26657" se não estiver definido.
 func getRPCURL() string {
 	rpc := os.Getenv("BLOCKCHAIN_RPC_URL")
 	if rpc == "" {
@@ -117,7 +123,7 @@ func verificarTx(txhash string) (bool, string) {
 	return true, ""
 }
 
-// fetchRequisitionsFromBlockchain faz o polling e CONVERTE os dados
+// fetchRequisitionsFromBlockchain faz o polling e já converte os dados para o tipo esperado.
 func fetchRequisitionsFromBlockchain() ([]shared.Requisition, error) {
 	urlsEnv := os.Getenv("BLOCKCHAIN_REST_URLS")
 	if urlsEnv == "" {
@@ -128,7 +134,7 @@ func fetchRequisitionsFromBlockchain() ([]shared.Requisition, error) {
 	var lastErr error
 
 	for _, ip := range endpoints {
-		url := strings.TrimSpace(ip) + "/blockchain/warzone/requisicoes"
+		url := strings.TrimSpace(ip) + "/blockchain/warzone/requisicoes" // Endpoint REST da blockchain para requisitions
 
 		client := http.Client{Timeout: 2 * time.Second}
 		resp, err := client.Get(url)
@@ -149,11 +155,12 @@ func fetchRequisitionsFromBlockchain() ([]shared.Requisition, error) {
 			return nil, fmt.Errorf("erro ao ler resposta REST: %v", err)
 		}
 
-		var data RequisitionsResponse
+		var data RequisitionsResponse // Estrutura para armazenar a resposta JSON com as requisições.
 		if err := json.Unmarshal(body, &data); err != nil {
 			return nil, fmt.Errorf("erro no parse do JSON: %v. Body: %s", err, string(body))
 		}
 
+		// Converte os dados da blockchain para o formato interno (shared.Requisition)
 		var reqs []shared.Requisition
 		for _, bm := range data.Missions {
 			if bm.Status != shared.PENDING {
@@ -182,7 +189,7 @@ func fetchRequisitionsFromBlockchain() ([]shared.Requisition, error) {
 
 		return reqs, nil
 	}
-
+	// Se nenhum endpoint respondeu com sucesso, retorna o último erro encontrado.
 	return nil, fmt.Errorf("todos os nós falharam. Último erro: %v", lastErr)
 }
 
@@ -197,7 +204,7 @@ func fetchDronesFromBlockchain() ([]shared.Drone, error) {
 	var lastErr error
 
 	for _, ip := range endpoints {
-		url := strings.TrimSpace(ip) + "/blockchain/warzone/drones"
+		url := strings.TrimSpace(ip) + "/blockchain/warzone/drones" // Endpoint REST da blockchain para drones
 
 		client := http.Client{Timeout: 2 * time.Second}
 		resp, err := client.Get(url)
@@ -218,12 +225,12 @@ func fetchDronesFromBlockchain() ([]shared.Drone, error) {
 			return nil, fmt.Errorf("erro ao ler resposta REST: %v", err)
 		}
 
-		var data DronesResponse
+		var data DronesResponse // Estrutura para armazenar a resposta JSON com os drones.
 		if err := json.Unmarshal(body, &data); err != nil {
 			return nil, fmt.Errorf("erro no parse do JSON (Drone): %v. Body: %s", err, string(body))
 		}
 
-		var drones []shared.Drone
+		var drones []shared.Drone // Converte os dados da blockchain para o formato interno (shared.Drone)
 		for _, blockDrone := range data.APIReturnedDrones {
 			batteryLvl, _ := strconv.Atoi(blockDrone.Battery)
 			status := shared.DroneStatus(blockDrone.Status)
@@ -247,6 +254,7 @@ func fetchDronesFromBlockchain() ([]shared.Drone, error) {
 	return nil, fmt.Errorf("todos os nós falharam. Último erro: %v", lastErr)
 }
 
+// Pega o nome da carteira do setor a partir da variável de ambiente WALLET_NAME, ou usa o padrão "manager_setor_a" se não estiver definido.
 func getSectorWalletName() string {
 	wallet := os.Getenv("WALLET_NAME")
 	if wallet == "" {
@@ -269,14 +277,14 @@ func enviarAssignDroneParaBlockchain(missionID string, droneID string) error {
 	partes := strings.Split(missionID, "--")
 	idNumerico := partes[len(partes)-1]
 
-	cmd := exec.Command(binPath, "tx", "warzone", "assign-drone", idNumerico, droneID,
-		"--from", wallet,
-		"--home", KeyringDir,
-		"--keyring-backend", "test",
-		"--chain-id", getChainID(),
-		"--node", getRPCURL(),
-		"--fees", FEES,
-		"--broadcast-mode", "sync",
+	cmd := exec.Command(binPath, "tx", "warzone", "assign-drone", idNumerico, droneID, // Argumentos usados para fazer a lógica dentro do keeper da blockchain.
+		"--from", wallet, // Carteira do setor que está enviando a tx
+		"--home", KeyringDir, // Diretório do keyring (onde estão as chaves privadas)
+		"--keyring-backend", "test", // Backend do keyring (test para desenvolvimento)
+		"--chain-id", getChainID(), // Chain ID da blockchain (warzone-rede)
+		"--node", getRPCURL(), // URL do nó RPC da blockchain
+		"--fees", FEES, // Valor da taxa de transação (fees)
+		"--broadcast-mode", "sync", // Modo de broadcast da tx (sync para aguardar a inclusão no bloco)
 		"-y")
 
 	output, err := cmd.CombinedOutput()
@@ -285,10 +293,11 @@ func enviarAssignDroneParaBlockchain(missionID string, droneID string) error {
 		return fmt.Errorf("falha ao enviar tx: %v", err)
 	}
 
-	// Extrai o txhash e verifica confirmação no bloco
+	// Extrai o txhash e verifica confirmação no bloco para segurança.
 	txhash := extrairTxHash(string(output))
 	log.Printf("\033[1;34m[BLOCKCHAIN]\033[0m Assign-drone enviado. TxHash: %s. Aguardando confirmação...\n", txhash)
 
+	// Verifica se a tx foi aceita no bloco (evita duplo despacho)
 	if ok, rawLog := verificarTx(txhash); !ok {
 		log.Printf("\033[1;31m[BLOCKCHAIN ERROR]\033[0m Duplo despacho detectado para drone %s! Motivo: %s\n", droneID, rawLog)
 		return fmt.Errorf("tx rejeitada: %s", rawLog)
@@ -298,12 +307,15 @@ func enviarAssignDroneParaBlockchain(missionID string, droneID string) error {
 	return nil
 }
 
+// enviarLaudoParaBlockchain envia o laudo da missão para a blockchain e aguarda confirmação no bloco.
 func enviarLaudoParaBlockchain(reqID string, droneID string, relatorio string) {
 	txMutex.Lock()
 	defer txMutex.Unlock()
 
 	binPath := getBinPath()
 	wallet := getSectorWalletName()
+
+	// Aqui fica tudo igual então não irei comentar.
 
 	cmd := exec.Command(binPath, "tx", "warzone", "submit-laudo", reqID, droneID, relatorio, "concluido",
 		"--from", wallet,
@@ -329,6 +341,8 @@ func enviarLaudoParaBlockchain(reqID string, droneID string, relatorio string) {
 	fmt.Printf("\033[1;32m[BLOCKCHAIN]\033[0m Laudo da missão %s confirmado no bloco! TxHash auditável: %s\n", reqID, txhash)
 }
 
+// enviarRequisicaoParaBlockchain envia a requisição de alerta para a blockchain e aguarda confirmação no bloco.
+// A cobrança de tx do país é feita aqui.
 func enviarRequisicaoParaBlockchain(alert shared.Alert) {
 	txMutex.Lock()
 	defer txMutex.Unlock()
@@ -341,6 +355,7 @@ func enviarRequisicaoParaBlockchain(alert shared.Alert) {
 		sector = "Setor-A"
 	}
 
+	// Precisamos converter os tipos para string, pois a CLI do Cosmos SDK só aceita strings como argumentos.
 	coordStr := fmt.Sprintf("%d,%d", alert.Coordinate.Longitude, alert.Coordinate.Latitude)
 	reqType := fmt.Sprintf("%s", alert.Type)
 	priority := strconv.Itoa(PRIOTIRIES[alert.Type])
@@ -353,8 +368,8 @@ func enviarRequisicaoParaBlockchain(alert shared.Alert) {
 
 	cmd := exec.Command(
 		binPath, "tx", "warzone", "add-req", sector, priority, reqType, coordStr,
-		alert.ID,
-		"--payer", enderecoPagante,
+		alert.ID,                   // IMPORTANTE !!!!!: O alertID enviado é apenas para ela verificar requisições duplicadas. A blockchain vai gerar o ID oficial da requisição.
+		"--payer", enderecoPagante, // Unico diferencial. A carteira do país a ser cobrada pela tx de requisição.
 		"--from", wallet,
 		"--keyring-backend", "test",
 		"--home", KeyringDir,
@@ -370,6 +385,7 @@ func enviarRequisicaoParaBlockchain(alert shared.Alert) {
 		return
 	}
 
+	// Pode falhar por diversos motivos, como req já adicionada, falta de saldo, etc.
 	txhash := extrairTxHash(string(output))
 	if ok, rawLog := verificarTx(txhash); !ok {
 		log.Printf("\033[1;31m[BLOCKCHAIN ERROR]\033[0m Requisição do alerta %s rejeitada! Motivo: %s\n", alert.ID, rawLog)
@@ -378,6 +394,7 @@ func enviarRequisicaoParaBlockchain(alert shared.Alert) {
 	fmt.Printf("\033[1;32m[BLOCKCHAIN]\033[0m Alerta transformado em requisição! TxHash: %s\n", txhash)
 }
 
+// enviarRegDroneParaBlockchain envia a tx de registro do drone para a blockchain e aguarda confirmação no bloco.
 func enviarRegDroneParaBlockchain(droneID string, sector string, battery string) {
 	txMutex.Lock()
 	defer txMutex.Unlock()
@@ -409,6 +426,8 @@ func enviarRegDroneParaBlockchain(droneID string, sector string, battery string)
 	fmt.Printf("\033[1;32m[BLOCKCHAIN]\033[0m Drone %s registrado globalmente com sucesso!\n", droneID)
 }
 
+// enviarRmvReqParaBlockchain envia a tx de remoção da requisição para a blockchain e aguarda confirmação no bloco.
+// Na prática, ela não remove uma requisicão, mas sim marca como concluída (DONE).
 func enviarRmvReqParaBlockchain(missionID string, droneID string, laudo string) {
 	txMutex.Lock()
 	defer txMutex.Unlock()
@@ -440,6 +459,7 @@ func enviarRmvReqParaBlockchain(missionID string, droneID string, laudo string) 
 	fmt.Printf("\033[1;32m[BLOCKCHAIN]\033[0m Missão %s finalizada na blockchain. Drone %s livre!\n", missionID, droneID)
 }
 
+// enviarReportDeadDroneParaBlockchain envia a tx de report de drone morto para a blockchain e aguarda confirmação no bloco.
 func enviarReportDeadDroneParaBlockchain(droneID string) {
 	txMutex.Lock()
 	defer txMutex.Unlock()
