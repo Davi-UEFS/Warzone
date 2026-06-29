@@ -128,19 +128,22 @@ run-lan-master: prepare
 # Roda nos PCs 2, 3 e 4
 run-lan-node:
 	@echo "--- MODO FÍSICO: INICIANDO NÓ SEGUIDOR ---"
-	@if [ -z "$(FOLDER)" ] || [ -z "$(ID)" ] || [ -z "$(IP)" ]; then \
-		echo "🔴 ERRO: Faltam variáveis!"; \
-		echo "Uso correto: make run-lan-node FOLDER=setorB ID=codigo_do_pc1 IP=192.168.x.x"; \
+	@folder="$(FOLDER)"; \
+	if [ -z "$$folder" ]; then read -p "📁 Digite a FOLDER (ex: setorB): " folder; fi; \
+	id="$(ID)"; \
+	if [ -z "$$id" ]; then read -p "🔑 Digite o ID do peer: " id; fi; \
+	ip="$(IP)"; \
+	if [ -z "$$ip" ]; then read -p "🌐 Digite o IP do peer (ex: 192.168.x.x): " ip; fi; \
+	if [ -z "$$folder" ] || [ -z "$$id" ] || [ -z "$$ip" ]; then \
+		echo "🔴 ERRO: Nenhuma variável pode ficar vazia! Operação cancelada."; \
 		exit 1; \
-	fi
-
-	# Remove container anterior se existir
-	docker rm -f node-follower || true
-
-	# Rodamos o nó com mapeamento apontando para o BASE_DIR
+	fi; \
+	echo "🗑️  Removendo container anterior se existir..."; \
+	docker rm -f node-follower || true; \
+	echo "🚀 Subindo container..."; \
 	docker run -d --name node-follower \
 		--user $(CURRENT_UID):$(CURRENT_GID) \
-		-v $(BASE_DIR)/$(FOLDER):/warzone \
+		-v $(BASE_DIR)/$$folder:/warzone \
 		-p 26656:26656 \
 		-p 26657:26657 \
 		-p 1317:1317 \
@@ -149,6 +152,5 @@ run-lan-node:
 		--minimum-gas-prices="$(GAS_PRICES)" \
 		--api.enable=true \
 		--api.address tcp://0.0.0.0:1317 \
-		--p2p.persistent_peers "$(ID)@$(IP):26656"
-
-	@echo "🟢 NÓ SEGUIDOR ONLINE! API REST rodando em http://localhost:1317"
+		--p2p.persistent_peers "$$id@$$ip:26656"; \
+	echo "🟢 NÓ SEGUIDOR ONLINE! API REST rodando em http://localhost:1317"
