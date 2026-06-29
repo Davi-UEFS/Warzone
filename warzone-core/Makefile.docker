@@ -118,7 +118,12 @@ run-lan-master: prepare
 		--user $(CURRENT_UID):$(CURRENT_GID) \
 		-v $(BASE_DIR)/setorA:/warzone \
 		-p 26656:26656 -p 26657:26657 -p 1317:1317 \
-		$(IMAGE_NAME) start --home /warzone --minimum-gas-prices="$(GAS_PRICES)" --api.enable=true --api.address tcp://0.0.0.0:1317
+		$(IMAGE_NAME) start \
+		--home /warzone \
+		--minimum-gas-prices="$(GAS_PRICES)" \
+		--rpc.laddr tcp://0.0.0.0:26657 \
+		--api.enable=true \
+		--api.address tcp://0.0.0.0:1317
 	@sleep 3
 	@echo "=========================================================="
 	@echo "🟢 O NÓ A ESTÁ ONLINE NAS PORTAS PADRÃO!"
@@ -150,7 +155,8 @@ run-lan-node:
 		$(IMAGE_NAME) start \
 		--home /warzone \
 		--minimum-gas-prices="$(GAS_PRICES)" \
+		--rpc.laddr tcp://0.0.0.0:26657 \
 		--api.enable=true \
 		--api.address tcp://0.0.0.0:1317 \
 		--p2p.persistent_peers "$$id@$$ip:26656"; \
-	echo "🟢 NÓ SEGUIDOR ONLINE! API REST rodando em http://localhost:1317"
+	echo "🟢 NÓ SEGUIDOR ONLINE! API REST e RPC abertas para a rede local!"
