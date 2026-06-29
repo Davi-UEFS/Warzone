@@ -1,7 +1,7 @@
 # ==========================================
 # CONFIGURAÇÕES DA REDE
 # ==========================================
-IMAGE_NAME=core
+IMAGE_NAME=daviuefs/core
 GAS_PRICES=0.0001stake
 
 # Define o diretório externo onde os dados da blockchain estão salvos
@@ -11,7 +11,7 @@ BASE_DIR=$(HOME)/warzone-data
 CURRENT_UID := $(shell id -u)
 CURRENT_GID := $(shell id -g)
 
-.PHONY: build prepare clean run-local stop-local run-lan-master run-lan-node
+.PHONY: build prepare clean run-local stop-local run-lan-master run-lan-node push pull
 
 # ==========================================
 # 1. SETUP INICIAL (Todos os PCs rodam o build)
@@ -20,9 +20,18 @@ build:
 	@echo "--- COMPILANDO A IMAGEM DOCKER ---"
 	docker build -t $(IMAGE_NAME) .
 
+push: build
+	@echo "--- FAZENDO PUSH DA IMAGEM ---"
+	docker push $(IMAGE_NAME)
+
+pull:
+	@echo "--- BAIXANDO A IMAGEM DO DOCKER HUB ---"
+	docker pull $(IMAGE_NAME)
+
 prepare:
 	@echo "--- CRIANDO O UNIVERSO E AS PASTAS DOS SETORES ---"
 	chmod +x prepara_rede.sh
+	chmod +x $(HOME)/Downloads/warzone-cored
 	./prepara_rede.sh
 
 clean:
@@ -53,7 +62,7 @@ run-local: clean prepare
 		--minimum-gas-prices="$(GAS_PRICES)" \
 		--rpc.laddr tcp://0.0.0.0:26657 \
 		--api.enable=true --api.address tcp://0.0.0.0:1317
-	
+
 	@echo "[+] Aguardando node-a inicializar..."
 	@sleep 5
 
@@ -103,9 +112,8 @@ stop-local:
 # ==========================================
 
 # Roda apenas no PC 1 (Dono do Setor A)
-run-lan-master:
+run-lan-master: prepare
 	@echo "--- MODO FÍSICO: INICIANDO SETOR A (PC 1) ---"
-	$(eval NODE_A_ID=$(shell docker exec node-a warzone-cored tendermint show-node-id --home /warzone 2>/dev/null || echo "Aguardando..."))
 	docker run -d --name node-a \
 		--user $(CURRENT_UID):$(CURRENT_GID) \
 		-v $(BASE_DIR)/setorA:/warzone \
