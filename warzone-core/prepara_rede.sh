@@ -1,5 +1,5 @@
 #!/bin/bash
-BIN="$HOME/go/bin/warzone-cored"
+BIN="$HOME/Downloads/warzone-cored"
 
 # ==========================================
 # DEFINIÇÃO DO DIRETÓRIO EXTERNO DOS DADOS
