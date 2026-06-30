@@ -50,7 +50,7 @@ Essa abordagem permite que múltiplas organizações operem uma blockchain permi
 
 # 🚀 Executando o Sistema
 
-## 1. Imagens (Docker) e Makefile
+## 1. Preparar a Blockchain
 
 Para fazer qualquer operação na rede é necessário as imagens dos containers e do Makefile.
 
@@ -64,8 +64,6 @@ Obs: Caso não possua nenhum outro Makefile na pasta onde utilizará o Makefile.
 ```bash
 make -f Makefile.docker ...
 ```
-
-## 2. Preparar a Blockchain
 
 Antes de iniciar a rede é necessário gerar:
 
@@ -83,7 +81,7 @@ Serão criadas 4 pastas: setorA, setorB, setorC, setorD. Cada pasta possui as co
 ---
 
 
-## 3. Iniciar a Rede Blockchain
+## 2. Iniciar a Rede Blockchain
 
 ### Opção A — Ambiente Local
 
@@ -141,21 +139,37 @@ Todos os serviços REST e RPC já são expostos automaticamente para a rede loca
 
 ---
 
-# 🌐 Dashboard Tático
+## 3. Sector Manager
 
-Entre na pasta:
+O Sector Manager atua como ohub responsável pela comunicação entre os sensores/drones (via MQTT) e a Blockchain, hospedando também o Dashboar Tático em interface Web.
+
+Para iniciar, navegue até à pasta do gestor de setor:
 
 ```bash
 cd sector-manager
 ```
+Para executar os setors isolados em containers Docker já com as credenciais, chaves criptográficas (keyring) e endereços RPC/REST configurados, utilize os comandos do makefile.
 
-O Dashboard ficará disponível em:
+Primeiro baixe as imagens do DockerHub:
+
+```bash
+docker pull daviuefs/sector-manager
+```
+
+O manager deve estar na mesma máquina de um nó da blockchain. Para iniciar um manager de um setorX (A, B, ...) execute o comando:
+
+```bash
+make run-sector<X>-blockchain:
+```
+X: letra do setor (A, B, C ou D)
+
+# 🌐 Dashboard Tático
+
+Ao executar o sector manager o Dashboard ficará disponível em:
 
 ```
 http://localhost:8080
 ```
-
-É possível informar múltiplos nós separados por vírgula para ativar o mecanismo de **failover automático**.
 
 Também é possível sobrescrever variáveis como:
 
@@ -208,26 +222,10 @@ O painel consulta diretamente a API REST da blockchain.
 
 ---
 
-# 🛡️ Ferramentas de Auditoria
+# 🧪 Teste de Aduteração
 
 A pasta `testes/` contém scripts para demonstrar a segurança e resiliência da blockchain.
 
-### Teste de Duplo Gasto
-
-```bash
-./testes/teste_duplo_gasto.sh
-```
-
-Envia múltiplas transações concorrentes tentando gastar o mesmo saldo.
-
-Resultado esperado:
-
-- apenas uma transação será aceita;
-- as demais serão rejeitadas pela mempool ou durante o consenso.
-
----
-
-### Teste de Adulteração
 
 ```bash
 ./testes/teste_adulteracao.sh
@@ -242,36 +240,6 @@ Resultado esperado:
 
 ---
 
-### Teste de Alocação Simultânea
-
-```bash
-./testes/teste_alocacao.sh
-```
-
-Tenta atribuir o mesmo drone para duas missões simultaneamente.
-
-Resultado esperado:
-
-- apenas uma alocação será validada;
-- a execução atômica da blockchain garante exclusividade.
-
----
-
-### Teste de Auditoria
-
-```bash
-./testes/teste_auditoria.sh
-```
-
-Extrai uma transação validada e verifica:
-
-- assinatura digital;
-- chave pública;
-- autenticidade da operação.
-
-Demonstrando o uso de **Criptografia de Curva Elíptica (ECDSA)** para autenticação das transações.
-
----
 
 # 🔐 Tecnologias Utilizadas
 
