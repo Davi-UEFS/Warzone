@@ -19,6 +19,12 @@ $BIN init setor-b --chain-id warzone-rede --home $BASE_DIR/setorB > /dev/null 2>
 $BIN init setor-c --chain-id warzone-rede --home $BASE_DIR/setorC > /dev/null 2>&1
 $BIN init setor-d --chain-id warzone-rede --home $BASE_DIR/setorD > /dev/null 2>&1
 
+echo "1.1 Abrindo o RPC (0.0.0.0) no config.toml de cada setor..."
+for SETOR in setorA setorB setorC setorD; do
+    CONFIG_FILE="$BASE_DIR/$SETOR/config/config.toml"
+    sed -i 's#laddr = "tcp://127.0.0.1:26657"#laddr = "tcp://0.0.0.0:26657"#' "$CONFIG_FILE"
+done
+
 echo "2. Criando as carteiras de cada setor..."
 $BIN keys add key_a --keyring-backend test --home $BASE_DIR/setorA > /dev/null 2>&1
 $BIN keys add key_b --keyring-backend test --home $BASE_DIR/setorB > /dev/null 2>&1
