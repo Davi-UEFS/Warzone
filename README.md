@@ -50,7 +50,22 @@ Essa abordagem permite que múltiplas organizações operem uma blockchain permi
 
 # 🚀 Executando o Sistema
 
-## 1. Preparar a Blockchain
+## 1. Imagens (Docker) e Makefile
+
+Para fazer qualquer operação na rede é necessário as imagens dos containers e do Makefile.
+
+```bash
+docker pull daviuefs/core
+```
+
+Baixe o arquivo Makefile.docker diretamente do repositório https://github.com/Davi-UEFS/Warzone.git. O arquivo se encontra em Warzone/warzone-core.
+Obs: Caso não possua nenhum outro Makefile na pasta onde utilizará o Makefile.docker, o sufixo .docker pode ser removido e então poderá usar o arquivo como um Makefile comum. Do contrário, após o comando make insira "-f Makefile.docker". Os exemplos nesse README não estarão com essa extensão.
+
+```bash
+make -f Makefile.docker ...
+```
+
+## 2. Preparar a Blockchain
 
 Antes de iniciar a rede é necessário gerar:
 
@@ -63,9 +78,12 @@ Antes de iniciar a rede é necessário gerar:
 make prepare
 ```
 
+Serão criadas 4 pastas: setorA, setorB, setorC, setorD. Cada pasta possui as configurações necessárias (contas, chaves, gênese e etc.).
+
 ---
 
-## 2. Iniciar a Rede Blockchain
+
+## 3. Iniciar a Rede Blockchain
 
 ### Opção A — Ambiente Local
 
@@ -75,17 +93,28 @@ Executa quatro validadores utilizando Docker.
 make run-local
 ```
 
+Nesta opção não é necessário nenhuma configuração adicional
+
 ---
 
 ### Opção B — Rede Local (LAN)
 
-Cada computador representa um país/validador.
+Cada computador representa um país/validador. É necessário que a pasta do setor (setorA, setorB, ...) esteja no computador que executará o respectivo setor.
+
+Para isso, crie uma pasta no diretório raiz do usuário chamada "warzone-data".
+
+```bash
+cd
+mkdir warzone-data
+```
+Em seguida, mova a pasta do setor que irá ser inicializado para o diretório criado.
 
 ### PC Master (Gênese)
 
 ```bash
 make run-lan-master
 ```
+Obs: o PC Master é obrigatoriamente o setorA.
 
 Ao iniciar serão exibidos:
 
@@ -104,9 +133,9 @@ make run-lan-node
 
 Será solicitado:
 
-- Pasta do setor
-- Node ID do Master
-- Endereço IP do Master
+- Folder: Pasta do setor (ex.: setorA, setorB, ...)
+- ID do peer: ID gerado pelo PC Master
+- IP do peer: Endereço IP do Master (ex.: 192.xxx.xx.xx)
 
 Todos os serviços REST e RPC já são expostos automaticamente para a rede local.
 
@@ -118,12 +147,6 @@ Entre na pasta:
 
 ```bash
 cd sector-manager
-```
-
-Execute:
-
-```bash
-make run-dashboard BLOCKCHAIN_URL="http://192.168.1.15:1317,http://192.168.1.16:1317"
 ```
 
 O Dashboard ficará disponível em:
@@ -181,7 +204,7 @@ Execute:
 make run
 ```
 
-O painel consulta diretamente a API REST da blockchain e possui **failover automático**, alternando para outro nó caso o atual fique indisponível.
+O painel consulta diretamente a API REST da blockchain.
 
 ---
 
