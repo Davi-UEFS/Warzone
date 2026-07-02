@@ -190,7 +190,8 @@ cd test-client
 Execute:
 
 ```bash
-go run main.go
+docker pull daviuefs/test-client:alternativo
+docker run -it --rm --name test-client --network host daviuefs/test-client:alternativo
 ```
 
 O cliente permite:
@@ -237,6 +238,8 @@ Resultado esperado:
 
 - quebra do hash da Merkle Tree;
 - isolamento automático do nó pelos demais validadores.
+
+> [!NOTE] O arquivo, por padrão, corrompe os dados da pasta setorD e o contêiner node-d. Se estiver utilizando o modo de run-lan, modifique os nomes para a pasta e contêiner correto.
 
 ---
 
